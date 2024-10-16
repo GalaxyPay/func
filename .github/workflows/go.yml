@@ -1,0 +1,62 @@
+name: Publish & Release
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish AvmWinNode
+        run: |
+          cd AvmWinNode
+          dotnet publish -o ..\publish --no-self-contained
+
+      - name: Publish AlgorandService
+        run: |
+          cd AlgorandService
+          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true --no-self-contained
+
+      - name: Publish VoiService
+        run: |
+          cd VoiService
+          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true --no-self-contained
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: webui/pnpm-lock.yaml
+
+      - name: Build webui
+        run: |
+          cd webui
+          pnpm install
+          pnpm build
+
+      - name: Create Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
+        with:
+          path: ./AvmWinNode.iss
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          tag: v1.0.0
+          artifacts: "Output\\AvmWinNode_Setup.exe"

@@ -1,0 +1,45 @@
+@AvmWinNode_HostAddress = http://localhost:3536
+
+### GOAL
+GET {{AvmWinNode_HostAddress}}/goal/version
+Accept: application/text
+
+### ALGORAND
+GET {{AvmWinNode_HostAddress}}/algorand/
+Accept: application/json
+
+### Create Algorand
+POST {{AvmWinNode_HostAddress}}/algorand
+Accept: application/text
+
+### Start Algorand
+PUT {{AvmWinNode_HostAddress}}/algorand/start
+Accept: application/text
+
+### Stop Algorand
+PUT {{AvmWinNode_HostAddress}}/algorand/stop
+Accept: application/text
+
+### Delete Algorand
+DELETE {{AvmWinNode_HostAddress}}/algorand
+Accept: application/text
+
+### VOI
+GET {{AvmWinNode_HostAddress}}/voi/
+Accept: application/json
+
+### Create Voi
+POST {{AvmWinNode_HostAddress}}/voi
+Accept: application/text
+
+### Start Voi
+PUT {{AvmWinNode_HostAddress}}/voi/start
+Accept: application/text
+
+### Stop Voi
+PUT {{AvmWinNode_HostAddress}}/voi/stop
+Accept: application/text
+
+### Delete Voi
+DELETE {{AvmWinNode_HostAddress}}/voi
+Accept: application/text
