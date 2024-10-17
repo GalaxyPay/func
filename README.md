@@ -43,6 +43,8 @@ The installer does not include the node software. It is automatically downloaded
 
 ## Notes
 
+- The app is a [locally hosted webpage](http://localhost:3536). After install, bookmark it for easy access.
+
 - The node will restart automatically if your computer reboots, but you will need to configure Windows to **_not_** go into Sleep mode in order to keep the node running 24/7.
 
 - If you Stop a node and restart your computer, the node will restart automatically. You must remove the service if you want the node to not restart. Removing the service preserves the node data; deleting the data is a separate step.
