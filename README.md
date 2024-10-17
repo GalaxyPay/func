@@ -1,8 +1,8 @@
-# AvmWinNode
+# ![icon](webui\public\favicon.ico) AvmWinNode
 
 AvmWinNode is a Windows Service that makes it easy to spin up a node for Algorand or Voi and start participating in consensus.
 
-![screenshot](https://github.com/user-attachments/assets/746beacf-0e24-40c6-a403-06d856287a06)
+![screenshot](screenshot.png)
 
 ## Installation
 
