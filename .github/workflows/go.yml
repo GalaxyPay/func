@@ -18,17 +18,17 @@ jobs:
       - name: Publish AvmWinNode
         run: |
           cd AvmWinNode
-          dotnet publish -o ..\publish --no-self-contained
+          dotnet publish -o ..\publish
 
       - name: Publish AlgorandService
         run: |
           cd AlgorandService
-          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true --no-self-contained
+          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
 
       - name: Publish VoiService
         run: |
           cd VoiService
-          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true --no-self-contained
+          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4

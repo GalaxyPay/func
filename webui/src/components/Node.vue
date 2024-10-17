@@ -67,7 +67,7 @@
       <Participation
         v-if="
           algodClient &&
-          nodeConfig?.serviceStatus === 'Running' &&
+          nodeStatus === 'Running' &&
           algodStatus?.['last-round'] > 100
         "
         :port="nodeConfig.port"
