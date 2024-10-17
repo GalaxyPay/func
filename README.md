@@ -51,6 +51,6 @@ The installer does not include the node software. It is automatically downloaded
 
 ## Build (for Developers)
 
-You can fork the repo and let Github Actions do the build for you, or you can run the commands from [the actions yml](.github\workflows\go.yml) locally.
+You can fork the repo and let Github Actions do the build for you, or you can run the commands from the [actions YML](.github/workflows/go.yml) locally.
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
