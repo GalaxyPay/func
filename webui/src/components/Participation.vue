@@ -121,6 +121,7 @@
 </template>
 
 <script lang="ts" setup>
+import { Participation } from "@/types";
 import { delay, formatAddr } from "@/utils";
 import { mdiCheck, mdiClose, mdiDelete, mdiHandshake, mdiPlus } from "@mdi/js";
 import { useWallet } from "@txnlab/use-wallet-vue";
@@ -179,12 +180,6 @@ const required = (v: number) => !!v || v === 0 || "Required";
 const baseUrl = computed(
   () => `http://localhost:${props.port}/v2/participation`
 );
-
-interface Participation {
-  address: string;
-  id: string;
-  key: modelsv2.AccountParticipation;
-}
 
 async function getKeys() {
   const response = await fetch(baseUrl.value, {
