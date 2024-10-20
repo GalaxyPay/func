@@ -145,7 +145,7 @@ async function getStatus() {
   nodeConfig.value = resp.data;
   if (nodeConfig.value?.serviceStatus === "Running") {
     if (algodClient.value) {
-    algodStatus.value = await algodClient.value?.status().do();
+      algodStatus.value = await algodClient.value?.status().do();
     }
     if (!refreshing) autoRefresh();
   } else {
