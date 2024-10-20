@@ -65,14 +65,11 @@
         </template>
       </v-card-text>
       <Participation
-        v-if="
-          algodClient &&
-          nodeStatus === 'Running' &&
-          algodStatus?.['last-round'] > 100
-        "
+        v-if="algodClient && algodStatus?.['last-round'] > 100"
         :port="nodeConfig.port"
         :token="nodeConfig.token"
         :algod-client="algodClient"
+        :node-status="nodeStatus"
       />
     </v-card>
   </v-container>
@@ -113,11 +110,13 @@ async function getCatchpoint() {
 const nodeStatus = computed(() =>
   algodStatus.value?.["catchup-time"]
     ? "Syncing"
-    : nodeConfig.value?.serviceStatus
+    : nodeConfig.value
+    ? nodeConfig.value.serviceStatus
+    : "Unknown"
 );
 
 const algodClient = computed(() => {
-  if (!nodeConfig.value) return undefined;
+  if (!nodeConfig.value?.port) return undefined;
   return new Algodv2(
     nodeConfig.value.token,
     "http://localhost",
@@ -127,7 +126,6 @@ const algodClient = computed(() => {
 
 onBeforeMount(async () => {
   await getStatus();
-  await checkCatchup();
 });
 
 let refreshing = false;
@@ -146,7 +144,9 @@ async function getStatus() {
   const resp = await axios({ url });
   nodeConfig.value = resp.data;
   if (nodeConfig.value?.serviceStatus === "Running") {
-    algodStatus.value = await algodClient.value?.status().do();
+    if (algodClient.value) {
+      algodStatus.value = await algodClient.value?.status().do();
+    }
     if (!refreshing) autoRefresh();
   } else {
     algodStatus.value = undefined;
@@ -187,7 +187,6 @@ const catchupData = computed(() => {
 async function createService() {
   loading.value = true;
   await axios({ url, method: "post" });
-  await delay(500);
   store.setSnackbar("Service Created. Starting...", "success", -1);
   await startService();
 }
@@ -195,9 +194,7 @@ async function createService() {
 async function startService() {
   loading.value = true;
   await axios({ url: url + "/start", method: "put" });
-  await delay(2000);
   await getStatus();
-  await checkCatchup();
   loading.value = false;
   store.setSnackbar("Node Started", "success");
 }
@@ -205,7 +202,6 @@ async function startService() {
 async function stopService() {
   loading.value = true;
   await axios({ url: url + "/stop", method: "put" });
-  await delay(500);
   await getStatus();
   loading.value = false;
   store.setSnackbar("Node Stopped", "success");
@@ -214,7 +210,6 @@ async function stopService() {
 async function deleteService() {
   loading.value = true;
   await axios({ url, method: "delete" });
-  await delay(500);
   await getStatus();
   loading.value = false;
   store.setSnackbar("Service Removed", "success");
@@ -232,6 +227,15 @@ async function resetNode() {
   loading.value = false;
   store.setSnackbar("Data Deleted", "success");
 }
+
+watch(
+  () => nodeStatus.value,
+  (val) => {
+    if (val === "Syncing") {
+      checkCatchup();
+    }
+  }
+);
 
 async function checkCatchup() {
   if (algodStatus.value?.["catchup-time"]) {

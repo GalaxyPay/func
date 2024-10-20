@@ -6,6 +6,7 @@
         :icon="mdiPlus"
         variant="plain"
         color="primary"
+        :disabled="nodeStatus !== 'Running'"
         @click="generateDialog"
       />
     </v-card-title>
@@ -131,6 +132,7 @@ const props = defineProps({
   port: { type: Number, required: true },
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
+  nodeStatus: { type: String, required: true },
 });
 
 const store = useAppStore();

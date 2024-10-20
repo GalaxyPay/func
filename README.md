@@ -14,6 +14,10 @@ The code is open-source so you can review it yourself or have a trusted friend d
 
 The installer does not include the node software. It is automatically downloaded the first time you open the app from [this open-source repo](https://github.com/GalaxyPay/algowin), which compiles the official Go code into Windows binaries. This separation allows the node software to be updated without needing to update this app.
 
+### Updates
+
+When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
+
 ## Manage Node Menu Options
 
 ### Create Service
