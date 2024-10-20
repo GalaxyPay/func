@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using static System.Environment;
 
-namespace AlgorandService
+namespace RetiService
 {
     public class Worker(ILogger<Worker> logger) : BackgroundService
     {
         private readonly ILogger<Worker> _logger = logger;
-        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algod.exe");
-        private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algorand");
+        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti.exe");
+        private readonly string _envPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti\.env");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -18,7 +18,7 @@ namespace AlgorandService
                     FileName = _exePath,
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-d " + _dataPath
+                    Arguments = "-n fnet -e " + _envPath + " d"
                 }
             };
 

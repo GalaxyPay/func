@@ -29,6 +29,16 @@
                 v-show="nodeConfig.serviceStatus === 'Stopped'"
               />
               <v-list-item
+                title="Add Reti Service"
+                @click="addRetiService()"
+                v-show="name === 'Algorand'"
+              />
+              <!-- <v-list-item
+                title="Add Reti Service"
+                @click="addRetiService()"
+                v-show="nodeStatus === 'Running'"
+              /> -->
+              <v-list-item
                 title="Delete Node Data"
                 base-color="error"
                 @click="resetNode()"
@@ -145,7 +155,7 @@ async function getStatus() {
   nodeConfig.value = resp.data;
   if (nodeConfig.value?.serviceStatus === "Running") {
     if (algodClient.value) {
-    algodStatus.value = await algodClient.value?.status().do();
+      algodStatus.value = await algodClient.value?.status().do();
     }
     if (!refreshing) autoRefresh();
   } else {
@@ -252,6 +262,10 @@ async function checkCatchup() {
       });
     }
   }
+}
+
+async function addRetiService() {
+  //
 }
 
 let paused = false;

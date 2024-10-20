@@ -4,7 +4,7 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<UserSecretsId>dotnet-VoiService-c8d0fd7d-15e7-43b9-9640-ed2a1ddcf03e</UserSecretsId>
+		<UserSecretsId>dotnet-RetiService-a4bef131-7cd8-42c1-a853-4771d85d8d6d</UserSecretsId>
 		<DebugType Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">none</DebugType>
 	</PropertyGroup>
 
