@@ -203,10 +203,10 @@ watch(
   () => store.refresh,
   async () => {
     if (activeAccount.value) {
-      const account = await algodClient.value
+      const info = await algodClient.value
         .accountInformation(activeAccount.value.address)
         .do();
-      account.value = modelsv2.Account.from_obj_for_encoding(account);
+      account.value = modelsv2.Account.from_obj_for_encoding(info);
     } else {
       account.value = undefined;
     }
