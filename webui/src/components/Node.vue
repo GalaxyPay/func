@@ -65,14 +65,11 @@
         </template>
       </v-card-text>
       <Participation
-        v-if="
-          algodClient &&
-          nodeStatus === 'Running' &&
-          algodStatus?.['last-round'] > 100
-        "
+        v-if="algodClient && algodStatus?.['last-round'] > 100"
         :port="nodeConfig.port"
         :token="nodeConfig.token"
         :algod-client="algodClient"
+        :node-status="nodeStatus"
       />
     </v-card>
   </v-container>
@@ -113,7 +110,9 @@ async function getCatchpoint() {
 const nodeStatus = computed(() =>
   algodStatus.value?.["catchup-time"]
     ? "Syncing"
-    : nodeConfig.value?.serviceStatus
+    : nodeConfig.value
+    ? nodeConfig.value.serviceStatus
+    : "Unknown"
 );
 
 const algodClient = computed(() => {
