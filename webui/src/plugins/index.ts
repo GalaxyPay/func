@@ -28,6 +28,7 @@ export function registerPlugins(app: App) {
         },
         WalletId.DEFLY,
         WalletId.PERA,
+        WalletId.KIBISIS,
       ],
       network: NetworkId.MAINNET,
     });

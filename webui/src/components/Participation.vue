@@ -31,7 +31,7 @@
           />
         </template>
         <template #[`item.address`]="{ value }">
-          <span>
+          <span @click="copyAddrToClipboard(value)" class="pointer">
             {{ formatAddr(value, 7) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
@@ -40,6 +40,19 @@
           {{ expireDt(Number(item.key.voteLastValid)) }}
         </template>
         <template #[`item.actions`]="{ item }">
+          <span>
+            <v-btn
+              variant="plain"
+              :icon="mdiContentCopy"
+              color="currentColor"
+              @click="copyKeyToClipboard(item)"
+            />
+            <v-tooltip
+              activator="parent"
+              location="top"
+              text="Copy Key Details"
+            />
+          </span>
           <span>
             <v-btn
               variant="plain"
@@ -124,7 +137,14 @@
 <script lang="ts" setup>
 import { Participation } from "@/types";
 import { delay, formatAddr } from "@/utils";
-import { mdiCheck, mdiClose, mdiDelete, mdiHandshake, mdiPlus } from "@mdi/js";
+import {
+  mdiCheck,
+  mdiClose,
+  mdiContentCopy,
+  mdiDelete,
+  mdiHandshake,
+  mdiPlus,
+} from "@mdi/js";
 import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
@@ -326,7 +346,7 @@ async function registerKey(item: Participation) {
       stateProofKey: item.key.stateProofKey!,
     });
     atc.addTransaction({ txn, signer: transactionSigner });
-    await execAtc(atc, "Successfuly Registered Key");
+    await execAtc(atc, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -348,7 +368,7 @@ async function offline() {
         nonParticipation: false,
       });
       atc.addTransaction({ txn, signer: transactionSigner });
-      await execAtc(atc, "Successfuly Offline");
+      await execAtc(atc, "Account Offline");
     } catch (err: any) {
       console.error(err);
       store.setSnackbar(err.message, "error");
@@ -382,4 +402,15 @@ watch(
   () => store.refresh,
   async () => await getKeys()
 );
+
+function copyKeyToClipboard(item: Participation) {
+  const formatted = { ...item, key: item.key.get_obj_for_encoding() };
+  navigator.clipboard.writeText(JSON.stringify(formatted));
+  store.setSnackbar("Key Copied", "info", 1000);
+}
+
+function copyAddrToClipboard(addr: string) {
+  navigator.clipboard.writeText(addr);
+  store.setSnackbar("Address Copied", "info", 1000);
+}
 </script>

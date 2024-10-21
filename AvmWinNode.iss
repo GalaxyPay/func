@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "AvmWinNode"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"
@@ -45,6 +45,7 @@ Name: "{commondesktop}\AvmWinNode"; Filename: "http://localhost:3536/"; IconFile
 Filename: "sc.exe"; Parameters: "create ""AvmWinNode"" binPath= ""{app}\AvmWinNode.exe"" start= auto"
 Filename: "sc.exe"; Parameters: "start ""AvmWinNode"""
 Filename: "cmd.exe"; Parameters: "/c mkdir {commonappdata}\AvmWinNode"
+Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch AvmWinNode"
 
 [UninstallRun]
 Filename: "sc.exe"; Parameters: "stop ""AvmWinNode"""; RunOnceId: "StopService"
