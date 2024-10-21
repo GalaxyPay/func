@@ -45,6 +45,7 @@ Name: "{commondesktop}\AvmWinNode"; Filename: "http://localhost:3536/"; IconFile
 Filename: "sc.exe"; Parameters: "create ""AvmWinNode"" binPath= ""{app}\AvmWinNode.exe"" start= auto"
 Filename: "sc.exe"; Parameters: "start ""AvmWinNode"""
 Filename: "cmd.exe"; Parameters: "/c mkdir {commonappdata}\AvmWinNode"
+Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch AvmWinNode"
 
 [UninstallRun]
 Filename: "sc.exe"; Parameters: "stop ""AvmWinNode"""; RunOnceId: "StopService"
