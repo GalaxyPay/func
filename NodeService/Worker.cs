@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using static System.Environment;
 
-namespace AlgorandService
+namespace NodeService
 {
-    public class Worker(ILogger<Worker> logger) : BackgroundService
+    public class Worker(ILogger<Worker> logger, ArgsService argsService) : BackgroundService
     {
         private readonly ILogger<Worker> _logger = logger;
-        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algod.exe");
-        private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algorand");
+        private readonly ArgsService _argsService = argsService;
+        private readonly string _appData = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -15,10 +15,10 @@ namespace AlgorandService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = _exePath,
+                    FileName = _appData + "algod.exe",
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-d " + _dataPath
+                    Arguments = "-d " + _appData + _argsService.GetArgs()[0]
                 }
             };
 

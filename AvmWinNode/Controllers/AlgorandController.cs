@@ -49,7 +49,8 @@ namespace AvmWinNode.Controllers
                 {
                     Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\algorand.zip"" -C " + _dataPath);
                 }
-                return Utils.ExecCmd(@"sc create ""Algorand Node"" binPath= """ + AppContext.BaseDirectory + @"Services\AlgorandService.exe"" start= auto");
+                string binPath = @"""\""" + AppContext.BaseDirectory + @"Services\NodeService.exe\"" algorand""";
+                return Utils.ExecCmd(@"sc create ""Algorand Node"" binPath= " + binPath + @" start= auto");
             }
             catch (Exception ex)
             {
