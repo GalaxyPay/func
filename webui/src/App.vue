@@ -22,4 +22,7 @@ const store = useAppStore();
 .no-select {
   user-select: none;
 }
+.pointer {
+  cursor: pointer;
+}
 </style>
