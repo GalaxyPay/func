@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using static System.Environment;
 
-namespace VoiService
+namespace NodeService
 {
-    public class Worker(ILogger<Worker> logger) : BackgroundService
+    public class Worker(ILogger<Worker> logger, ArgsService argsService) : BackgroundService
     {
         private readonly ILogger<Worker> _logger = logger;
-        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algod.exe");
-        private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\voi");
+        private readonly ArgsService _argsService = argsService;
+        private readonly string _appData = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -15,10 +15,10 @@ namespace VoiService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = _exePath,
+                    FileName = _appData + "algod.exe",
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-d " + _dataPath
+                    Arguments = "-d " + _appData + _argsService.GetArgs()[0]
                 }
             };
 
@@ -50,7 +50,7 @@ namespace VoiService
                 // In order for the Windows Service Management system to leverage configured
                 // recovery options, we need to terminate the process with a non-zero exit code.
 
-                Environment.Exit(1);
+                Exit(1);
             }
         }
     }

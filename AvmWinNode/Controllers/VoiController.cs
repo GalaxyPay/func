@@ -49,7 +49,8 @@ namespace AvmWinNode.Controllers
                 {
                     Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
                 }
-                return Utils.ExecCmd(@"sc create ""Voi Node"" binPath= """ + AppContext.BaseDirectory + @"Services\VoiService.exe"" start= auto");
+                string binPath = @"""\""" + AppContext.BaseDirectory + @"Services\NodeService.exe\"" voi""";
+                return Utils.ExecCmd(@"sc create ""Voi Node"" binPath= " + binPath + @" start= auto");
             }
             catch (Exception ex)
             {
