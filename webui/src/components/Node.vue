@@ -30,14 +30,10 @@
               />
               <v-list-item
                 title="Add Reti Service"
-                @click="addRetiService()"
+                @click="showReti = true"
                 v-show="name === 'Algorand'"
               />
-              <!-- <v-list-item
-                title="Add Reti Service"
-                @click="addRetiService()"
-                v-show="nodeStatus === 'Running'"
-              /> -->
+              <!-- v-show="nodeStatus === 'Running'" -->
               <v-list-item
                 title="Delete Node Data"
                 base-color="error"
@@ -82,6 +78,7 @@
         :node-status="nodeStatus"
       />
     </v-card>
+    <Reti :visible="showReti" @close="showReti = false" />
   </v-container>
 </template>
 
@@ -95,10 +92,10 @@ const CATCHUP_THRESHOLD = 20000; // catchup is triggered if node is this many bl
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
-const baseUrl = "http://localhost:3536/";
-const url = `${baseUrl}${props.name}`;
+const url = `http://localhost:3536/${props.name}`;
 const nodeConfig = ref<NodeConfig>();
 const loading = ref(false);
+const showReti = ref(false);
 const algodStatus = ref();
 
 async function getCatchpoint() {
@@ -263,15 +260,6 @@ async function checkCatchup() {
       });
     }
   }
-}
-
-async function addRetiService() {
-  const releases = await axios({
-    url: "https://api.github.com/repos/TxnLab/reti/releases",
-  });
-  const latest = releases.data[0].tag_name;
-  const resp = await axios({ url: baseUrl + "reti/version?latest=" + latest });
-  console.log(resp.data);
 }
 
 let paused = false;
