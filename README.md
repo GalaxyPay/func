@@ -18,6 +18,10 @@ The installer does not include the node software. It is automatically downloaded
 
 When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
 
+### Uninstall
+
+The app is a **Node Service Manager** - uninstalling it will **_not_** remove node services that you create with it. If you wish to remove everything, use the app to Remove Services and even Delete Node Data before uninstalling the app.
+
 ## Manage Node Menu Options
 
 ### Create Service
