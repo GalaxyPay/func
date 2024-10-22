@@ -64,7 +64,10 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                Directory.Delete(_dataPath + "voi", true);
+                if (Directory.Exists(_dataPath + "voi"))
+                {
+                    Directory.Delete(_dataPath + "voi", true);
+                }
                 Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
                 return Ok();
             }

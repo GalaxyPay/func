@@ -19,6 +19,11 @@
                 v-show="nodeConfig.serviceStatus === 'Stopped'"
               />
               <v-list-item
+                title="Add Reti Service"
+                @click="showReti = true"
+                v-show="name === 'Fnet' && nodeStatus === 'Running'"
+              />
+              <v-list-item
                 title="Stop Node"
                 @click="stopService()"
                 v-show="nodeConfig.serviceStatus === 'Running'"
@@ -28,12 +33,6 @@
                 @click="deleteService()"
                 v-show="nodeConfig.serviceStatus === 'Stopped'"
               />
-              <v-list-item
-                title="Add Reti Service"
-                @click="showReti = true"
-                v-show="name === 'Algorand'"
-              />
-              <!-- v-show="nodeStatus === 'Running'" -->
               <v-list-item
                 title="Delete Node Data"
                 base-color="error"
@@ -111,6 +110,13 @@ async function getCatchpoint() {
         url: "https://mainnet-api.voi.nodely.dev/v2/status",
       });
       return resp.data["last-catchpoint"];
+    }
+    case "Fnet": {
+      // const resp = await axios({
+      //   url: "https://fnet-api.4160.nodely.io/v2/status",
+      // });
+      // return resp.data["last-catchpoint"];
+      return "1740000#P367HXO7AIWXCPP55MSNN3X6IBX3NGO5RIB53APY7GZ64FRENKKQ";
     }
   }
 }

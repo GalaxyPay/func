@@ -5,6 +5,7 @@
       <Goal />
       <Node v-show="store.ready" name="Algorand" />
       <Node v-show="store.ready" name="Voi" />
+      <Node v-show="store.ready" name="Fnet" />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
     <Snackbar />
@@ -16,6 +17,9 @@ const store = useAppStore();
 </script>
 
 <style>
+a {
+  color: #2196f3;
+}
 .no-uppercase {
   text-transform: unset !important;
 }

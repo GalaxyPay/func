@@ -54,8 +54,8 @@
               <v-col class="py-0">
                 <v-switch
                   :model-value="activeNetwork"
-                  false-value="mainnet"
-                  :label="activeNetwork === 'mainnet' ? 'Algorand' : 'Voi'"
+                  false-value="fnet"
+                  :label="activeNetwork === 'fnet' ? 'Algorand' : 'Voi'"
                   true-value="voimain"
                   @click.stop
                   @update:model-value="switchNetwork()"
@@ -182,7 +182,7 @@ const items = computed(() => {
 async function switchNetwork() {
   account.value = undefined;
   setActiveNetwork(
-    (activeNetwork.value === "mainnet" ? "voimain" : "mainnet") as NetworkId
+    (activeNetwork.value === "fnet" ? "voimain" : "fnet") as NetworkId
   );
   store.refresh++;
 }
