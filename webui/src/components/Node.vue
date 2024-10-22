@@ -21,7 +21,7 @@
               <v-list-item
                 title="Add Reti Service"
                 @click="showReti = true"
-                v-show="name === 'Fnet' && nodeStatus === 'Running'"
+                v-show="name === 'FNet' && nodeStatus === 'Running'"
               />
               <v-list-item
                 title="Stop Node"
@@ -116,7 +116,7 @@ async function getCatchpoint() {
       });
       return resp.data["last-catchpoint"];
     }
-    case "Fnet": {
+    case "FNet": {
       // const resp = await axios({
       //   url: "https://fnet-api.4160.nodely.io/v2/status",
       // });

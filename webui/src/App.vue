@@ -5,7 +5,7 @@
       <Goal />
       <Node v-show="store.ready" name="Algorand" />
       <Node v-show="store.ready" name="Voi" />
-      <Node v-show="store.ready" name="Fnet" />
+      <Node v-show="store.ready && store.showFNet" name="FNet" />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
     <Snackbar />

@@ -6,6 +6,10 @@
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
+    <v-btn icon @click="showSettings = true">
+      <v-icon :icon="mdiCog" />
+      <v-tooltip text="Settings" activator="parent" location="bottom" />
+    </v-btn>
     <v-btn color="primary" variant="tonal" class="mr-3">
       {{ formatAddr(activeAccount?.address) || "Connect Wallet" }}
       <v-menu activator="parent" v-model="store.connectMenu" scrim>
@@ -54,8 +58,8 @@
               <v-col class="py-0">
                 <v-switch
                   :model-value="activeNetwork"
-                  false-value="fnet"
-                  :label="activeNetwork === 'fnet' ? 'Algorand' : 'Voi'"
+                  :false-value="algoNetwork"
+                  :label="balanceLabel"
                   true-value="voimain"
                   @click.stop
                   @update:model-value="switchNetwork()"
@@ -121,12 +125,14 @@
         </v-list>
       </v-menu>
     </v-btn>
+    <Settings :visible="showSettings" @close="showSettings = false" />
   </v-app-bar>
 </template>
 
 <script lang="ts" setup>
 import { formatAddr } from "@/utils";
 import {
+  mdiCog,
   mdiContentCopy,
   mdiLightningBoltOutline,
   mdiMinusCircleOutline,
@@ -152,6 +158,7 @@ const {
 
 const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
+const showSettings = ref(false);
 
 onBeforeMount(() => {
   store.refresh++;
@@ -179,10 +186,24 @@ const items = computed(() => {
   return val;
 });
 
+const algoNetwork = computed(() => (store.showFNet ? "fnet" : "mainnet"));
+const balanceLabel = computed(() => {
+  switch (activeNetwork.value) {
+    case "mainnet":
+      return "Algorand";
+    case "voimain":
+      return "Voi";
+    case "fnet":
+      return "FNet";
+  }
+});
+
 async function switchNetwork() {
   account.value = undefined;
   setActiveNetwork(
-    (activeNetwork.value === "fnet" ? "voimain" : "fnet") as NetworkId
+    (activeNetwork.value === algoNetwork.value
+      ? "voimain"
+      : algoNetwork.value) as NetworkId
   );
   store.refresh++;
 }

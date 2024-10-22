@@ -15,6 +15,7 @@ export const useAppStore = defineStore("app", {
     refresh: 0,
     connectMenu: false,
     stopNodeServices: false,
+    showFNet: localStorage.getItem("showFNet") === "true",
   }),
   getters: {},
   actions: {
