@@ -21,6 +21,7 @@
                 v-model.number="validatorId"
                 type="number"
                 label="Validator ID"
+                :rules="[required]"
               />
             </v-col>
             <v-col>
@@ -28,6 +29,7 @@
                 v-model.number="nodeNum"
                 type="number"
                 label="Node Number"
+                :rules="[required]"
               />
             </v-col>
           </v-row>
@@ -37,20 +39,9 @@
                 v-model="mnemonic"
                 rows="2"
                 label="Manager Mnemonic"
-                hint="This is a hot wallet that performs validator functions such as key registrations and rewards payouts"
+                :hint="mnemonicHint"
                 persistent-hint
                 :rules="[required, validMnemonic]"
-              />
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <v-text-field
-                :model-value="mnemonicAcct?.addr"
-                :label="'Manager Address (Calculated)'"
-                readonly
-                variant="solo-filled"
-                style="font-family: monospace"
               />
             </v-col>
           </v-row>
@@ -69,7 +60,7 @@
             />
           </v-btn>
           <v-spacer />
-          <v-btn text="Start Reti Service" />
+          <v-btn type="submit" text="Start Reti Service" />
         </v-card-actions>
       </v-form>
     </v-card>
@@ -82,12 +73,20 @@ import algosdk from "algosdk";
 
 const props = defineProps({
   visible: { type: Boolean, required: true },
+  port: { type: Number, required: true },
+  token: { type: String, required: true },
 });
 const emit = defineEmits(["close"]);
 
 const required = (v: any) => !!v || "Required";
 const validMnemonic = () => !!mnemonicAcct.value?.addr || "Invalid Mnemonic";
 const form = ref();
+const validatorId = ref();
+const nodeNum = ref();
+const mnemonic = ref();
+const loading = ref(false);
+const emptyVersion = { latest: undefined, current: undefined };
+const version = ref(emptyVersion);
 
 const show = computed({
   get() {
@@ -95,16 +94,12 @@ const show = computed({
   },
   set(val) {
     if (!val) {
-      version.value = { latest: undefined, current: undefined };
+      version.value = emptyVersion;
       form.value?.reset();
       emit("close");
     }
   },
 });
-
-const validatorId = ref();
-const nodeNum = ref();
-const mnemonic = ref();
 
 const mnemonicAcct = computed(() => {
   if (!mnemonic.value) return undefined;
@@ -117,11 +112,25 @@ const mnemonicAcct = computed(() => {
   return val;
 });
 
-const loading = ref(false);
-const version = ref({ latest: undefined, current: undefined });
+const mnemonicHint = computed(
+  () =>
+    mnemonicAcct.value?.addr ||
+    "This is a hot wallet that performs validator functions such as key registrations and rewards payouts"
+);
 
-function startValidator() {
-  //
+async function startValidator() {
+  const { valid } = await form.value.validate();
+  if (!valid) return;
+  const env = `ALGO_ALGOD_URL=http://localhost:${props.port}
+ALGO_ALGOD_TOKEN=${props.token}
+RETI_VALIDATORID=${validatorId.value}
+RETI_NODENUM=${nodeNum.value}
+MANAGER_MNEMONIC=${mnemonic.value}`;
+  await axios({
+    url: "http://localhost:3536/reti",
+    method: "post",
+    data: { env },
+  });
 }
 
 watch(

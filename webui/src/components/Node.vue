@@ -76,8 +76,13 @@
         :algod-client="algodClient"
         :node-status="nodeStatus"
       />
+      <Reti
+        :visible="showReti"
+        :port="nodeConfig.port"
+        :token="nodeConfig.token"
+        @close="showReti = false"
+      />
     </v-card>
-    <Reti :visible="showReti" @close="showReti = false" />
   </v-container>
 </template>
 
