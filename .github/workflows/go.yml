@@ -25,6 +25,11 @@ jobs:
           cd NodeService
           dotnet publish -o ..\publish\Services
 
+      - name: Publish RetiService
+        run: |
+          cd RetiService
+          dotnet publish -o ..\publish\Services
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -53,5 +58,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v1.0.2
+          tag: v1.1.0
           artifacts: "Output\\AvmWinNode_Setup.exe"

@@ -11,6 +11,7 @@ namespace AvmWinNode.Controllers
 
         private readonly ILogger<GoalController> _logger = logger;
         private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
+        private readonly string _releasePath = "https://github.com/GalaxyPay/algowin/releases/latest/download/";
 
         // GET: goal/version
         [HttpGet("version")]
@@ -32,9 +33,9 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "algod.exe https://github.com/GalaxyPay/algowin/releases/latest/download/algod.exe");
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "goal.exe https://github.com/GalaxyPay/algowin/releases/latest/download/goal.exe");
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "kmd.exe https://github.com/GalaxyPay/algowin/releases/latest/download/kmd.exe");
+                Utils.ExecCmd("curl -sL -o " + _dataPath + "algod.exe " + _releasePath + "algod.exe");
+                Utils.ExecCmd("curl -sL -o " + _dataPath + "goal.exe " + _releasePath + "goal.exe");
+                Utils.ExecCmd("curl -sL -o " + _dataPath + "kmd.exe " + _releasePath + "kmd.exe");
                 return Ok();
             }
             catch (Exception ex)
