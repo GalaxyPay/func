@@ -201,7 +201,7 @@ async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (nodeConfig.value?.serviceStatus === "Running") {
-    await delay(1500);
+    await delay(1200);
     await getNodeStatus();
   }
   refreshing = false;
@@ -221,7 +221,7 @@ async function getNodeStatus() {
   if (props.name === "FNet") {
     const reti = await AWN.api.get("reti");
     retiStatus.value = reti.data;
-    if (retiStatus.value.version) {
+    if (retiStatus.value.version && !retiVersion.value.latest) {
       const releases = await axios({
         url: "https://api.github.com/repos/TxnLab/reti/releases",
       });
