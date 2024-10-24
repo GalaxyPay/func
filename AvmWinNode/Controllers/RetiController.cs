@@ -1,5 +1,6 @@
 using AvmWinNode.Models;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using static System.Environment;
 
 namespace AvmWinNode.Controllers
@@ -15,11 +16,27 @@ namespace AvmWinNode.Controllers
 
         // GET: reti
         [HttpGet]
-        public ActionResult<string> GetReti()
+        public ActionResult<RetiStatus> RetiStatus()
         {
             try
             {
-                return Ok();
+                string exePath = _dataPath + @"reti\reti.exe";
+                string? version = null;
+                if (System.IO.File.Exists(exePath))
+                {
+                    version = Utils.ExecCmd(exePath + " --version");
+                }
+
+                string sc = Utils.ExecCmd(@"sc query ""Reti Validator""");
+                string serviceStatus = Utils.ParseServiceStatus(sc);
+
+                RetiStatus response = new()
+                {
+                    Version = version,
+                    ServiceStatus = serviceStatus
+
+                };
+                return response;
             }
             catch (Exception ex)
             {
@@ -51,10 +68,18 @@ namespace AvmWinNode.Controllers
 
         // POST: reti
         [HttpPost]
-        public ActionResult<string> CreateRetiService(Reti model)
+        public ActionResult<string> CreateRetiService(RetiCreate model)
         {
             try
             {
+                string exePath = _dataPath + @"reti\reti.exe";
+                if (!System.IO.File.Exists(exePath))
+                {
+                    string zipPath = _releasePath + "reti-" + model.Latest + "-windows-amd64.zip";
+                    Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                    var test = Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+                }
+
                 string envPath = _dataPath + @"reti\.env";
                 if (System.IO.File.Exists(envPath))
                 {
@@ -65,6 +90,24 @@ namespace AvmWinNode.Controllers
                     sw.WriteLine(model.Env);
                 }
                 return Utils.ExecCmd(@"sc create ""Reti Validator"" binPath= """ + AppContext.BaseDirectory + @"Services\RetiService.exe"" start= delayed-auto");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // POST: reti/update
+        [HttpPost("update")]
+        public ActionResult UpdateReti(RetiUpdate model)
+        {
+            try
+            {
+                string exePath = _dataPath + @"reti\reti.exe";
+                string zipPath = _releasePath + "reti-" + model.Latest + "-windows-amd64.zip";
+                Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                var test = Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+                return Ok();
             }
             catch (Exception ex)
             {
@@ -93,6 +136,20 @@ namespace AvmWinNode.Controllers
             try
             {
                 return Utils.ExecCmd(@"sc stop ""Reti Validator""");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // DELETE: reti
+        [HttpDelete]
+        public ActionResult<string> DeleteRetiService()
+        {
+            try
+            {
+                return Utils.ExecCmd(@"sc delete ""Reti Validator""");
             }
             catch (Exception ex)
             {

@@ -47,18 +47,6 @@
           </v-row>
         </v-container>
         <v-card-actions>
-          <v-btn
-            v-show="version.current && version.current != version.latest"
-            variant="tonal"
-            color="warning"
-          >
-            Update
-            <v-tooltip
-              activator="parent"
-              location="top"
-              :text="`Update to ${version.latest}`"
-            />
-          </v-btn>
           <v-spacer />
           <v-btn type="submit" text="Start Reti Service" />
         </v-card-actions>
@@ -76,7 +64,7 @@ const props = defineProps({
   port: { type: Number, required: true },
   token: { type: String, required: true },
 });
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "start"]);
 
 const required = (v: any) => !!v || "Required";
 const validMnemonic = () => !!mnemonicAcct.value?.addr || "Invalid Mnemonic";
@@ -85,8 +73,8 @@ const validatorId = ref();
 const nodeNum = ref();
 const mnemonic = ref();
 const loading = ref(false);
-const emptyVersion = { latest: undefined, current: undefined };
-const version = ref(emptyVersion);
+const emptyVersion = JSON.stringify({ latest: undefined, current: undefined });
+const version = ref(JSON.parse(emptyVersion));
 
 const show = computed({
   get() {
@@ -94,7 +82,7 @@ const show = computed({
   },
   set(val) {
     if (!val) {
-      version.value = emptyVersion;
+      version.value = JSON.parse(emptyVersion);
       form.value?.reset();
       emit("close");
     }
@@ -131,27 +119,7 @@ MANAGER_MNEMONIC=${mnemonic.value}`;
     method: "post",
     data: { env },
   });
+  emit("start");
+  show.value = false;
 }
-
-watch(
-  () => show.value,
-  async (val) => {
-    if (val) {
-      loading.value = true;
-      const releases = await axios({
-        url: "https://api.github.com/repos/TxnLab/reti/releases",
-      });
-      version.value.latest = releases.data[0].tag_name;
-      const resp = await axios({
-        url:
-          "http://localhost:3536/reti/version?latest=" + version.value.latest,
-      });
-      version.value.current = resp.data.slice(
-        27,
-        27 + resp.data.slice(27).indexOf(" ")
-      );
-      loading.value = false;
-    }
-  }
-);
 </script>

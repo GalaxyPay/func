@@ -25,6 +25,11 @@ jobs:
           cd NodeService
           dotnet publish -o ..\publish\Services
 
+      - name: Publish RetiService
+        run: |
+          cd RetiService
+          dotnet publish -o ..\publish\Services
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:

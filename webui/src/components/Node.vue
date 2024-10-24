@@ -3,42 +3,84 @@
     <v-card v-if="nodeConfig">
       <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
       <v-card-title class="d-flex">
-        {{ props.name }} Node <v-spacer />
+        {{ props.name }} Node
+        <v-chip
+          v-show="retiStatus?.serviceStatus === 'Running'"
+          :color="retiUpdate ? 'warning' : 'primary'"
+          size="small"
+          class="ml-2 mt-1"
+          @click="updateReti()"
+          :class="retiUpdate ? '' : 'arrow'"
+        >
+          Reti
+          <v-tooltip
+            activator="parent"
+            location="top"
+            :text="
+              retiUpdate
+                ? `Update to ${retiVersion.latest}`
+                : retiVersion.latest
+            "
+          />
+        </v-chip>
+        <v-spacer />
         <v-btn variant="tonal" :append-icon="mdiChevronDown">
           Manage
           <v-menu activator="parent" bottom :disabled="loading">
             <v-list density="compact">
               <v-list-item
                 title="Create Service"
-                @click="createService()"
-                v-show="nodeConfig.serviceStatus === 'Not Found'"
+                @click="createNode()"
+                v-show="nodeStatus === 'Not Found'"
               />
               <v-list-item
                 title="Start Node"
-                @click="startService()"
-                v-show="nodeConfig.serviceStatus === 'Stopped'"
-              />
-              <v-list-item
-                title="Add Reti Service"
-                @click="showReti = true"
-                v-show="name === 'FNet' && nodeStatus === 'Running'"
+                @click="startNode()"
+                v-show="nodeStatus === 'Stopped'"
               />
               <v-list-item
                 title="Stop Node"
-                @click="stopService()"
+                @click="stopNode()"
                 v-show="nodeConfig.serviceStatus === 'Running'"
               />
               <v-list-item
                 title="Remove Service"
-                @click="deleteService()"
-                v-show="nodeConfig.serviceStatus === 'Stopped'"
+                @click="deleteNode()"
+                v-show="nodeStatus === 'Stopped'"
               />
               <v-list-item
                 title="Delete Node Data"
                 base-color="error"
                 @click="resetNode()"
-                v-show="nodeConfig.serviceStatus === 'Not Found'"
+                v-show="nodeStatus === 'Not Found'"
               />
+              <template v-if="name === 'FNet'">
+                <v-divider class="ml-6" />
+                <v-list-subheader title="Reti" class="ml-3" />
+                <v-list-item
+                  title="Add Reti Service"
+                  @click="showReti = true"
+                  v-show="
+                    retiStatus?.serviceStatus === 'Not Found' &&
+                    nodeStatus === 'Running'
+                  "
+                />
+                <v-list-item
+                  title="Stop Reti"
+                  @click="stopReti()"
+                  v-show="retiStatus?.serviceStatus === 'Running'"
+                />
+                <v-list-item
+                  title="Start Reti"
+                  @click="startReti()"
+                  v-show="retiStatus?.serviceStatus === 'Stopped'"
+                />
+                <v-list-item
+                  title="Remove Reti"
+                  @click="deleteReti()"
+                  v-show="retiStatus?.serviceStatus === 'Stopped'"
+                />
+              </template>
             </v-list>
           </v-menu>
         </v-btn>
@@ -81,12 +123,14 @@
         :port="nodeConfig.port"
         :token="nodeConfig.token"
         @close="showReti = false"
+        @start="startReti()"
       />
     </v-card>
   </v-container>
 </template>
 
 <script setup lang="ts">
+import AWN from "@/services/api";
 import { NodeConfig } from "@/types";
 import { delay } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
@@ -96,11 +140,17 @@ const CATCHUP_THRESHOLD = 20000; // catchup is triggered if node is this many bl
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
-const url = `http://localhost:3536/${props.name}`;
 const nodeConfig = ref<NodeConfig>();
 const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
+const retiStatus = ref();
+const emptyVersion = JSON.stringify({ latest: undefined, current: undefined });
+const retiVersion = ref(JSON.parse(emptyVersion));
+
+const retiUpdate = computed(
+  () => retiVersion.value.current !== retiVersion.value.latest
+);
 
 async function getCatchpoint() {
   switch (props.name) {
@@ -121,7 +171,7 @@ async function getCatchpoint() {
       //   url: "https://fnet-api.4160.nodely.io/v2/status",
       // });
       // return resp.data["last-catchpoint"];
-      return "1740000#P367HXO7AIWXCPP55MSNN3X6IBX3NGO5RIB53APY7GZ64FRENKKQ";
+      return "1780000#Z36DSLJRFJ3FYPUMFJQK22OTALCIOCFIGNKS26S4VRP6JUWOCYEQ";
     }
   }
 }
@@ -144,7 +194,7 @@ const algodClient = computed(() => {
 });
 
 onBeforeMount(async () => {
-  await getStatus();
+  await getNodeStatus();
 });
 
 let refreshing = false;
@@ -154,13 +204,13 @@ async function autoRefresh() {
   refreshing = true;
   while (nodeConfig.value?.serviceStatus === "Running") {
     await delay(1500);
-    await getStatus();
+    await getNodeStatus();
   }
   refreshing = false;
 }
 
-async function getStatus() {
-  const resp = await axios({ url });
+async function getNodeStatus() {
+  const resp = await AWN.api.get(props.name);
   nodeConfig.value = resp.data;
   if (nodeConfig.value?.serviceStatus === "Running") {
     if (algodClient.value) {
@@ -169,6 +219,20 @@ async function getStatus() {
     if (!refreshing) autoRefresh();
   } else {
     algodStatus.value = undefined;
+  }
+  if (props.name === "FNet") {
+    const reti = await axios({ url: "http://localhost:3536/reti" });
+    retiStatus.value = reti.data;
+    if (retiStatus.value.version) {
+      const releases = await axios({
+        url: "https://api.github.com/repos/TxnLab/reti/releases",
+      });
+      retiVersion.value.latest = releases.data[0].tag_name;
+      retiVersion.value.current = retiStatus.value.version.slice(
+        27,
+        27 + retiStatus.value.version.slice(27).indexOf(" ")
+      );
+    }
   }
 }
 
@@ -203,35 +267,62 @@ const catchupData = computed(() => {
   return val;
 });
 
-async function createService() {
+async function createNode() {
   loading.value = true;
-  await axios({ url, method: "post" });
+  await AWN.api.post(props.name);
   store.setSnackbar("Service Created. Starting...", "success", -1);
-  await startService();
+  await startNode();
 }
 
-async function startService() {
+async function startNode() {
   loading.value = true;
-  await axios({ url: url + "/start", method: "put" });
-  await getStatus();
-  loading.value = false;
-  store.setSnackbar("Node Started", "success");
+  await AWN.api.put(`${props.name}/start`);
+  await finish("Node Started");
 }
 
-async function stopService() {
+async function stopNode() {
   loading.value = true;
-  await axios({ url: url + "/stop", method: "put" });
-  await getStatus();
-  loading.value = false;
-  store.setSnackbar("Node Stopped", "success");
+  await AWN.api.put(`${props.name}/stop`);
+  await finish("Node Stopped");
 }
 
-async function deleteService() {
+async function deleteNode() {
   loading.value = true;
-  await axios({ url, method: "delete" });
-  await getStatus();
+  await AWN.api.delete(props.name);
+  await finish("Service Removed");
+}
+
+async function startReti() {
+  loading.value = true;
+  await AWN.api.put("reti/start");
+  await finish("Reti Started");
+}
+
+async function stopReti() {
+  loading.value = true;
+  await AWN.api.put("reti/stop");
+  await finish("Reti Stopped");
+}
+
+async function deleteReti() {
+  loading.value = true;
+  await AWN.api.delete("reti");
+  await finish("Reti Removed");
+}
+
+async function updateReti() {
+  if (!retiUpdate.value) return;
+  loading.value = true;
+  await stopReti();
+  await AWN.api.post("reti/update", { latest: retiVersion.value.latest });
+  await startReti();
+  await finish("Reti Updated");
+}
+
+async function finish(message: string) {
+  await getNodeStatus();
   loading.value = false;
-  store.setSnackbar("Service Removed", "success");
+  store.setSnackbar(message, "success");
 }
 
 async function resetNode() {
@@ -242,7 +333,7 @@ async function resetNode() {
   )
     return;
   loading.value = true;
-  await axios({ url: url + "/reset", method: "post" });
+  await AWN.api.post(`${props.name}/reset`);
   loading.value = false;
   store.setSnackbar("Data Deleted", "success");
 }
@@ -264,11 +355,7 @@ async function checkCatchup() {
     const needsCatchUp =
       catchpointRound - algodStatus.value?.["last-round"] > CATCHUP_THRESHOLD;
     if (!isCatchingUp && needsCatchUp) {
-      await axios({
-        url: url + "/catchup",
-        method: "post",
-        data: { catchpoint },
-      });
+      await AWN.api.post(`${props.name}/catchup`, { catchpoint });
     }
   }
 }
@@ -280,12 +367,12 @@ watch(
   (val) => {
     if (val && nodeConfig.value?.serviceStatus === "Running") {
       paused = true;
-      axios({ url: url + "/stop", method: "put" });
+      AWN.api.put(`${props.name}/stop`);
       nodeConfig.value.serviceStatus = "Stopped";
     }
     if (!val && paused) {
       paused = false;
-      startService();
+      startNode();
     }
   }
 );

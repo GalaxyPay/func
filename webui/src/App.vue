@@ -29,4 +29,7 @@ a {
 .pointer {
   cursor: pointer;
 }
+.arrow {
+  cursor: default;
+}
 </style>
