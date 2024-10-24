@@ -1,6 +1,7 @@
 using AvmWinNode.Models;
 using Microsoft.AspNetCore.Mvc;
-using System;
+using System.Dynamic;
+using System.Text.Json;
 using static System.Environment;
 
 namespace AvmWinNode.Controllers
@@ -12,89 +13,23 @@ namespace AvmWinNode.Controllers
 
         private readonly ILogger<RetiController> _logger = logger;
         private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
-        private readonly string _releasePath = "https://github.com/TxnLab/reti/releases/latest/download/";
-
-        // GET: reti
-        [HttpGet]
-        public async Task<ActionResult<RetiStatus>> RetiStatus()
-        {
-            try
-            {
-                string exePath = _dataPath + @"reti\reti.exe";
-                string? version = null;
-                if (System.IO.File.Exists(exePath))
-                {
-                    version = Utils.ExecCmd(exePath + " --version");
-                }
-
-                string sc = Utils.ExecCmd(@"sc query ""Reti Validator""");
-                string serviceStatus = Utils.ParseServiceStatus(sc);
-                string exeStatus;
-                try
-                {
-                    using HttpClient client = new();
-                    var test = await client.GetAsync("http://localhost:6260/ready");
-                    exeStatus = test.IsSuccessStatusCode ? "Running" : "Stopped";
-                }
-                catch
-                {
-                    exeStatus = "Stopped";
-                }
-
-                if(serviceStatus=="Running" && exeStatus=="Stopped")
-                {
-                    StopRetiService();
-                    StartRetiService();
-                }
-
-                RetiStatus response = new()
-                {
-                    Version = version,
-                    ServiceStatus = serviceStatus,
-                    ExeStatus = exeStatus,
-                };
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // GET: reti/version
-        [HttpGet("version")]
-        public ActionResult<string> RetiVersion(string latest)
-        {
-            try
-            {
-                string exePath = _dataPath + @"reti\reti.exe";
-                if (!System.IO.File.Exists(exePath))
-                {
-                    string zipPath = _releasePath + "reti-" + latest + "-windows-amd64.zip";
-                    Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
-                    var test = Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
-                }
-                string output = Utils.ExecCmd(exePath + " --version");
-                return output;
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        private readonly string _releasePath = "https://github.com/algorandfoundation/reti/releases/latest/download/";
 
         // POST: reti
         [HttpPost]
-        public ActionResult<string> CreateRetiService(RetiCreate model)
+        public async Task<ActionResult<string>> CreateRetiService(RetiCreate model)
         {
             try
             {
+                var latestString = await Utils.ExecCmd("curl https://api.github.com/repos/algorandfoundation/reti/releases/latest");
+                dynamic? latest = JsonSerializer.Deserialize<ExpandoObject>(latestString);
+
                 string exePath = _dataPath + @"reti\reti.exe";
                 if (!System.IO.File.Exists(exePath))
                 {
-                    string zipPath = _releasePath + "reti-" + model.Latest + "-windows-amd64.zip";
-                    Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
-                    var test = Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+                    string zipPath = _releasePath + "reti-" + latest?.name + "-windows-amd64.zip";
+                    await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                    await Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
                 }
 
                 string envPath = _dataPath + @"reti\.env";
@@ -106,7 +41,7 @@ namespace AvmWinNode.Controllers
                 {
                     sw.WriteLine(model.Env);
                 }
-                return Utils.ExecCmd(@"sc create ""Reti Validator"" binPath= """ + AppContext.BaseDirectory + @"Services\RetiService.exe"" start= delayed-auto");
+                return await Utils.ExecCmd(@"sc create ""Reti Validator"" binPath= """ + AppContext.BaseDirectory + @"Services\RetiService.exe"" start= delayed-auto");
             }
             catch (Exception ex)
             {
@@ -116,14 +51,21 @@ namespace AvmWinNode.Controllers
 
         // POST: reti/update
         [HttpPost("update")]
-        public ActionResult UpdateReti(RetiUpdate model)
+        public async Task<ActionResult> UpdateReti()
         {
             try
             {
+                await StopRetiService();
+
+                var latestString = await Utils.ExecCmd("curl https://api.github.com/repos/algorandfoundation/reti/releases/latest");
+                dynamic? latest = JsonSerializer.Deserialize<ExpandoObject>(latestString);
+
                 string exePath = _dataPath + @"reti\reti.exe";
-                string zipPath = _releasePath + "reti-" + model.Latest + "-windows-amd64.zip";
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
-                var test = Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+                string zipPath = _releasePath + "reti-" + latest?.name + "-windows-amd64.zip";
+                await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                await Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+
+                await StartRetiService();
                 return Ok();
             }
             catch (Exception ex)
@@ -134,11 +76,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: reti/start
         [HttpPut("start")]
-        public ActionResult<string> StartRetiService()
+        public async Task<ActionResult<string>> StartRetiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc start ""Reti Validator""");
+                return await Utils.ExecCmd(@"sc start ""Reti Validator""");
             }
             catch (Exception ex)
             {
@@ -148,11 +90,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: reti/stop
         [HttpPut("stop")]
-        public ActionResult<string> StopRetiService()
+        public async Task<ActionResult<string>> StopRetiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc stop ""Reti Validator""");
+                return await Utils.ExecCmd(@"sc stop ""Reti Validator""");
             }
             catch (Exception ex)
             {
@@ -162,11 +104,11 @@ namespace AvmWinNode.Controllers
 
         // DELETE: reti
         [HttpDelete]
-        public ActionResult<string> DeleteRetiService()
+        public async Task<ActionResult<string>> DeleteRetiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc delete ""Reti Validator""");
+                return await Utils.ExecCmd(@"sc delete ""Reti Validator""");
             }
             catch (Exception ex)
             {

@@ -15,11 +15,11 @@ namespace AvmWinNode.Controllers
 
         // GET: goal/version
         [HttpGet("version")]
-        public ActionResult<string> GoalVersion()
+        public async Task<ActionResult<string>> GoalVersion()
         {
             try
             {
-                return Utils.ExecCmd(_dataPath + "goal --version");
+                return await Utils.ExecCmd(_dataPath + "goal --version");
             }
             catch (Exception ex)
             {
@@ -29,13 +29,13 @@ namespace AvmWinNode.Controllers
 
         // POST: goal/update
         [HttpPost("update")]
-        public ActionResult<string> GoalUpdate()
+        public async Task<ActionResult<string>> GoalUpdate()
         {
             try
             {
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "algod.exe " + _releasePath + "algod.exe");
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "goal.exe " + _releasePath + "goal.exe");
-                Utils.ExecCmd("curl -sL -o " + _dataPath + "kmd.exe " + _releasePath + "kmd.exe");
+                await Utils.ExecCmd("curl -sL -o " + _dataPath + "algod.exe " + _releasePath + "algod.exe");
+                await Utils.ExecCmd("curl -sL -o " + _dataPath + "goal.exe " + _releasePath + "goal.exe");
+                await Utils.ExecCmd("curl -sL -o " + _dataPath + "kmd.exe " + _releasePath + "kmd.exe");
                 return Ok();
             }
             catch (Exception ex)

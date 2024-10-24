@@ -14,7 +14,7 @@ namespace AvmWinNode.Controllers
 
         // GET: fnet
         [HttpGet]
-        public ActionResult<NodeConfig> GetFnet()
+        public async Task<ActionResult<NodeStatus>> GetFnet()
         {
             try
             {
@@ -23,15 +23,51 @@ namespace AvmWinNode.Controllers
                 int port = int.Parse(net[(net.LastIndexOf(":") + 1)..]);
                 string token = string.Empty;
                 try { token = System.IO.File.ReadAllText(_dataPath + @"fnet\algod.admin.token"); } catch { }
-                string sc = Utils.ExecCmd(@"sc query ""Fnet Node""");
-                string serviceStatus = Utils.ParseServiceStatus(sc);
-                NodeConfig config = new()
+                string fnetQuery = await Utils.ExecCmd(@"sc query ""Fnet Node""");
+                string nodeServiceStatus = Utils.ParseServiceStatus(fnetQuery);
+
+                // Reti Status
+                string retiQuery = await Utils.ExecCmd(@"sc query ""Reti Validator""");
+                string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
+
+                string exePath = _dataPath + @"reti\reti.exe";
+                string? version = null;
+                if (System.IO.File.Exists(exePath))
                 {
+                    version = await Utils.ExecCmd(exePath + " --version");
+                }
+
+                string? exeStatus = null;
+                if (retiServiceStatus == "Running")
+                {
+                    try
+                    {
+                        using HttpClient client = new();
+                        var ready = await client.GetAsync("http://localhost:6260/ready");
+                        exeStatus = ready.IsSuccessStatusCode ? "Running" : "Stopped";
+                    }
+                    catch
+                    {
+                        exeStatus = "Stopped";
+                    }
+                }
+
+                RetiStatus retiStatus = new()
+                {
+                    ServiceStatus = retiServiceStatus,
+                    Version = version,
+                    ExeStatus = exeStatus,
+                };
+
+                NodeStatus nodeStatus = new()
+                {
+                    ServiceStatus = nodeServiceStatus,
                     Port = port,
                     Token = token,
-                    ServiceStatus = serviceStatus
+                    RetiStatus = retiStatus
                 };
-                return config;
+
+                return nodeStatus;
             }
             catch (Exception ex)
             {
@@ -41,16 +77,16 @@ namespace AvmWinNode.Controllers
 
         // POST: fnet
         [HttpPost]
-        public ActionResult<string> CreateFnetService()
+        public async Task<ActionResult<string>> CreateFnetService()
         {
             try
             {
                 if (!Directory.Exists(_dataPath + "fnet"))
                 {
-                    Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\fnet.zip"" -C " + _dataPath);
+                    await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\fnet.zip"" -C " + _dataPath);
                 }
                 string binPath = @"""\""" + AppContext.BaseDirectory + @"Services\NodeService.exe\"" fnet""";
-                return Utils.ExecCmd(@"sc create ""Fnet Node"" binPath= " + binPath + @" start= auto");
+                return await Utils.ExecCmd(@"sc create ""Fnet Node"" binPath= " + binPath + @" start= auto");
             }
             catch (Exception ex)
             {
@@ -60,7 +96,7 @@ namespace AvmWinNode.Controllers
 
         // POST: fnet/reset
         [HttpPost("reset")]
-        public ActionResult<string> ResetFnetNode()
+        public async Task<ActionResult<string>> ResetFnetNode()
         {
             try
             {
@@ -68,7 +104,7 @@ namespace AvmWinNode.Controllers
                 {
                     Directory.Delete(_dataPath + "fnet", true);
                 }
-                Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\fnet.zip"" -C " + _dataPath);
+                await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\fnet.zip"" -C " + _dataPath);
                 return Ok();
             }
             catch (Exception ex)
@@ -79,7 +115,7 @@ namespace AvmWinNode.Controllers
 
         // POST: fnet/catchup
         [HttpPost("catchup")]
-        public ActionResult<string> CatchupFnetNode(Catchup model)
+        public async Task<ActionResult<string>> CatchupFnetNode(Catchup model)
         {
             try
             {
@@ -91,7 +127,7 @@ namespace AvmWinNode.Controllers
                     || data.Length != 52)
                     return BadRequest();
                 string cmd = string.Format(_dataPath + "goal node catchup {0} -d " + _dataPath + "fnet", model.Catchpoint);
-                return Utils.ExecCmd(cmd);
+                return await Utils.ExecCmd(cmd);
             }
             catch (Exception ex)
             {
@@ -101,11 +137,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: fnet/start
         [HttpPut("start")]
-        public ActionResult<string> StartFnetService()
+        public async Task<ActionResult<string>> StartFnetService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc start ""Fnet Node""");
+                return await Utils.ExecCmd(@"sc start ""Fnet Node""");
             }
             catch (Exception ex)
             {
@@ -115,11 +151,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: fnet/stop
         [HttpPut("stop")]
-        public ActionResult<string> StopFnetService()
+        public async Task<ActionResult<string>> StopFnetService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc stop ""Fnet Node""");
+                return await Utils.ExecCmd(@"sc stop ""Fnet Node""");
             }
             catch (Exception ex)
             {
@@ -129,11 +165,11 @@ namespace AvmWinNode.Controllers
 
         // DELETE: fnet
         [HttpDelete]
-        public ActionResult<string> DeleteFnetService()
+        public async Task<ActionResult<string>> DeleteFnetService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc delete ""Fnet Node""");
+                return await Utils.ExecCmd(@"sc delete ""Fnet Node""");
             }
             catch (Exception ex)
             {

@@ -1,9 +1,16 @@
 import { modelsv2 } from "algosdk";
 
-export interface NodeConfig {
+export interface NodeStatus {
+  serviceStatus: string;
   port: number;
   token: string;
+  retiStatus?: RetiStatus;
+}
+
+export interface RetiStatus {
   serviceStatus: string;
+  version?: string;
+  exeStatus?: string;
 }
 
 export interface SnackBar {

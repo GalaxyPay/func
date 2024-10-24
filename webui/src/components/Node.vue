@@ -1,11 +1,11 @@
 <template>
   <v-container>
-    <v-card v-if="nodeConfig">
+    <v-card v-if="nodeStatus">
       <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
       <v-card-title class="d-flex">
         {{ props.name }} Node
         <v-chip
-          v-show="retiStatus?.serviceStatus === 'Running'"
+          v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
           :color="retiUpdate ? 'warning' : 'primary'"
           size="small"
           class="ml-2 mt-1"
@@ -16,11 +16,7 @@
           <v-tooltip
             activator="parent"
             location="top"
-            :text="
-              retiUpdate
-                ? `Update to ${retiVersion.latest}`
-                : retiVersion.latest
-            "
+            :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
           />
         </v-chip>
         <v-spacer />
@@ -31,54 +27,54 @@
               <v-list-item
                 title="Create Service"
                 @click="createNode()"
-                v-show="nodeStatus === 'Not Found'"
+                v-show="status === 'Not Found'"
               />
               <v-list-item
                 title="Start Node"
                 @click="startNode()"
-                v-show="nodeStatus === 'Stopped'"
+                v-show="status === 'Stopped'"
               />
               <v-list-item
                 title="Stop Node"
                 @click="stopNode()"
-                v-show="nodeConfig.serviceStatus === 'Running'"
+                v-show="nodeStatus.serviceStatus === 'Running'"
               />
               <v-list-item
                 title="Remove Service"
                 @click="deleteNode()"
-                v-show="nodeStatus === 'Stopped'"
+                v-show="status === 'Stopped'"
               />
               <v-list-item
                 title="Delete Node Data"
                 base-color="error"
                 @click="resetNode()"
-                v-show="nodeStatus === 'Not Found'"
+                v-show="status === 'Not Found'"
               />
-              <template v-if="name === 'FNet'">
+              <template v-if="nodeStatus.retiStatus">
                 <v-divider class="ml-6" />
                 <v-list-subheader title="Reti" class="ml-3" />
                 <v-list-item
                   title="Add Reti Service"
                   @click="showReti = true"
                   v-show="
-                    retiStatus?.serviceStatus === 'Not Found' &&
-                    nodeStatus === 'Running'
+                    nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
+                    status === 'Running'
                   "
                 />
                 <v-list-item
                   title="Stop Reti"
                   @click="stopReti()"
-                  v-show="retiStatus?.serviceStatus === 'Running'"
+                  v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
                 />
                 <v-list-item
                   title="Start Reti"
                   @click="startReti()"
-                  v-show="retiStatus?.serviceStatus === 'Stopped'"
+                  v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
                 />
                 <v-list-item
                   title="Remove Reti"
                   @click="deleteReti()"
-                  v-show="retiStatus?.serviceStatus === 'Stopped'"
+                  v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
                 />
               </template>
             </v-list>
@@ -86,10 +82,10 @@
         </v-btn>
       </v-card-title>
       <v-card-text :class="loading ? 'text-grey' : ''">
-        <div v-if="nodeConfig.serviceStatus !== 'Not Found'">
-          Status: {{ nodeStatus }}
+        <div v-if="nodeStatus.serviceStatus !== 'Not Found'">
+          Status: {{ status }}
         </div>
-        <template v-if="nodeConfig.serviceStatus === 'Running'">
+        <template v-if="nodeStatus.serviceStatus === 'Running'">
           <div>Last Round: {{ algodStatus?.["last-round"] }}</div>
           <template v-if="algodStatus?.['catchpoint']">
             <v-data-table
@@ -113,15 +109,15 @@
       </v-card-text>
       <Participation
         v-if="algodClient && algodStatus?.['last-round'] > 100"
-        :port="nodeConfig.port"
-        :token="nodeConfig.token"
+        :port="nodeStatus.port"
+        :token="nodeStatus.token"
         :algod-client="algodClient"
-        :node-status="nodeStatus"
+        :status="status"
       />
       <Reti
         :visible="showReti"
-        :port="nodeConfig.port"
-        :token="nodeConfig.token"
+        :port="nodeStatus.port"
+        :token="nodeStatus.token"
         @close="showReti = false"
         @start="startReti()"
       />
@@ -131,7 +127,7 @@
 
 <script setup lang="ts">
 import AWN from "@/services/api";
-import { NodeConfig } from "@/types";
+import { NodeStatus } from "@/types";
 import { delay } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 import { Algodv2 } from "algosdk";
@@ -144,17 +140,19 @@ const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
-const nodeConfig = ref<NodeConfig>();
+const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
-const retiStatus = ref();
-const emptyVersion = JSON.stringify({ latest: undefined, current: undefined });
-const retiVersion = ref(JSON.parse(emptyVersion));
+const retiLatest = ref<string>();
 
-const retiUpdate = computed(
-  () => retiVersion.value.current !== retiVersion.value.latest
-);
+const retiUpdate = computed(() => {
+  const current = nodeStatus.value?.retiStatus?.version;
+  if (!current) return false;
+  return (
+    current.slice(27, 27 + current.slice(27).indexOf(" ")) !== retiLatest.value
+  );
+});
 
 async function getCatchpoint() {
   switch (props.name) {
@@ -174,20 +172,20 @@ async function getCatchpoint() {
   }
 }
 
-const nodeStatus = computed(() =>
+const status = computed(() =>
   algodStatus.value?.["catchup-time"]
     ? "Syncing"
-    : nodeConfig.value
-    ? nodeConfig.value.serviceStatus
+    : nodeStatus.value
+    ? nodeStatus.value.serviceStatus
     : "Unknown"
 );
 
 const algodClient = computed(() => {
-  if (!nodeConfig.value?.port) return undefined;
+  if (!nodeStatus.value?.port) return undefined;
   return new Algodv2(
-    nodeConfig.value.token,
+    nodeStatus.value.token,
     "http://localhost",
-    nodeConfig.value.port
+    nodeStatus.value.port
   );
 });
 
@@ -200,7 +198,7 @@ let refreshing = false;
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
-  while (nodeConfig.value?.serviceStatus === "Running") {
+  while (nodeStatus.value?.serviceStatus === "Running") {
     await delay(1200);
     await getNodeStatus();
   }
@@ -209,8 +207,8 @@ async function autoRefresh() {
 
 async function getNodeStatus() {
   const resp = await AWN.api.get(props.name);
-  nodeConfig.value = resp.data;
-  if (nodeConfig.value?.serviceStatus === "Running") {
+  nodeStatus.value = resp.data;
+  if (nodeStatus.value?.serviceStatus === "Running") {
     if (algodClient.value) {
       algodStatus.value = await algodClient.value?.status().do();
     }
@@ -218,19 +216,19 @@ async function getNodeStatus() {
   } else {
     algodStatus.value = undefined;
   }
-  if (props.name === "FNet") {
-    const reti = await AWN.api.get("reti");
-    retiStatus.value = reti.data;
-    if (retiStatus.value.version && !retiVersion.value.latest) {
-      const releases = await axios({
-        url: "https://api.github.com/repos/TxnLab/reti/releases",
-      });
-      retiVersion.value.latest = releases.data[0].tag_name;
-      retiVersion.value.current = retiStatus.value.version.slice(
-        27,
-        27 + retiStatus.value.version.slice(27).indexOf(" ")
-      );
-    }
+  if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
+    const releases = await axios({
+      url: "https://api.github.com/repos/algorandfoundation/reti/releases",
+    });
+    retiLatest.value = releases.data[0].tag_name;
+  }
+  if (
+    nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
+    nodeStatus.value.retiStatus.exeStatus === "Stopped"
+  ) {
+    console.error("reti.exe not running - atempting restart");
+    await AWN.api.put("reti/stop");
+    await AWN.api.put("reti/start");
   }
 }
 
@@ -311,9 +309,7 @@ async function deleteReti() {
 async function updateReti() {
   if (!retiUpdate.value) return;
   loading.value = true;
-  await stopReti();
-  await AWN.api.post("reti/update", { latest: retiVersion.value.latest });
-  await startReti();
+  await AWN.api.post("reti/update");
   await finish("Reti Updated");
 }
 
@@ -337,7 +333,7 @@ async function resetNode() {
 }
 
 watch(
-  () => nodeStatus.value,
+  () => status.value,
   (val) => {
     if (val === "Syncing") {
       checkCatchup();
@@ -363,10 +359,10 @@ let paused = false;
 watch(
   () => store.stopNodeServices,
   (val) => {
-    if (val && nodeConfig.value?.serviceStatus === "Running") {
+    if (val && nodeStatus.value?.serviceStatus === "Running") {
       paused = true;
       AWN.api.put(`${props.name}/stop`);
-      nodeConfig.value.serviceStatus = "Stopped";
+      nodeStatus.value.serviceStatus = "Stopped";
     }
     if (!val && paused) {
       paused = false;

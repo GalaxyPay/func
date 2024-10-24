@@ -14,7 +14,7 @@ namespace AvmWinNode.Controllers
 
         // GET: algorand
         [HttpGet]
-        public ActionResult<NodeConfig> GetAlgorand()
+        public async Task<ActionResult<NodeStatus>> GetAlgorand()
         {
             try
             {
@@ -23,15 +23,15 @@ namespace AvmWinNode.Controllers
                 int port = int.Parse(net[(net.LastIndexOf(":") + 1)..]);
                 string token = string.Empty;
                 try { token = System.IO.File.ReadAllText(_dataPath + @"algorand\algod.admin.token"); } catch { }
-                string sc = Utils.ExecCmd(@"sc query ""Algorand Node""");
+                string sc = await Utils.ExecCmd(@"sc query ""Algorand Node""");
                 string serviceStatus = Utils.ParseServiceStatus(sc);
-                NodeConfig config = new()
+                NodeStatus nodeStatus = new()
                 {
                     Port = port,
                     Token = token,
                     ServiceStatus = serviceStatus
                 };
-                return config;
+                return nodeStatus;
             }
             catch (Exception ex)
             {
@@ -41,16 +41,16 @@ namespace AvmWinNode.Controllers
 
         // POST: algorand
         [HttpPost]
-        public ActionResult<string> CreateAlgorandService()
+        public async Task<ActionResult<string>> CreateAlgorandService()
         {
             try
             {
                 if (!Directory.Exists(_dataPath + "algorand"))
                 {
-                    Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\algorand.zip"" -C " + _dataPath);
+                    await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\algorand.zip"" -C " + _dataPath);
                 }
                 string binPath = @"""\""" + AppContext.BaseDirectory + @"Services\NodeService.exe\"" algorand""";
-                return Utils.ExecCmd(@"sc create ""Algorand Node"" binPath= " + binPath + @" start= auto");
+                return await Utils.ExecCmd(@"sc create ""Algorand Node"" binPath= " + binPath + @" start= auto");
             }
             catch (Exception ex)
             {
@@ -60,7 +60,7 @@ namespace AvmWinNode.Controllers
 
         // POST: algorand/reset
         [HttpPost("reset")]
-        public ActionResult<string> ResetAlgorandNode()
+        public async Task<ActionResult<string>> ResetAlgorandNode()
         {
             try
             {
@@ -68,7 +68,7 @@ namespace AvmWinNode.Controllers
                 {
                     Directory.Delete(_dataPath + "algorand", true);
                 }
-                Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\algorand.zip"" -C " + _dataPath);
+                await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\algorand.zip"" -C " + _dataPath);
                 return Ok();
             }
             catch (Exception ex)
@@ -79,7 +79,7 @@ namespace AvmWinNode.Controllers
 
         // POST: algorand/catchup
         [HttpPost("catchup")]
-        public ActionResult<string> CatchupAlgorandNode(Catchup model)
+        public async Task<ActionResult<string>> CatchupAlgorandNode(Catchup model)
         {
             try
             {
@@ -91,7 +91,7 @@ namespace AvmWinNode.Controllers
                     || data.Length != 52)
                     return BadRequest();
                 string cmd = string.Format(_dataPath + "goal node catchup {0} -d " + _dataPath + "algorand", model.Catchpoint);
-                return Utils.ExecCmd(cmd);
+                return await Utils.ExecCmd(cmd);
             }
             catch (Exception ex)
             {
@@ -101,11 +101,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: algorand/start
         [HttpPut("start")]
-        public ActionResult<string> StartAlgorandService()
+        public async Task<ActionResult<string>> StartAlgorandService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc start ""Algorand Node""");
+                return await Utils.ExecCmd(@"sc start ""Algorand Node""");
             }
             catch (Exception ex)
             {
@@ -115,11 +115,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: algorand/stop
         [HttpPut("stop")]
-        public ActionResult<string> StopAlgorandService()
+        public async Task<ActionResult<string>> StopAlgorandService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc stop ""Algorand Node""");
+                return await Utils.ExecCmd(@"sc stop ""Algorand Node""");
             }
             catch (Exception ex)
             {
@@ -129,11 +129,11 @@ namespace AvmWinNode.Controllers
 
         // DELETE: algorand
         [HttpDelete]
-        public ActionResult<string> DeleteAlgorandService()
+        public async Task<ActionResult<string>> DeleteAlgorandService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc delete ""Algorand Node""");
+                return await Utils.ExecCmd(@"sc delete ""Algorand Node""");
             }
             catch (Exception ex)
             {

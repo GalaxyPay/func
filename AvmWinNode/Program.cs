@@ -12,7 +12,11 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+var allowedDomains = new[]
+{
+    "http://localhost:3000",
+};
+app.UseCors(options => options.WithOrigins(allowedDomains).AllowAnyMethod().AllowAnyHeader());
 app.MapControllers();
 app.UseFileServer();
 
