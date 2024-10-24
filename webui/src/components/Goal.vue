@@ -29,7 +29,10 @@
 </template>
 
 <script setup lang="ts">
+import AWN from "@/services/api";
 import { delay } from "@/utils";
+
+const ALGOWIN = "https://api.github.com/repos/GalaxyPay/algowin/releases";
 
 const store = useAppStore();
 const goalVersion = ref();
@@ -42,7 +45,7 @@ onBeforeMount(() => {
 });
 
 async function getVersion() {
-  const version = await axios({ url: "http://localhost:3536/goal/version" });
+  const version = await AWN.api.get("goal/version");
   goalVersion.value = version.data.substring(
     version.data.indexOf("\n") + 1,
     version.data.indexOf("dev") - 1
@@ -50,9 +53,7 @@ async function getVersion() {
 
   if (goalVersion.value) store.ready = true;
 
-  const releases = await axios({
-    url: "https://api.github.com/repos/GalaxyPay/algowin/releases",
-  });
+  const releases = await axios({ url: ALGOWIN });
   latestRelease.value = releases.data[0];
   const name = latestRelease.value.name;
 
@@ -72,7 +73,7 @@ async function update(bypass = false) {
   store.stopNodeServices = true;
   await delay(500);
   store.ready = false;
-  await axios({ url: "http://localhost:3536/goal/update", method: "post" });
+  await AWN.api.post("goal/update");
   await getVersion();
   store.stopNodeServices = false;
   loading.value = false;

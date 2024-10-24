@@ -56,6 +56,7 @@
 </template>
 
 <script lang="ts" setup>
+import AWN from "@/services/api";
 import { mdiClose } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -114,11 +115,7 @@ ALGO_ALGOD_TOKEN=${props.token}
 RETI_VALIDATORID=${validatorId.value}
 RETI_NODENUM=${nodeNum.value}
 MANAGER_MNEMONIC=${mnemonic.value}`;
-  await axios({
-    url: "http://localhost:3536/reti",
-    method: "post",
-    data: { env },
-  });
+  await AWN.api.post("reti", { env });
   emit("start");
   show.value = false;
 }

@@ -137,6 +137,10 @@ import { mdiChevronDown } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const CATCHUP_THRESHOLD = 20000; // catchup is triggered if node is this many blocks behind
+const MAINNET_URL =
+  "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current";
+const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
+// const FNET_URL = "https://fnet-api.4160.nodely.io/v2/status";
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
@@ -155,21 +159,15 @@ const retiUpdate = computed(
 async function getCatchpoint() {
   switch (props.name) {
     case "Algorand": {
-      const resp = await axios({
-        url: "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current",
-      });
+      const resp = await axios({ url: MAINNET_URL });
       return resp.data["last-catchpoint"];
     }
     case "Voi": {
-      const resp = await axios({
-        url: "https://mainnet-api.voi.nodely.dev/v2/status",
-      });
+      const resp = await axios({ url: VOIMAIN_URL });
       return resp.data["last-catchpoint"];
     }
     case "FNet": {
-      // const resp = await axios({
-      //   url: "https://fnet-api.4160.nodely.io/v2/status",
-      // });
+      // const resp = await axios({ url: FNET_URL });
       // return resp.data["last-catchpoint"];
       return "1780000#Z36DSLJRFJ3FYPUMFJQK22OTALCIOCFIGNKS26S4VRP6JUWOCYEQ";
     }
@@ -221,7 +219,7 @@ async function getNodeStatus() {
     algodStatus.value = undefined;
   }
   if (props.name === "FNet") {
-    const reti = await axios({ url: "http://localhost:3536/reti" });
+    const reti = await AWN.api.get("reti");
     retiStatus.value = reti.data;
     if (retiStatus.value.version) {
       const releases = await axios({
