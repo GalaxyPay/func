@@ -1,4 +1,4 @@
-using AlgorandService;
+using RetiService;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService();

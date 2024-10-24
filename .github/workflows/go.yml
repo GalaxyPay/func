@@ -20,15 +20,15 @@ jobs:
           cd AvmWinNode
           dotnet publish -o ..\publish
 
-      - name: Publish AlgorandService
+      - name: Publish NodeService
         run: |
-          cd AlgorandService
-          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
+          cd NodeService
+          dotnet publish -o ..\publish\Services
 
-      - name: Publish VoiService
+      - name: Publish RetiService
         run: |
-          cd VoiService
-          dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
+          cd RetiService
+          dotnet publish -o ..\publish\Services
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -58,5 +58,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v1.0.2
+          tag: v1.1.0
           artifacts: "Output\\AvmWinNode_Setup.exe"

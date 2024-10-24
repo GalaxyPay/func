@@ -4,7 +4,7 @@ namespace AvmWinNode
 {
     public class Utils
     {
-        public static string ExecCmd(string cmd)
+        public static async Task<string> ExecCmd(string cmd)
         {
             Process p = new();
             p.StartInfo.FileName = "cmd.exe";
@@ -12,8 +12,8 @@ namespace AvmWinNode
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.UseShellExecute = false;
             p.Start();
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit();
+            var output = await p.StandardOutput.ReadToEndAsync();
+            await p.WaitForExitAsync();
             return output;
         }
 

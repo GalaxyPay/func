@@ -59,6 +59,6 @@ The app is a **Node Service Manager** - uninstalling it will **_not_** remove no
 
 ## Build (for Developers)
 
-You can fork the repo and let Github Actions do the build for you, or you can run the commands from the [actions YML](.github/workflows/go.yml) locally.
+You can fork the repo and let Github Actions do the build for you, or you can run the [LocalPublish](LocalPublish.ps1) script.
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.

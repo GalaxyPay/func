@@ -4,11 +4,11 @@ Remove-Item publish -Force -Recurse -ErrorAction Ignore
 Set-Location AvmWinNode
 dotnet publish -o ..\publish
 
-Set-Location ..\AlgorandService
-dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
+Set-Location ..\NodeService
+dotnet publish -o ..\publish\Services
 
-Set-Location ..\VoiService
-dotnet publish -o ..\publish\Services -p:PublishSingleFile=true
+Set-Location ..\RetiService
+dotnet publish -o ..\publish\Services
 
 Set-Location ..\webui
 pnpm install

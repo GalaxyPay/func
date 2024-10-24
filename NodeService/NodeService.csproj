@@ -4,7 +4,9 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<UserSecretsId>dotnet-AlgorandService-83191d55-cedb-4d3d-8cca-6efd66a2e829</UserSecretsId>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<PublishAot>true</PublishAot>
+		<UserSecretsId>dotnet-NodeService-d6a62db7-5c17-4d3a-acd5-8077c0f3f324</UserSecretsId>
 		<DebugType Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">none</DebugType>
 	</PropertyGroup>
 

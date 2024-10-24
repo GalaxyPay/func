@@ -13,6 +13,8 @@ declare module 'vue' {
     Node: typeof import('./components/Node.vue')['default']
     NodeIcon: typeof import('./components/NodeIcon.vue')['default']
     Participation: typeof import('./components/Participation.vue')['default']
+    Reti: typeof import('./components/Reti.vue')['default']
+    Settings: typeof import('./components/Settings.vue')['default']
     Snackbar: typeof import('./components/Snackbar.vue')['default']
   }
 }

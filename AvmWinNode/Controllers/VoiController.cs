@@ -14,7 +14,7 @@ namespace AvmWinNode.Controllers
 
         // GET: voi
         [HttpGet]
-        public ActionResult<NodeConfig> GetVoi()
+        public async Task<ActionResult<NodeStatus>> GetVoi()
         {
             try
             {
@@ -23,15 +23,15 @@ namespace AvmWinNode.Controllers
                 int port = int.Parse(net[(net.LastIndexOf(":") + 1)..]);
                 string token = string.Empty;
                 try { token = System.IO.File.ReadAllText(_dataPath + @"voi\algod.admin.token"); } catch { }
-                string sc = Utils.ExecCmd(@"sc query ""Voi Node""");
+                string sc = await Utils.ExecCmd(@"sc query ""Voi Node""");
                 string serviceStatus = Utils.ParseServiceStatus(sc);
-                NodeConfig config = new()
+                NodeStatus nodeStatus = new()
                 {
                     Port = port,
                     Token = token,
                     ServiceStatus = serviceStatus
                 };
-                return config;
+                return nodeStatus;
             }
             catch (Exception ex)
             {
@@ -41,15 +41,16 @@ namespace AvmWinNode.Controllers
 
         // POST: voi
         [HttpPost]
-        public ActionResult<string> CreateVoiService()
+        public async Task<ActionResult<string>> CreateVoiService()
         {
             try
             {
                 if (!Directory.Exists(_dataPath + "voi"))
                 {
-                    Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
+                    await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
                 }
-                return Utils.ExecCmd(@"sc create ""Voi Node"" binPath= """ + AppContext.BaseDirectory + @"Services\VoiService.exe"" start= auto");
+                string binPath = @"""\""" + AppContext.BaseDirectory + @"Services\NodeService.exe\"" voi""";
+                return await Utils.ExecCmd(@"sc create ""Voi Node"" binPath= " + binPath + @" start= auto");
             }
             catch (Exception ex)
             {
@@ -59,12 +60,15 @@ namespace AvmWinNode.Controllers
 
         // POST: voi/reset
         [HttpPost("reset")]
-        public ActionResult<string> ResetVoiNode()
+        public async Task<ActionResult<string>> ResetVoiNode()
         {
             try
             {
-                Directory.Delete(_dataPath + "voi", true);
-                Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
+                if (Directory.Exists(_dataPath + "voi"))
+                {
+                    Directory.Delete(_dataPath + "voi", true);
+                }
+                await Utils.ExecCmd(@"tar -xf """ + AppContext.BaseDirectory + @"Templates\voi.zip"" -C " + _dataPath);
                 return Ok();
             }
             catch (Exception ex)
@@ -75,7 +79,7 @@ namespace AvmWinNode.Controllers
 
         // POST: voi/catchup
         [HttpPost("catchup")]
-        public ActionResult<string> CatchupVoiNode(Catchup model)
+        public async Task<ActionResult<string>> CatchupVoiNode(Catchup model)
         {
             try
             {
@@ -87,7 +91,7 @@ namespace AvmWinNode.Controllers
                     || data.Length != 52)
                     return BadRequest();
                 string cmd = string.Format(_dataPath + "goal node catchup {0} -d " + _dataPath + "voi", model.Catchpoint);
-                return Utils.ExecCmd(cmd);
+                return await Utils.ExecCmd(cmd);
             }
             catch (Exception ex)
             {
@@ -97,11 +101,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: voi/start
         [HttpPut("start")]
-        public ActionResult<string> StartVoiService()
+        public async Task<ActionResult<string>> StartVoiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc start ""Voi Node""");
+                return await Utils.ExecCmd(@"sc start ""Voi Node""");
             }
             catch (Exception ex)
             {
@@ -111,11 +115,11 @@ namespace AvmWinNode.Controllers
 
         // PUT: voi/stop
         [HttpPut("stop")]
-        public ActionResult<string> StopVoiService()
+        public async Task<ActionResult<string>> StopVoiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc stop ""Voi Node""");
+                return await Utils.ExecCmd(@"sc stop ""Voi Node""");
             }
             catch (Exception ex)
             {
@@ -125,11 +129,11 @@ namespace AvmWinNode.Controllers
 
         // DELETE: voi
         [HttpDelete]
-        public ActionResult<string> DeleteVoiService()
+        public async Task<ActionResult<string>> DeleteVoiService()
         {
             try
             {
-                return Utils.ExecCmd(@"sc delete ""Voi Node""");
+                return await Utils.ExecCmd(@"sc delete ""Voi Node""");
             }
             catch (Exception ex)
             {

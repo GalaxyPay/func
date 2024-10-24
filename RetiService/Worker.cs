@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using static System.Environment;
 
-namespace VoiService
+namespace RetiService
 {
     public class Worker(ILogger<Worker> logger) : BackgroundService
     {
         private readonly ILogger<Worker> _logger = logger;
-        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\algod.exe");
-        private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\voi");
+        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti\reti.exe");
+        private readonly string _envPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti\.env");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -18,7 +18,7 @@ namespace VoiService
                     FileName = _exePath,
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-d " + _dataPath
+                    Arguments = "-n fnet -e " + _envPath + " d"
                 }
             };
 
@@ -27,6 +27,9 @@ namespace VoiService
                 process.Start();
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    // Process[] pname = Process.GetProcessesByName("reti");
+                    // if (pname.Length == 0) Exit(1);
+
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
             }
@@ -50,7 +53,7 @@ namespace VoiService
                 // In order for the Windows Service Management system to leverage configured
                 // recovery options, we need to terminate the process with a non-zero exit code.
 
-                Environment.Exit(1);
+                Exit(1);
             }
         }
     }
