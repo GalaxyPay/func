@@ -16,7 +16,7 @@ namespace AvmWinNode.Controllers
 
         // GET: reti
         [HttpGet]
-        public ActionResult<RetiStatus> RetiStatus()
+        public async Task<ActionResult<RetiStatus>> RetiStatus()
         {
             try
             {
@@ -29,12 +29,29 @@ namespace AvmWinNode.Controllers
 
                 string sc = Utils.ExecCmd(@"sc query ""Reti Validator""");
                 string serviceStatus = Utils.ParseServiceStatus(sc);
+                string exeStatus;
+                try
+                {
+                    using HttpClient client = new();
+                    var test = await client.GetAsync("http://localhost:6260/ready");
+                    exeStatus = test.IsSuccessStatusCode ? "Running" : "Stopped";
+                }
+                catch
+                {
+                    exeStatus = "Stopped";
+                }
+
+                if(serviceStatus=="Running" && exeStatus=="Stopped")
+                {
+                    StopRetiService();
+                    StartRetiService();
+                }
 
                 RetiStatus response = new()
                 {
                     Version = version,
-                    ServiceStatus = serviceStatus
-
+                    ServiceStatus = serviceStatus,
+                    ExeStatus = exeStatus,
                 };
                 return response;
             }

@@ -27,10 +27,10 @@ namespace RetiService
                 process.Start();
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    Process[] pname = Process.GetProcessesByName("reti");
-                    if (pname.Length == 0) Exit(1);
+                    // Process[] pname = Process.GetProcessesByName("reti");
+                    // if (pname.Length == 0) Exit(1);
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
             }
             catch (OperationCanceledException)

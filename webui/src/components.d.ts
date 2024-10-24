@@ -10,7 +10,6 @@ declare module 'vue' {
     AlgoIcon: typeof import('./components/AlgoIcon.vue')['default']
     AppBar: typeof import('./components/AppBar.vue')['default']
     Goal: typeof import('./components/Goal.vue')['default']
-    Manage: typeof import('./components/Manage.vue')['default']
     Node: typeof import('./components/Node.vue')['default']
     NodeIcon: typeof import('./components/NodeIcon.vue')['default']
     Participation: typeof import('./components/Participation.vue')['default']
