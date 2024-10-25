@@ -52,10 +52,11 @@
               />
               <template
                 v-if="
-                  (nodeStatus.retiStatus && status === 'Running') ||
-                  ['Running', 'Stopped'].includes(
-                    nodeStatus.retiStatus?.serviceStatus
-                  )
+                  nodeStatus.retiStatus &&
+                  (status === 'Running' ||
+                    ['Running', 'Stopped'].includes(
+                      nodeStatus.retiStatus.serviceStatus
+                    ))
                 "
               >
                 <v-divider class="ml-6" />
