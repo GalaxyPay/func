@@ -50,7 +50,14 @@
                 @click="resetNode()"
                 v-show="status === 'Not Found'"
               />
-              <template v-if="nodeStatus.retiStatus">
+              <template
+                v-if="
+                  (nodeStatus.retiStatus && status === 'Running') ||
+                  ['Running', 'Stopped'].includes(
+                    nodeStatus.retiStatus?.serviceStatus
+                  )
+                "
+              >
                 <v-divider class="ml-6" />
                 <v-list-subheader title="Reti" class="ml-3" />
                 <v-list-item
@@ -69,7 +76,10 @@
                 <v-list-item
                   title="Start Reti"
                   @click="startReti()"
-                  v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
+                  v-show="
+                    nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
+                    status === 'Running'
+                  "
                 />
                 <v-list-item
                   title="Remove Reti"
