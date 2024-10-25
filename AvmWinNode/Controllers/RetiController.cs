@@ -1,7 +1,6 @@
 using AvmWinNode.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Dynamic;
-using System.Text.Json;
+using Octokit;
 using static System.Environment;
 
 namespace AvmWinNode.Controllers
@@ -13,7 +12,6 @@ namespace AvmWinNode.Controllers
 
         private readonly ILogger<RetiController> _logger = logger;
         private readonly string _dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
-        private readonly string _releasePath = "https://github.com/algorandfoundation/reti/releases/latest/download/";
 
         // POST: reti
         [HttpPost]
@@ -21,15 +19,24 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                var latestString = await Utils.ExecCmd("curl https://api.github.com/repos/algorandfoundation/reti/releases/latest");
-                dynamic? latest = JsonSerializer.Deserialize<ExpandoObject>(latestString);
-
                 string exePath = _dataPath + @"reti\reti.exe";
                 if (!System.IO.File.Exists(exePath))
                 {
-                    string zipPath = _releasePath + "reti-" + latest?.name + "-windows-amd64.zip";
-                    await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                    string workspaceName = "algorandfoundation";
+                    string repositoryName = "reti";
+                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+
+                    var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                    var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("windows-amd64"))?.BrowserDownloadUrl;
+                    if (url == null) return BadRequest();
+
+                    Directory.CreateDirectory(_dataPath + "reti");
+                    await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + url);
                     await Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
+                }
+                if (!System.IO.File.Exists(exePath))
+                {
+                    throw new Exception("Failed to download reti.exe");
                 }
 
                 string envPath = _dataPath + @"reti\.env";
@@ -57,12 +64,16 @@ namespace AvmWinNode.Controllers
             {
                 await StopRetiService();
 
-                var latestString = await Utils.ExecCmd("curl https://api.github.com/repos/algorandfoundation/reti/releases/latest");
-                dynamic? latest = JsonSerializer.Deserialize<ExpandoObject>(latestString);
+                string workspaceName = "algorandfoundation";
+                string repositoryName = "reti";
+                var client = new GitHubClient(new ProductHeaderValue(repositoryName));
 
-                string exePath = _dataPath + @"reti\reti.exe";
-                string zipPath = _releasePath + "reti-" + latest?.name + "-windows-amd64.zip";
-                await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + zipPath);
+                var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("windows-amd64"))?.BrowserDownloadUrl;
+                if (url == null) return BadRequest();
+
+                Directory.CreateDirectory(_dataPath + "reti");
+                await Utils.ExecCmd("curl -sL -o " + _dataPath + "reti.zip " + url);
                 await Utils.ExecCmd(@"tar -xf " + _dataPath + "reti.zip -C " + _dataPath + "reti");
 
                 await StartRetiService();
