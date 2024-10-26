@@ -32,7 +32,8 @@
 import AWN from "@/services/api";
 import { delay } from "@/utils";
 
-const ALGOWIN = "https://api.github.com/repos/GalaxyPay/algowin/releases";
+const ALGOWIN =
+  "https://api.github.com/repos/GalaxyPay/algowin/releases/latest";
 
 const store = useAppStore();
 const goalVersion = ref();
@@ -53,8 +54,7 @@ async function getVersion() {
 
   if (goalVersion.value) store.ready = true;
 
-  const releases = await axios({ url: ALGOWIN });
-  latestRelease.value = releases.data[0];
+  latestRelease.value = (await axios({ url: ALGOWIN })).data;
   const name = latestRelease.value.name;
 
   if (!goalVersion.value) update(true);
