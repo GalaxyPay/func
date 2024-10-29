@@ -277,7 +277,6 @@ async function generateKey() {
   const { valid } = await form.value.validate();
   if (!valid) return;
   try {
-    if (!activeAccount.value) throw Error("Invalid Account");
     loading.value = true;
     await fetch(
       `${baseUrl.value}/generate/${addr.value}` +

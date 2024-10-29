@@ -20,9 +20,13 @@
           />
         </v-chip>
         <v-spacer />
-        <v-btn variant="tonal" :append-icon="mdiChevronDown">
+        <v-btn
+          variant="tonal"
+          :append-icon="mdiChevronDown"
+          :disabled="loading"
+        >
           Manage
-          <v-menu activator="parent" bottom :disabled="loading">
+          <v-menu activator="parent" bottom>
             <v-list density="compact">
               <v-list-item
                 title="Create Service"
