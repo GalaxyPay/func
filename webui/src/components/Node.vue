@@ -1,102 +1,125 @@
 <template>
   <div v-if="nodeStatus">
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
-    <v-card-title class="d-flex">
-      {{ props.name }} Node
-      <v-chip
-        v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
-        :color="retiUpdate ? 'warning' : 'primary'"
-        size="small"
-        class="ml-2 mt-1"
-        @click="updateReti()"
-        :class="retiUpdate ? '' : 'arrow'"
-      >
-        Reti
-        <v-tooltip
-          activator="parent"
-          location="top"
-          :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
-        />
-      </v-chip>
-      <v-spacer />
-      <v-btn variant="tonal" :append-icon="mdiChevronDown" :disabled="loading">
-        Manage
-        <v-menu activator="parent" bottom>
-          <v-list density="compact">
-            <v-list-item
-              title="Create Service"
-              @click="createNode()"
-              v-show="status === 'Not Found'"
-            />
-            <v-list-item
-              title="Start Node"
-              @click="startNode()"
-              v-show="status === 'Stopped'"
-            />
-            <v-list-item
-              title="Stop Node"
-              @click="stopNode()"
-              v-show="nodeStatus.serviceStatus === 'Running'"
-            />
-            <v-list-item
-              title="Remove Service"
-              @click="deleteNode()"
-              v-show="status === 'Stopped'"
-            />
-            <v-list-item
-              title="Delete Node Data"
-              base-color="error"
-              @click="resetNode()"
-              v-show="status === 'Not Found'"
-            />
-            <template
-              v-if="
-                nodeStatus.retiStatus &&
-                (status === 'Running' ||
-                  ['Running', 'Stopped'].includes(
-                    nodeStatus.retiStatus.serviceStatus
-                  ))
-              "
+    <v-container class="pl-5">
+      <v-row>
+        <v-col cols="8">
+          <div class="py-1">
+            <v-badge floating dot class="mr-3 mb-1" :color="runningColor" />
+            Node Running
+            <v-chip
+              v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
+              :color="retiUpdate ? 'warning' : 'primary'"
+              size="small"
+              class="ml-2 mt-1"
+              @click="updateReti()"
+              :class="retiUpdate ? '' : 'arrow'"
             >
-              <v-divider class="ml-6" />
-              <v-list-subheader title="Reti" class="ml-3" />
-              <v-list-item
-                title="Add Reti Service"
-                @click="showReti = true"
-                v-show="
-                  nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
-                  status === 'Running'
-                "
+              Reti
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
               />
-              <v-list-item
-                title="Stop Reti"
-                @click="stopReti()"
-                v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
-              />
-              <v-list-item
-                title="Start Reti"
-                @click="startReti()"
-                v-show="
-                  nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
-                  status === 'Running'
-                "
-              />
-              <v-list-item
-                title="Remove Reti"
-                @click="deleteReti()"
-                v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
-              />
-            </template>
-          </v-list>
-        </v-menu>
-      </v-btn>
-    </v-card-title>
+            </v-chip>
+          </div>
+          <div class="py-1">
+            <v-badge
+              floating
+              dot
+              class="mr-3 mb-1"
+              :class="isSyncing ? 'pulsate' : ''"
+              :color="syncedColor"
+            />
+            Node Synced
+          </div>
+          <div class="py-1">
+            <v-badge floating dot class="mr-3 mb-1" color="red" />
+            Participating in Concensus
+          </div>
+        </v-col>
+        <v-col class="text-right">
+          <v-btn
+            variant="tonal"
+            :append-icon="mdiChevronDown"
+            :disabled="loading"
+          >
+            Manage
+            <v-menu activator="parent" bottom>
+              <v-list density="compact">
+                <v-list-item
+                  title="Create Service"
+                  @click="createNode()"
+                  v-show="status === 'Not Found'"
+                />
+                <v-list-item
+                  title="Start Node"
+                  @click="startNode()"
+                  v-show="status === 'Stopped'"
+                />
+                <v-list-item
+                  title="Stop Node"
+                  @click="stopNode()"
+                  v-show="nodeStatus.serviceStatus === 'Running'"
+                />
+                <v-list-item
+                  title="Remove Service"
+                  @click="deleteNode()"
+                  v-show="status === 'Stopped'"
+                />
+                <v-list-item
+                  title="Delete Node Data"
+                  base-color="error"
+                  @click="resetNode()"
+                  v-show="status === 'Not Found'"
+                />
+                <template
+                  v-if="
+                    nodeStatus.retiStatus &&
+                    (status === 'Running' ||
+                      ['Running', 'Stopped'].includes(
+                        nodeStatus.retiStatus.serviceStatus
+                      ))
+                  "
+                >
+                  <v-divider class="ml-6" />
+                  <v-list-subheader title="Reti" class="ml-3" />
+                  <v-list-item
+                    title="Add Reti Service"
+                    @click="showReti = true"
+                    v-show="
+                      nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
+                      status === 'Running'
+                    "
+                  />
+                  <v-list-item
+                    title="Stop Reti"
+                    @click="stopReti()"
+                    v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
+                  />
+                  <v-list-item
+                    title="Start Reti"
+                    @click="startReti()"
+                    v-show="
+                      nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
+                      status === 'Running'
+                    "
+                  />
+                  <v-list-item
+                    title="Remove Reti"
+                    @click="deleteReti()"
+                    v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
+                  />
+                </template>
+              </v-list>
+            </v-menu>
+          </v-btn>
+        </v-col>
+      </v-row>
+    </v-container>
     <v-card-text :class="loading ? 'text-grey' : ''">
-      <div v-if="nodeStatus.serviceStatus !== 'Not Found'">
-        Status: {{ status }}
-      </div>
       <template v-if="nodeStatus.serviceStatus === 'Running'">
-        <div>Last Round: {{ algodStatus?.["last-round"] }}</div>
+        <div>Current Round: {{ algodStatus?.["last-round"] }}</div>
         <template v-if="algodStatus?.['catchpoint']">
           <v-data-table
             :headers="headers"
@@ -181,8 +204,18 @@ async function getCatchpoint() {
   }
 }
 
+const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
+
+const runningColor = computed(() =>
+  nodeStatus.value?.serviceStatus === "Running" ? "success" : "red"
+);
+
+const syncedColor = computed(() =>
+  isSyncing.value ? "warning" : runningColor.value
+);
+
 const status = computed(() =>
-  algodStatus.value?.["catchup-time"]
+  isSyncing.value
     ? "Syncing"
     : nodeStatus.value
     ? nodeStatus.value.serviceStatus
@@ -202,12 +235,18 @@ onBeforeMount(async () => {
   await getNodeStatus();
 });
 
+const isMounted = ref(true);
+onBeforeUnmount(() => {
+  isMounted.value = false;
+});
+
 let refreshing = false;
 
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (nodeStatus.value?.serviceStatus === "Running") {
+    if (!isMounted.value) return;
     await delay(1200);
     await getNodeStatus();
   }
@@ -380,3 +419,20 @@ watch(
   }
 );
 </script>
+
+<style>
+.pulsate {
+  animation: pulse 3s ease infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+</style>

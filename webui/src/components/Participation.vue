@@ -227,6 +227,15 @@ async function getKeys() {
         acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
       })
     );
+    if (keys.value)
+      await Promise.all(
+        keys.value?.map(async (k) => {
+          const test = await axios({
+            url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
+          });
+          console.log(test.data);
+        })
+      );
   } else {
     keys.value = undefined;
   }

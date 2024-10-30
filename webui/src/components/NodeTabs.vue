@@ -16,7 +16,7 @@
       </v-tabs>
       <v-window disabled :model-value="tab">
         <v-window-item v-for="n in networks" :key="n.id" :value="n.title">
-          <Node :name="n.title" />
+          <Node v-if="tab === n.title" :name="n.title" />
         </v-window-item>
       </v-window>
     </v-card>
