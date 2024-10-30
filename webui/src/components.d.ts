@@ -12,6 +12,7 @@ declare module 'vue' {
     Goal: typeof import('./components/Goal.vue')['default']
     Node: typeof import('./components/Node.vue')['default']
     NodeIcon: typeof import('./components/NodeIcon.vue')['default']
+    NodeTabs: typeof import('./components/NodeTabs.vue')['default']
     Participation: typeof import('./components/Participation.vue')['default']
     Reti: typeof import('./components/Reti.vue')['default']
     Settings: typeof import('./components/Settings.vue')['default']

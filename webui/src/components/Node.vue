@@ -1,143 +1,137 @@
 <template>
-  <v-container>
-    <v-card v-if="nodeStatus">
-      <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
-      <v-card-title class="d-flex">
-        {{ props.name }} Node
-        <v-chip
-          v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
-          :color="retiUpdate ? 'warning' : 'primary'"
-          size="small"
-          class="ml-2 mt-1"
-          @click="updateReti()"
-          :class="retiUpdate ? '' : 'arrow'"
-        >
-          Reti
-          <v-tooltip
-            activator="parent"
-            location="top"
-            :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
-          />
-        </v-chip>
-        <v-spacer />
-        <v-btn
-          variant="tonal"
-          :append-icon="mdiChevronDown"
-          :disabled="loading"
-        >
-          Manage
-          <v-menu activator="parent" bottom>
-            <v-list density="compact">
-              <v-list-item
-                title="Create Service"
-                @click="createNode()"
-                v-show="status === 'Not Found'"
-              />
-              <v-list-item
-                title="Start Node"
-                @click="startNode()"
-                v-show="status === 'Stopped'"
-              />
-              <v-list-item
-                title="Stop Node"
-                @click="stopNode()"
-                v-show="nodeStatus.serviceStatus === 'Running'"
-              />
-              <v-list-item
-                title="Remove Service"
-                @click="deleteNode()"
-                v-show="status === 'Stopped'"
-              />
-              <v-list-item
-                title="Delete Node Data"
-                base-color="error"
-                @click="resetNode()"
-                v-show="status === 'Not Found'"
-              />
-              <template
-                v-if="
-                  nodeStatus.retiStatus &&
-                  (status === 'Running' ||
-                    ['Running', 'Stopped'].includes(
-                      nodeStatus.retiStatus.serviceStatus
-                    ))
-                "
-              >
-                <v-divider class="ml-6" />
-                <v-list-subheader title="Reti" class="ml-3" />
-                <v-list-item
-                  title="Add Reti Service"
-                  @click="showReti = true"
-                  v-show="
-                    nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
-                    status === 'Running'
-                  "
-                />
-                <v-list-item
-                  title="Stop Reti"
-                  @click="stopReti()"
-                  v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
-                />
-                <v-list-item
-                  title="Start Reti"
-                  @click="startReti()"
-                  v-show="
-                    nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
-                    status === 'Running'
-                  "
-                />
-                <v-list-item
-                  title="Remove Reti"
-                  @click="deleteReti()"
-                  v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
-                />
-              </template>
-            </v-list>
-          </v-menu>
-        </v-btn>
-      </v-card-title>
-      <v-card-text :class="loading ? 'text-grey' : ''">
-        <div v-if="nodeStatus.serviceStatus !== 'Not Found'">
-          Status: {{ status }}
-        </div>
-        <template v-if="nodeStatus.serviceStatus === 'Running'">
-          <div>Last Round: {{ algodStatus?.["last-round"] }}</div>
-          <template v-if="algodStatus?.['catchpoint']">
-            <v-data-table
-              :headers="headers"
-              :items="catchupData"
-              density="comfortable"
+  <div v-if="nodeStatus">
+    <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
+    <v-card-title class="d-flex">
+      {{ props.name }} Node
+      <v-chip
+        v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
+        :color="retiUpdate ? 'warning' : 'primary'"
+        size="small"
+        class="ml-2 mt-1"
+        @click="updateReti()"
+        :class="retiUpdate ? '' : 'arrow'"
+      >
+        Reti
+        <v-tooltip
+          activator="parent"
+          location="top"
+          :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
+        />
+      </v-chip>
+      <v-spacer />
+      <v-btn variant="tonal" :append-icon="mdiChevronDown" :disabled="loading">
+        Manage
+        <v-menu activator="parent" bottom>
+          <v-list density="compact">
+            <v-list-item
+              title="Create Service"
+              @click="createNode()"
+              v-show="status === 'Not Found'"
+            />
+            <v-list-item
+              title="Start Node"
+              @click="startNode()"
+              v-show="status === 'Stopped'"
+            />
+            <v-list-item
+              title="Stop Node"
+              @click="stopNode()"
+              v-show="nodeStatus.serviceStatus === 'Running'"
+            />
+            <v-list-item
+              title="Remove Service"
+              @click="deleteNode()"
+              v-show="status === 'Stopped'"
+            />
+            <v-list-item
+              title="Delete Node Data"
+              base-color="error"
+              @click="resetNode()"
+              v-show="status === 'Not Found'"
+            />
+            <template
+              v-if="
+                nodeStatus.retiStatus &&
+                (status === 'Running' ||
+                  ['Running', 'Stopped'].includes(
+                    nodeStatus.retiStatus.serviceStatus
+                  ))
+              "
             >
-              <template #[`item.total`]="{ value }">
-                {{ value.toLocaleString() }}
-              </template>
-              <template #[`item.processed`]="{ value }">
-                {{ value.toLocaleString() }}
-              </template>
-              <template #[`item.verified`]="{ value }">
-                {{ value.toLocaleString() }}
-              </template>
-              <template #bottom />
-            </v-data-table>
-          </template>
+              <v-divider class="ml-6" />
+              <v-list-subheader title="Reti" class="ml-3" />
+              <v-list-item
+                title="Add Reti Service"
+                @click="showReti = true"
+                v-show="
+                  nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
+                  status === 'Running'
+                "
+              />
+              <v-list-item
+                title="Stop Reti"
+                @click="stopReti()"
+                v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
+              />
+              <v-list-item
+                title="Start Reti"
+                @click="startReti()"
+                v-show="
+                  nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
+                  status === 'Running'
+                "
+              />
+              <v-list-item
+                title="Remove Reti"
+                @click="deleteReti()"
+                v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
+              />
+            </template>
+          </v-list>
+        </v-menu>
+      </v-btn>
+    </v-card-title>
+    <v-card-text :class="loading ? 'text-grey' : ''">
+      <div v-if="nodeStatus.serviceStatus !== 'Not Found'">
+        Status: {{ status }}
+      </div>
+      <template v-if="nodeStatus.serviceStatus === 'Running'">
+        <div>Last Round: {{ algodStatus?.["last-round"] }}</div>
+        <template v-if="algodStatus?.['catchpoint']">
+          <v-data-table
+            :headers="headers"
+            :items="catchupData"
+            density="comfortable"
+          >
+            <template #[`item.total`]="{ value }">
+              {{ value.toLocaleString() }}
+            </template>
+            <template #[`item.processed`]="{ value }">
+              {{ value.toLocaleString() }}
+            </template>
+            <template #[`item.verified`]="{ value }">
+              {{ value.toLocaleString() }}
+            </template>
+            <template #bottom />
+          </v-data-table>
         </template>
-      </v-card-text>
-      <Participation
-        v-if="algodClient && algodStatus?.['last-round'] > 100"
-        :port="nodeStatus.port"
-        :token="nodeStatus.token"
-        :algod-client="algodClient"
-        :status="status"
-      />
-      <Reti
-        :visible="showReti"
-        :port="nodeStatus.port"
-        :token="nodeStatus.token"
-        @close="showReti = false"
-        @start="startReti()"
-      />
-    </v-card>
-  </v-container>
+      </template>
+    </v-card-text>
+    <Participation
+      v-if="algodClient && algodStatus?.['last-round'] > 100"
+      :port="nodeStatus.port"
+      :token="nodeStatus.token"
+      :algod-client="algodClient"
+      :status="status"
+    />
+    <Reti
+      :visible="showReti"
+      :port="nodeStatus.port"
+      :token="nodeStatus.token"
+      @close="showReti = false"
+      @start="startReti()"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">

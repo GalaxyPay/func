@@ -16,7 +16,7 @@
           </v-col>
           <v-col>
             <v-switch
-              :model-value="store.showFNet"
+              :model-value="showFNet"
               class="d-flex"
               style="justify-content: right"
               @click.prevent="setFNet()"
@@ -36,11 +36,7 @@ const props = defineProps({ visible: { type: Boolean, required: true } });
 const emit = defineEmits(["close"]);
 
 const store = useAppStore();
-const {
-  activeNetwork,
-
-  setActiveNetwork,
-} = useWallet();
+const { activeNetwork, setActiveNetwork } = useWallet();
 
 const show = computed({
   get() {
@@ -53,10 +49,10 @@ const show = computed({
   },
 });
 
+const showFNet = computed(() => activeNetwork.value === "fnet");
+
 async function setFNet() {
-  store.showFNet = !store.showFNet;
-  localStorage.setItem("showFNet", store.showFNet.toString());
-  if (activeNetwork.value !== "voimain")
-    setActiveNetwork((store.showFNet ? "fnet" : "mainnet") as NetworkId);
+  setActiveNetwork((showFNet.value ? "mainnet" : "fnet") as NetworkId);
+  store.refresh++;
 }
 </script>

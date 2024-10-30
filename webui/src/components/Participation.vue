@@ -32,7 +32,7 @@
         </template>
         <template #[`item.address`]="{ value }">
           <span @click="copyAddrToClipboard(value)" class="pointer">
-            {{ formatAddr(value, 7) }}
+            {{ formatAddr(value) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
         </template>

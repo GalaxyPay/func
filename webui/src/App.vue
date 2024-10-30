@@ -3,9 +3,7 @@
     <AppBar />
     <v-main>
       <Goal />
-      <Node v-show="store.ready && !store.showFNet" name="Algorand" />
-      <Node v-show="store.ready && !store.showFNet" name="Voi" />
-      <Node v-show="store.ready && store.showFNet" name="FNet" />
+      <NodeTabs />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
     <Snackbar />
