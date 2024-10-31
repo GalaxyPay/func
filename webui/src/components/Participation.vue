@@ -155,6 +155,8 @@ const props = defineProps({
   status: { type: String, required: true },
 });
 
+const emit = defineEmits(["activeKeys", "generatingKey"]);
+
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
 
@@ -227,7 +229,8 @@ async function getKeys() {
         acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
       })
     );
-    if (keys.value)
+    emit("activeKeys", keys.value?.filter((k) => isKeyActive(k)).length);
+    if (keys.value) {
       await Promise.all(
         keys.value?.map(async (k) => {
           const test = await axios({
@@ -236,6 +239,7 @@ async function getKeys() {
           console.log(test.data);
         })
       );
+    }
   } else {
     keys.value = undefined;
   }
@@ -287,6 +291,7 @@ async function generateKey() {
   if (!valid) return;
   try {
     loading.value = true;
+    emit("generatingKey", true);
     await fetch(
       `${baseUrl.value}/generate/${addr.value}` +
         `?first=${gen.value.first}&last=${gen.value.last}`,
@@ -401,6 +406,7 @@ function expireDt(lastValid: number) {
 }
 
 function resetAll() {
+  emit("generatingKey", false);
   form.value.reset();
   showGenerate.value = false;
   loading.value = false;

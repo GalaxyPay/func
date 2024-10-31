@@ -5,37 +5,56 @@
       <v-row>
         <v-col cols="8">
           <div class="py-1">
+            <v-badge floating dot class="mr-3 mb-1" :color="createdColor" />
+            Service Created
+          </div>
+          <div class="py-1">
             <v-badge floating dot class="mr-3 mb-1" :color="runningColor" />
             Node Running
-            <v-chip
-              v-show="nodeStatus.retiStatus?.serviceStatus === 'Running'"
-              :color="retiUpdate ? 'warning' : 'primary'"
-              size="small"
-              class="ml-2 mt-1"
-              @click="updateReti()"
-              :class="retiUpdate ? '' : 'arrow'"
-            >
-              Reti
-              <v-tooltip
-                activator="parent"
-                location="top"
-                :text="retiUpdate ? `Update to ${retiLatest}` : retiLatest"
-              />
-            </v-chip>
           </div>
           <div class="py-1">
             <v-badge
               floating
               dot
               class="mr-3 mb-1"
-              :class="isSyncing ? 'pulsate' : ''"
+              :class="isSyncing && !generatingKey ? 'pulsate' : ''"
               :color="syncedColor"
             />
             Node Synced
           </div>
           <div class="py-1">
-            <v-badge floating dot class="mr-3 mb-1" color="red" />
-            Participating in Concensus
+            <v-badge
+              floating
+              dot
+              class="mr-3 mb-1"
+              :color="participatingColor"
+            />
+            Participating in Consensus
+          </div>
+          <div
+            class="py-1"
+            v-show="
+              nodeStatus.retiStatus &&
+              nodeStatus.retiStatus.serviceStatus !== 'Not Found'
+            "
+          >
+            <v-badge floating dot class="mr-3 mb-1" :color="retiColor" />
+            Reti Running
+            <v-chip
+              v-show="retiUpdate"
+              color="warning"
+              size="small"
+              class="ml-1"
+              @click="updateReti()"
+              density="compact"
+            >
+              Update
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="`Update to ${retiLatest}`"
+              />
+            </v-chip>
           </div>
         </v-col>
         <v-col class="text-right">
@@ -146,6 +165,8 @@
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
+      @active-keys="setActiveKeys"
+      @generating-key="setGeneratingKey"
     />
     <Reti
       :visible="showReti"
@@ -178,9 +199,13 @@ const showReti = ref(false);
 const algodStatus = ref();
 const retiLatest = ref<string>();
 
+const retiRunning = computed(
+  () => nodeStatus.value?.retiStatus?.serviceStatus === "Running"
+);
+
 const retiUpdate = computed(() => {
   const current = nodeStatus.value?.retiStatus?.version;
-  if (!current) return false;
+  if (!current || !retiRunning.value) return false;
   return (
     current.slice(27, 27 + current.slice(27).indexOf(" ")) !== retiLatest.value
   );
@@ -206,13 +231,22 @@ async function getCatchpoint() {
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
 
+const createdColor = computed(() =>
+  nodeStatus.value?.serviceStatus !== "Not Found" ? "success" : "red"
+);
 const runningColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Running" ? "success" : "red"
 );
 
 const syncedColor = computed(() =>
-  isSyncing.value ? "warning" : runningColor.value
+  isSyncing.value && !generatingKey.value ? "warning" : runningColor.value
 );
+
+const participatingColor = computed(() =>
+  isSyncing.value || !activeKeys ? "red" : runningColor.value
+);
+
+const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
 
 const status = computed(() =>
   isSyncing.value
@@ -400,6 +434,17 @@ async function checkCatchup() {
       await AWN.api.post(`${props.name}/catchup`, { catchpoint });
     }
   }
+}
+
+const activeKeys = ref<number>();
+const generatingKey = ref<boolean>(false);
+
+function setActiveKeys(val: number | undefined) {
+  activeKeys.value = val;
+}
+
+function setGeneratingKey(val: boolean) {
+  generatingKey.value = val;
 }
 
 let paused = false;
