@@ -490,6 +490,7 @@ function setGeneratingKey(val: boolean) {
 }
 
 function reloadPartDetials() {
+  if (!partDetails.value) return;
   partDetails.value = undefined;
   componentKey.value++;
 }

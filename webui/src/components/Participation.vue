@@ -230,23 +230,35 @@ async function getKeys() {
         acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
       })
     );
-    let blockCount: number | undefined;
-    let voteCount: number | undefined;
-    if (keys.value && props.name === "Voi") {
-      blockCount = 0;
-      voteCount = 0;
-      await Promise.all(
-        keys.value?.map(async (k) => {
-          const test = await axios({
-            url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
-          });
-          blockCount += test.data.total_blocks;
-          voteCount += test.data.vote_count;
-        })
-      );
-    }
 
     const activeKeys = keys.value?.filter((k) => isKeyActive(k));
+    let blockCount: number | undefined;
+    let voteCount: number | undefined;
+    if (activeKeys?.length) {
+      if (props.name === "Algorand") {
+        blockCount = 0;
+        voteCount = 0;
+        const stats = await getAlgoStats(activeKeys.map((k) => k.address));
+        for (const value of Object.values(stats.data.data) as any[]) {
+          blockCount += value.proposals;
+          voteCount += value.votes;
+        }
+      }
+      if (props.name === "Voi") {
+        blockCount = 0;
+        voteCount = 0;
+        await Promise.all(
+          activeKeys?.map(async (k) => {
+            const stats = await axios({
+              url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
+            });
+            blockCount += stats.data.total_blocks;
+            voteCount += stats.data.vote_count;
+          })
+        );
+      }
+    }
+
     const activeStake = acctInfos.value
       .filter((a) => activeKeys?.some((k) => k.address === a.address))
       .reduce((a, c) => a + Number(c.amount), 0);
@@ -443,5 +455,28 @@ function copyKeyToClipboard(item: Participation) {
 function copyAddrToClipboard(addr: string) {
   navigator.clipboard.writeText(addr);
   store.setSnackbar("Address Copied", "info", 1000);
+}
+
+function getAlgoStats(addrs: string[]) {
+  let query = "    query bulkAccounts {";
+  addrs.forEach((a) => {
+    query += `
+      ${a}: votingAddrStat(
+        addrBin: "${a}"
+      ) { ...addrData	}`;
+  });
+  query += `
+    }
+    fragment addrData on VotingAddrStat {
+      lastProposalRound
+      lastVoteRound
+      proposals
+      votes
+    }`;
+  return axios({
+    url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
+    method: "post",
+    data: { query, operationName: "bulkAccounts" },
+  });
 }
 </script>
