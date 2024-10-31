@@ -5,18 +5,18 @@
       <v-row>
         <v-col cols="3">
           <div class="py-1">
-            <v-badge floating dot class="mr-3 mb-1" :color="createdColor" />
+            <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
             Service Created
           </div>
           <div class="py-1">
-            <v-badge floating dot class="mr-3 mb-1" :color="runningColor" />
+            <v-badge floating dot class="mx-3 mb-1" :color="runningColor" />
             Node Running
           </div>
           <div class="py-1">
             <v-badge
               floating
               dot
-              class="mr-3 mb-1"
+              class="mx-3 mb-1"
               :class="isSyncing && !generatingKey ? 'pulsate' : ''"
               :color="syncedColor"
             />
@@ -26,7 +26,7 @@
             <v-badge
               floating
               dot
-              class="mr-3 mb-1"
+              class="mx-3 mb-1"
               :color="participatingColor"
             />
             Participating in Consensus
@@ -38,7 +38,7 @@
               nodeStatus.retiStatus.serviceStatus !== 'Not Found'
             "
           >
-            <v-badge floating dot class="mr-3 mb-1" :color="retiColor" />
+            <v-badge floating dot class="mx-3 mb-1" :color="retiColor" />
             Reti Running
             <v-chip
               v-show="retiUpdate"
@@ -60,11 +60,12 @@
             class="mt-4"
             variant="tonal"
             color="primary"
+            block
             :append-icon="mdiChevronDown"
             :disabled="loading"
           >
             Manage
-            <v-menu activator="parent" bottom>
+            <v-menu activator="parent" bottom scrim>
               <v-list density="compact">
                 <v-list-item
                   title="Create Service"
@@ -149,7 +150,7 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails ? partDetails.blockCount : "-" }}
+              {{ partDetails ? partDetails.proposals : "-" }}
             </div>
             <div>Blocks Proposed</div>
             <div class="mt-13 text-h4">
@@ -163,7 +164,7 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails ? partDetails.voteCount : "-" }}
+              {{ partDetails ? partDetails.votes : "-" }}
             </div>
             <div>Blocks Voted</div>
             <div
@@ -262,7 +263,7 @@ async function getCatchpoint() {
     case "FNet": {
       // const resp = await axios({ url: FNET_URL });
       // return resp.data["last-catchpoint"];
-      return "1780000#Z36DSLJRFJ3FYPUMFJQK22OTALCIOCFIGNKS26S4VRP6JUWOCYEQ";
+      return "2070000#PGQJYGIMR24TFYNJJDI3SVAIEEOZPU7TALVBPOKI7LLKWQXJB42A";
     }
   }
 }
@@ -324,8 +325,8 @@ async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (nodeStatus.value?.serviceStatus === "Running") {
-    if (!isMounted.value) return;
     await delay(1200);
+    if (!isMounted.value) return;
     await getNodeStatus();
   }
   refreshing = false;

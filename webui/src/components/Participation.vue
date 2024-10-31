@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <v-divider />
     <v-card-title class="d-flex">
       Participation Keys <v-spacer />
       <v-btn
@@ -30,29 +31,102 @@
             :icon="mdiCheck"
           />
         </template>
+        <template #expanded-row="{ columns, item }">
+          <tr style="background-color: #1acbf715">
+            <td :colspan="columns.length">
+              <v-row class="text-center">
+                <v-col>
+                  Stake:
+                  {{
+                    (
+                      Number(
+                        acctInfos.find((a) => a.address === item.address)
+                          ?.amount
+                      ) /
+                      10 ** 6
+                    ).toLocaleString()
+                  }}
+                </v-col>
+                <v-col>
+                  Blocks Proposed:
+                  {{ partStats[item.address].proposals }}
+                </v-col>
+                <v-col>
+                  Blocks Voted:
+                  {{ partStats[item.address].votes }}
+                </v-col>
+              </v-row>
+            </td>
+          </tr>
+          <tr style="background-color: #1acbf715" class="text-caption">
+            <td :colspan="3">
+              <div class="pa-1">
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteFirstValid)"
+                  />
+                  First Valid: {{ item.key.voteFirstValid.toLocaleString() }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteLastValid)"
+                  />
+                  Last Valid: {{ item.key.voteLastValid.toLocaleString() }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteKeyDilution)"
+                  />
+                  Key Dilution: {{ item.key.voteKeyDilution.toLocaleString() }}
+                </div>
+              </div>
+            </td>
+            <td :colspan="columns.length - 3">
+              <div class="pa-1">
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.voteParticipationKey))"
+                  />
+                  Vote Key: {{ b64(item.key.voteParticipationKey) }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.selectionParticipationKey))"
+                  />
+                  Selection Key: {{ b64(item.key.selectionParticipationKey) }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.stateProofKey))"
+                  />
+                  State Proof Key: {{ b64(item.key.stateProofKey) }}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </template>
         <template #[`item.address`]="{ value }">
-          <span @click="copyAddrToClipboard(value)" class="pointer">
+          <span @click="copyVal(value)" class="pointer">
             {{ formatAddr(value) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
+        </template>
+        <template #[`item.key.voteFirstValid`]="{ value }">
+          {{ value.toLocaleString() }}
+        </template>
+        <template #[`item.key.voteLastValid`]="{ value }">
+          {{ value.toLocaleString() }}
         </template>
         <template #[`item.expire`]="{ item }">
           {{ expireDt(Number(item.key.voteLastValid)) }}
         </template>
         <template #[`item.actions`]="{ item }">
-          <span>
-            <v-btn
-              variant="plain"
-              :icon="mdiContentCopy"
-              color="currentColor"
-              @click="copyKeyToClipboard(item)"
-            />
-            <v-tooltip
-              activator="parent"
-              location="top"
-              text="Copy Key Details"
-            />
-          </span>
           <span>
             <v-btn
               variant="plain"
@@ -136,11 +210,11 @@
 
 <script lang="ts" setup>
 import { Participation } from "@/types";
-import { delay, formatAddr } from "@/utils";
+import { b64, delay, formatAddr } from "@/utils";
 import {
   mdiCheck,
+  mdiClipboardOutline,
   mdiClose,
-  mdiContentCopy,
   mdiDelete,
   mdiHandshake,
   mdiPlus,
@@ -175,6 +249,7 @@ const validAddress = (v: string) =>
 
 const headers = computed<any[]>(() => {
   const val = [
+    { key: "data-table-expand" },
     { title: "Active", key: "active", sortable: false, align: "center" },
     { title: "Address", key: "address", sortable: false, align: "center" },
     {
@@ -206,6 +281,8 @@ const baseUrl = computed(
   () => `http://localhost:${props.port}/v2/participation`
 );
 
+const partStats = ref<any>({});
+
 async function getKeys() {
   const response = await fetch(baseUrl.value, {
     headers: { "X-Algo-Api-Token": props.token },
@@ -232,30 +309,35 @@ async function getKeys() {
     );
 
     const activeKeys = keys.value?.filter((k) => isKeyActive(k));
-    let blockCount: number | undefined;
-    let voteCount: number | undefined;
+    let proposals: number | undefined;
+    let votes: number | undefined;
     if (activeKeys?.length) {
       if (props.name === "Algorand") {
-        blockCount = 0;
-        voteCount = 0;
+        proposals = 0;
+        votes = 0;
+        partStats.value = {};
         const stats = await getAlgoStats(activeKeys.map((k) => k.address));
-        for (const value of Object.values(stats.data.data) as any[]) {
-          blockCount += value.proposals;
-          voteCount += value.votes;
-        }
+        partStats.value = stats.data.data;
       }
       if (props.name === "Voi") {
-        blockCount = 0;
-        voteCount = 0;
+        proposals = 0;
+        votes = 0;
+        partStats.value = {};
         await Promise.all(
           activeKeys?.map(async (k) => {
             const stats = await axios({
               url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
             });
-            blockCount += stats.data.total_blocks;
-            voteCount += stats.data.vote_count;
+            partStats.value[k.address] = {
+              proposals: stats.data.total_blocks,
+              votes: stats.data.vote_count,
+            };
           })
         );
+      }
+      for (const value of Object.values(partStats.value) as any[]) {
+        proposals += value.proposals;
+        votes += value.votes;
       }
     }
 
@@ -265,8 +347,8 @@ async function getKeys() {
     const partDetails = {
       activeKeys: activeKeys?.length || 0,
       activeStake,
-      blockCount,
-      voteCount,
+      proposals,
+      votes,
     };
     emit("partDetails", partDetails);
   } else {
@@ -446,15 +528,10 @@ watch(
   async () => await getKeys()
 );
 
-function copyKeyToClipboard(item: Participation) {
-  const formatted = { ...item, key: item.key.get_obj_for_encoding() };
-  navigator.clipboard.writeText(JSON.stringify(formatted));
-  store.setSnackbar("Key Copied", "info", 1000);
-}
-
-function copyAddrToClipboard(addr: string) {
-  navigator.clipboard.writeText(addr);
-  store.setSnackbar("Address Copied", "info", 1000);
+function copyVal(val: string | number | bigint | undefined) {
+  if (!val) return;
+  navigator.clipboard.writeText(val.toString());
+  store.setSnackbar("Copied", "info", 1000);
 }
 
 function getAlgoStats(addrs: string[]) {
