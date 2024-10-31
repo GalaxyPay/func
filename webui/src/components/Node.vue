@@ -166,7 +166,10 @@
               {{ partDetails ? partDetails.voteCount : "-" }}
             </div>
             <div>Blocks Voted</div>
-            <div class="pointer" @click="reloadPartDetials()">
+            <div
+              :class="partDetails ? 'pointer' : 'text-grey'"
+              @click="reloadPartDetials()"
+            >
               <v-icon class="mt-14 mb-1" :icon="mdiRefresh" size="x-large" />
               <div class="text-decoration-underline">Refresh Data</div>
             </div>
