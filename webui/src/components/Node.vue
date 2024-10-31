@@ -3,7 +3,7 @@
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
     <v-container class="pl-5">
       <v-row>
-        <v-col cols="8">
+        <v-col cols="3">
           <div class="py-1">
             <v-badge floating dot class="mr-3 mb-1" :color="createdColor" />
             Service Created
@@ -56,10 +56,10 @@
               />
             </v-chip>
           </div>
-        </v-col>
-        <v-col class="text-right">
           <v-btn
+            class="mt-4"
             variant="tonal"
+            color="primary"
             :append-icon="mdiChevronDown"
             :disabled="loading"
           >
@@ -134,38 +134,72 @@
             </v-menu>
           </v-btn>
         </v-col>
+        <template v-if="nodeStatus.serviceStatus === 'Running'">
+          <v-col cols="3" class="text-center">
+            <div class="text-h4">
+              {{
+                algodStatus ? algodStatus["last-round"].toLocaleString() : "-"
+              }}
+            </div>
+            <div>Current Block</div>
+            <div class="mt-13 text-h4">
+              {{ partDetails ? partDetails.activeKeys : "-" }}
+            </div>
+            <div>Online Accounts</div>
+          </v-col>
+          <v-col cols="3" class="text-center">
+            <div class="text-h4">
+              {{ partDetails ? partDetails.blockCount : "-" }}
+            </div>
+            <div>Blocks Proposed</div>
+            <div class="mt-13 text-h4">
+              {{
+                partDetails
+                  ? (partDetails.activeStake / 10 ** 6).toLocaleString()
+                  : "-"
+              }}
+            </div>
+            <div>Online Stake</div>
+          </v-col>
+          <v-col cols="3" class="text-center">
+            <div class="text-h4">
+              {{ partDetails ? partDetails.voteCount : "-" }}
+            </div>
+            <div>Blocks Voted</div>
+            <div class="mt-7 pt-16">
+              <u class="pointer" @click="reloadPartDetials()">Refresh Data</u>
+            </div>
+          </v-col>
+        </template>
       </v-row>
     </v-container>
-    <v-card-text :class="loading ? 'text-grey' : ''">
-      <template v-if="nodeStatus.serviceStatus === 'Running'">
-        <div>Current Round: {{ algodStatus?.["last-round"] }}</div>
-        <template v-if="algodStatus?.['catchpoint']">
-          <v-data-table
-            :headers="headers"
-            :items="catchupData"
-            density="comfortable"
-          >
-            <template #[`item.total`]="{ value }">
-              {{ value.toLocaleString() }}
-            </template>
-            <template #[`item.processed`]="{ value }">
-              {{ value.toLocaleString() }}
-            </template>
-            <template #[`item.verified`]="{ value }">
-              {{ value.toLocaleString() }}
-            </template>
-            <template #bottom />
-          </v-data-table>
+    <template v-if="algodStatus?.['catchpoint']">
+      <v-data-table
+        :headers="headers"
+        :items="catchupData"
+        density="comfortable"
+      >
+        <template #[`item.total`]="{ value }">
+          {{ value.toLocaleString() }}
         </template>
-      </template>
-    </v-card-text>
+        <template #[`item.processed`]="{ value }">
+          {{ value.toLocaleString() }}
+        </template>
+        <template #[`item.verified`]="{ value }">
+          {{ value.toLocaleString() }}
+        </template>
+        <template #bottom />
+      </v-data-table>
+    </template>
     <Participation
       v-if="algodClient && algodStatus?.['last-round'] > 100"
+      :name="name"
       :port="nodeStatus.port"
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
-      @active-keys="setActiveKeys"
+      :key="componentKey"
+      @part-details="setPartDetails"
       @generating-key="setGeneratingKey"
     />
     <Reti
@@ -243,7 +277,13 @@ const syncedColor = computed(() =>
 );
 
 const participatingColor = computed(() =>
-  isSyncing.value || !activeKeys ? "red" : runningColor.value
+  nodeStatus.value?.serviceStatus !== "Running" ||
+  (isSyncing.value && !generatingKey.value) ||
+  (partDetails.value && !partDetails.value.activeKeys)
+    ? "red"
+    : generatingKey.value || !partDetails.value
+    ? "grey"
+    : "success"
 );
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
@@ -436,15 +476,21 @@ async function checkCatchup() {
   }
 }
 
-const activeKeys = ref<number>();
+const partDetails = ref();
 const generatingKey = ref<boolean>(false);
+const componentKey = ref(0);
 
-function setActiveKeys(val: number | undefined) {
-  activeKeys.value = val;
+function setPartDetails(val: any) {
+  partDetails.value = val;
 }
 
 function setGeneratingKey(val: boolean) {
   generatingKey.value = val;
+}
+
+function reloadPartDetials() {
+  partDetails.value = undefined;
+  componentKey.value++;
 }
 
 let paused = false;

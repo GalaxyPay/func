@@ -149,13 +149,14 @@ import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
 const props = defineProps({
+  name: { type: String, required: true },
   port: { type: Number, required: true },
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
   status: { type: String, required: true },
 });
 
-const emit = defineEmits(["activeKeys", "generatingKey"]);
+const emit = defineEmits(["partDetails", "generatingKey"]);
 
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
@@ -229,17 +230,33 @@ async function getKeys() {
         acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
       })
     );
-    emit("activeKeys", keys.value?.filter((k) => isKeyActive(k)).length);
-    if (keys.value) {
+    let blockCount: number | undefined;
+    let voteCount: number | undefined;
+    if (keys.value && props.name === "Voi") {
+      blockCount = 0;
+      voteCount = 0;
       await Promise.all(
         keys.value?.map(async (k) => {
           const test = await axios({
             url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
           });
-          console.log(test.data);
+          blockCount += test.data.total_blocks;
+          voteCount += test.data.vote_count;
         })
       );
     }
+
+    const activeKeys = keys.value?.filter((k) => isKeyActive(k));
+    const activeStake = acctInfos.value
+      .filter((a) => activeKeys?.some((k) => k.address === a.address))
+      .reduce((a, c) => a + Number(c.amount), 0);
+    const partDetails = {
+      activeKeys: activeKeys?.length || 0,
+      activeStake,
+      blockCount,
+      voteCount,
+    };
+    emit("partDetails", partDetails);
   } else {
     keys.value = undefined;
   }
