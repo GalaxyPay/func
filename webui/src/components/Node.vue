@@ -166,8 +166,9 @@
               {{ partDetails ? partDetails.voteCount : "-" }}
             </div>
             <div>Blocks Voted</div>
-            <div class="mt-7 pt-16">
-              <u class="pointer" @click="reloadPartDetials()">Refresh Data</u>
+            <div class="pointer" @click="reloadPartDetials()">
+              <v-icon class="mt-14 mb-1" :icon="mdiRefresh" size="x-large" />
+              <div class="text-decoration-underline">Refresh Data</div>
             </div>
           </v-col>
         </template>
@@ -216,7 +217,7 @@
 import AWN from "@/services/api";
 import { NodeStatus } from "@/types";
 import { delay } from "@/utils";
-import { mdiChevronDown } from "@mdi/js";
+import { mdiChevronDown, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const CATCHUP_THRESHOLD = 20000; // catchup is triggered if node is this many blocks behind
