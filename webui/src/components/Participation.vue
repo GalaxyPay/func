@@ -90,23 +90,23 @@
                 </div>
               </div>
             </td>
-            <td :colspan="columns.length - 3">
+            <td :colspan="columns.length - 3" style="max-width: 0">
               <div class="pa-1">
-                <div class="pa-1">
+                <div class="pa-1 ellipsis">
                   <v-icon
                     :icon="mdiClipboardOutline"
                     @click="copyVal(b64(item.key.voteParticipationKey))"
                   />
                   Vote Key: {{ b64(item.key.voteParticipationKey) }}
                 </div>
-                <div class="pa-1">
+                <div class="pa-1 ellipsis">
                   <v-icon
                     :icon="mdiClipboardOutline"
                     @click="copyVal(b64(item.key.selectionParticipationKey))"
                   />
                   Selection Key: {{ b64(item.key.selectionParticipationKey) }}
                 </div>
-                <div class="pa-1">
+                <div class="pa-1 ellipsis">
                   <v-icon
                     :icon="mdiClipboardOutline"
                     @click="copyVal(b64(item.key.stateProofKey))"
@@ -563,3 +563,11 @@ function getAlgoStats(addrs: string[]) {
   });
 }
 </script>
+
+<style>
+.ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+</style>
