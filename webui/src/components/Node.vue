@@ -22,7 +22,7 @@
             />
             Node Synced
           </div>
-          <div class="py-1">
+          <div class="py-1 ellipsis">
             <v-badge
               floating
               dot
@@ -56,84 +56,11 @@
               />
             </v-chip>
           </div>
-          <v-btn
-            class="mt-4"
-            variant="tonal"
-            color="primary"
-            block
-            :append-icon="mdiChevronDown"
-            :disabled="loading"
-          >
-            Manage
-            <v-menu activator="parent" bottom scrim>
-              <v-list density="compact">
-                <v-list-item
-                  title="Create Service"
-                  @click="createNode()"
-                  v-show="status === 'Not Found'"
-                />
-                <v-list-item
-                  title="Start Node"
-                  @click="startNode()"
-                  v-show="status === 'Stopped'"
-                />
-                <v-list-item
-                  title="Stop Node"
-                  @click="stopNode()"
-                  v-show="nodeStatus.serviceStatus === 'Running'"
-                />
-                <v-list-item
-                  title="Remove Service"
-                  @click="deleteNode()"
-                  v-show="status === 'Stopped'"
-                />
-                <v-list-item
-                  title="Delete Node Data"
-                  base-color="error"
-                  @click="resetNode()"
-                  v-show="status === 'Not Found'"
-                />
-                <template
-                  v-if="
-                    nodeStatus.retiStatus &&
-                    (status === 'Running' ||
-                      ['Running', 'Stopped'].includes(
-                        nodeStatus.retiStatus.serviceStatus
-                      ))
-                  "
-                >
-                  <v-divider class="ml-6" />
-                  <v-list-subheader title="Reti" class="ml-3" />
-                  <v-list-item
-                    title="Add Reti Service"
-                    @click="showReti = true"
-                    v-show="
-                      nodeStatus.retiStatus.serviceStatus === 'Not Found' &&
-                      status === 'Running'
-                    "
-                  />
-                  <v-list-item
-                    title="Stop Reti"
-                    @click="stopReti()"
-                    v-show="nodeStatus.retiStatus.serviceStatus === 'Running'"
-                  />
-                  <v-list-item
-                    title="Start Reti"
-                    @click="startReti()"
-                    v-show="
-                      nodeStatus.retiStatus.serviceStatus === 'Stopped' &&
-                      status === 'Running'
-                    "
-                  />
-                  <v-list-item
-                    title="Remove Reti"
-                    @click="deleteReti()"
-                    v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
-                  />
-                </template>
-              </v-list>
-            </v-menu>
-          </v-btn>
+          <Manage
+            :name="name"
+            :node-status="nodeStatus"
+            @get-status="getNodeStatus()"
+          />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
           <v-col cols="3" class="text-center">
@@ -205,16 +132,14 @@
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
-      :key="componentKey"
-      @part-details="setPartDetails"
-      @generating-key="setGeneratingKey"
+      @part-details="(val) => (partDetails = val)"
+      @generating-key="(val) => (generatingKey = val)"
     />
     <Reti
       :visible="showReti"
       :port="nodeStatus.port"
       :token="nodeStatus.token"
       @close="showReti = false"
-      @start="startReti()"
     />
   </div>
 </template>
@@ -222,15 +147,9 @@
 <script setup lang="ts">
 import AWN from "@/services/api";
 import { NodeStatus } from "@/types";
-import { delay } from "@/utils";
-import { mdiChevronDown, mdiRefresh } from "@mdi/js";
+import { checkCatchup, delay } from "@/utils";
+import { mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
-
-const CATCHUP_THRESHOLD = 20000; // catchup is triggered if node is this many blocks behind
-const MAINNET_URL =
-  "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current";
-const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
-// const FNET_URL = "https://fnet-api.4160.nodely.io/v2/status";
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
@@ -239,6 +158,8 @@ const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
 const retiLatest = ref<string>();
+const partDetails = ref();
+const generatingKey = ref<boolean>(false);
 
 const retiRunning = computed(
   () => nodeStatus.value?.retiStatus?.exeStatus === "Running"
@@ -251,24 +172,6 @@ const retiUpdate = computed(() => {
     current.slice(27, 27 + current.slice(27).indexOf(" ")) !== retiLatest.value
   );
 });
-
-async function getCatchpoint() {
-  switch (props.name) {
-    case "Algorand": {
-      const resp = await axios({ url: MAINNET_URL });
-      return resp.data["last-catchpoint"];
-    }
-    case "Voi": {
-      const resp = await axios({ url: VOIMAIN_URL });
-      return resp.data["last-catchpoint"];
-    }
-    case "FNet": {
-      // const resp = await axios({ url: FNET_URL });
-      // return resp.data["last-catchpoint"];
-      return "2070000#PGQJYGIMR24TFYNJJDI3SVAIEEOZPU7TALVBPOKI7LLKWQXJB42A";
-    }
-  }
-}
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
 
@@ -396,49 +299,6 @@ const catchupData = computed(() => {
   return val;
 });
 
-async function createNode() {
-  loading.value = true;
-  await AWN.api.post(props.name);
-  store.setSnackbar("Service Created. Starting...", "success", -1);
-  await startNode();
-}
-
-async function startNode() {
-  loading.value = true;
-  await AWN.api.put(`${props.name}/start`);
-  await finish("Node Started");
-}
-
-async function stopNode() {
-  loading.value = true;
-  await AWN.api.put(`${props.name}/stop`);
-  await finish("Node Stopped");
-}
-
-async function deleteNode() {
-  loading.value = true;
-  await AWN.api.delete(props.name);
-  await finish("Service Removed");
-}
-
-async function startReti() {
-  loading.value = true;
-  await AWN.api.put("reti/start");
-  await finish("Reti Started");
-}
-
-async function stopReti() {
-  loading.value = true;
-  await AWN.api.put("reti/stop");
-  await finish("Reti Stopped");
-}
-
-async function deleteReti() {
-  loading.value = true;
-  await AWN.api.delete("reti");
-  await finish("Reti Removed");
-}
-
 async function updateReti() {
   if (!retiUpdate.value) return;
   loading.value = true;
@@ -452,57 +312,19 @@ async function finish(message: string) {
   store.setSnackbar(message, "success");
 }
 
-async function resetNode() {
-  if (
-    !confirm(
-      "Are you sure you want to delete all data associated with this node?"
-    )
-  )
-    return;
-  loading.value = true;
-  await AWN.api.post(`${props.name}/reset`);
-  loading.value = false;
-  store.setSnackbar("Data Deleted", "success");
-}
-
 watch(
   () => status.value,
   (val) => {
     if (val === "Syncing") {
-      checkCatchup();
+      checkCatchup(algodStatus.value, props.name);
     }
   }
 );
 
-async function checkCatchup() {
-  if (algodStatus.value?.["catchup-time"]) {
-    const catchpoint = await getCatchpoint();
-    const catchpointRound = +catchpoint.split("#")[0];
-    const isCatchingUp = algodStatus.value?.["catchpoint"] === catchpoint;
-    const needsCatchUp =
-      catchpointRound - algodStatus.value?.["last-round"] > CATCHUP_THRESHOLD;
-    if (!isCatchingUp && needsCatchUp) {
-      await AWN.api.post(`${props.name}/catchup`, { catchpoint });
-    }
-  }
-}
-
-const partDetails = ref();
-const generatingKey = ref<boolean>(false);
-const componentKey = ref(0);
-
-function setPartDetails(val: any) {
-  partDetails.value = val;
-}
-
-function setGeneratingKey(val: boolean) {
-  generatingKey.value = val;
-}
-
 function reloadPartDetails() {
   if (!partDetails.value) return;
   partDetails.value = undefined;
-  componentKey.value++;
+  store.refresh++;
 }
 
 let paused = false;
@@ -517,25 +339,8 @@ watch(
     }
     if (!val && paused) {
       paused = false;
-      startNode();
+      AWN.api.put(`${props.name}/start`);
     }
   }
 );
 </script>
-
-<style>
-.pulsate {
-  animation: pulse 3s ease infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  60% {
-    transform: scale(1.2);
-    opacity: 0.8;
-  }
-}
-</style>

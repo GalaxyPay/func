@@ -8,7 +8,7 @@
         variant="plain"
         color="primary"
         :disabled="status !== 'Running'"
-        @click="generateDialog"
+        @click="showGenerateDialog"
       />
     </v-card-title>
     <v-container fluid>
@@ -65,7 +65,7 @@
             </td>
           </tr>
           <tr style="background-color: #1acbf70d" class="text-caption">
-            <td :colspan="3">
+            <td :colspan="2">
               <div class="pa-1">
                 <div class="pa-1">
                   <v-icon
@@ -90,7 +90,7 @@
                 </div>
               </div>
             </td>
-            <td :colspan="columns.length - 3" style="max-width: 0">
+            <td :colspan="columns.length - 2" style="max-width: 0">
               <div class="pa-1">
                 <div class="pa-1 ellipsis">
                   <v-icon
@@ -119,15 +119,9 @@
         </template>
         <template #[`item.address`]="{ value }">
           <span @click="copyVal(value)" class="pointer">
-            {{ formatAddr(value) }}
+            {{ formatAddr(value, 7) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
-        </template>
-        <template #[`item.key.voteFirstValid`]="{ value }">
-          {{ value.toLocaleString() }}
-        </template>
-        <template #[`item.key.voteLastValid`]="{ value }">
-          {{ value.toLocaleString() }}
         </template>
         <template #[`item.expire`]="{ item }">
           {{ expireDt(Number(item.key.voteLastValid)) }}
@@ -216,7 +210,7 @@
 
 <script lang="ts" setup>
 import { Participation } from "@/types";
-import { b64, delay, formatAddr } from "@/utils";
+import { b64, delay, execAtc, formatAddr } from "@/utils";
 import {
   mdiCheck,
   mdiClipboardOutline,
@@ -258,18 +252,6 @@ const headers = computed<any[]>(() => {
     { key: "data-table-expand" },
     { title: "Active", key: "active", sortable: false, align: "center" },
     { title: "Address", key: "address", sortable: false, align: "center" },
-    {
-      title: "First Valid",
-      key: "key.voteFirstValid",
-      sortable: false,
-      align: "center",
-    },
-    {
-      title: "Last Valid",
-      key: "key.voteLastValid",
-      sortable: false,
-      align: "center",
-    },
     {
       title: "Approx. Expire",
       key: "expire",
@@ -392,7 +374,7 @@ async function deleteKey(id: string) {
   }
 }
 
-async function generateDialog() {
+async function showGenerateDialog() {
   await getLastRound();
   loadDefaults();
   showGenerate.value = true;
@@ -443,19 +425,6 @@ async function generateKey() {
   resetAll();
 }
 
-async function execAtc(
-  atc: algosdk.AtomicTransactionComposer,
-  success: string
-) {
-  const store = useAppStore();
-  store.setSnackbar("Awaiting Signatures...", "info", -1);
-  await atc.gatherSignatures();
-  store.setSnackbar("Processing...", "info", -1);
-  await atc.execute(props.algodClient, 4);
-  store.setSnackbar(success, "success");
-  store.refresh++;
-}
-
 async function registerKey(item: Participation) {
   try {
     if (isKeyActive(item)) {
@@ -476,7 +445,7 @@ async function registerKey(item: Participation) {
       stateProofKey: item.key.stateProofKey!,
     });
     atc.addTransaction({ txn, signer: transactionSigner });
-    await execAtc(atc, "Participation Key Registered");
+    await execAtc(atc, props.algodClient, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -498,7 +467,7 @@ async function offline() {
         nonParticipation: false,
       });
       atc.addTransaction({ txn, signer: transactionSigner });
-      await execAtc(atc, "Account Offline");
+      await execAtc(atc, props.algodClient, "Account Offline");
     } catch (err: any) {
       console.error(err);
       store.setSnackbar(err.message, "error");
@@ -563,11 +532,3 @@ function getAlgoStats(addrs: string[]) {
   });
 }
 </script>
-
-<style>
-.ellipsis {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-</style>

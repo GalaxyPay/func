@@ -30,4 +30,22 @@ a {
 .arrow {
   cursor: default;
 }
+.ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pulsate {
+  animation: pulse 3s ease infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
 </style>

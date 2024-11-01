@@ -65,7 +65,7 @@ const props = defineProps({
   port: { type: Number, required: true },
   token: { type: String, required: true },
 });
-const emit = defineEmits(["close", "start"]);
+const emit = defineEmits(["close"]);
 
 const required = (v: any) => !!v || "Required";
 const validMnemonic = () => !!mnemonicAcct.value?.addr || "Invalid Mnemonic";
@@ -116,7 +116,7 @@ RETI_VALIDATORID=${validatorId.value}
 RETI_NODENUM=${nodeNum.value}
 MANAGER_MNEMONIC=${mnemonic.value}`;
   await AWN.api.post("reti", { env });
-  emit("start");
+  await AWN.api.put("reti/start");
   show.value = false;
 }
 </script>
