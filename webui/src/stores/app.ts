@@ -15,6 +15,8 @@ export const useAppStore = defineStore("app", {
     refresh: 0,
     connectMenu: false,
     stopNodeServices: false,
+    updateAvailable: false,
+    downloading: false,
   }),
   getters: {},
   actions: {

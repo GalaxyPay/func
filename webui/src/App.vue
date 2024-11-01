@@ -2,7 +2,7 @@
   <v-app>
     <AppBar />
     <v-main>
-      <Goal />
+      <Loading />
       <NodeTabs />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />

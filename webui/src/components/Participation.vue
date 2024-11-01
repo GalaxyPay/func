@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid>
     <v-divider />
     <v-card-title class="d-flex">
       Participation Keys <v-spacer />
@@ -11,7 +11,7 @@
         @click="generateDialog"
       />
     </v-card-title>
-    <v-container>
+    <v-container fluid>
       <v-data-table
         :headers="headers"
         :items="keys"

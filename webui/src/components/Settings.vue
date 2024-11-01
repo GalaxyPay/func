@@ -9,6 +9,29 @@
       <v-container>
         <v-row align="center">
           <v-col>
+            <div>Node Version</div>
+            <div class="text-caption text-grey">
+              {{ goalVersion }}
+            </div>
+          </v-col>
+          <v-col class="text-right">
+            <v-btn
+              :color="store.updateAvailable ? 'warning' : ''"
+              variant="tonal"
+              :disabled="!store.updateAvailable || store.downloading"
+              @click="update()"
+            >
+              Update
+              <v-tooltip
+                activator="parent"
+                location="left"
+                :text="`Update to ${latestRelease}`"
+              />
+            </v-btn>
+          </v-col>
+        </v-row>
+        <v-row align="center">
+          <v-col>
             <div>Show FNet</div>
             <div class="text-caption text-grey">
               Must install FNet binaries manually
@@ -29,6 +52,8 @@
 </template>
 
 <script lang="ts" setup>
+import AWN from "@/services/api";
+import { delay } from "@/utils";
 import { mdiClose } from "@mdi/js";
 import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
@@ -48,6 +73,59 @@ const show = computed({
     }
   },
 });
+
+const ALGOWIN =
+  "https://api.github.com/repos/GalaxyPay/algowin/releases/latest";
+
+const goalVersion = ref();
+const latestRelease = ref();
+
+onBeforeMount(() => {
+  getVersion();
+});
+
+async function getVersion() {
+  try {
+    const version = await AWN.api.get("goal/version");
+    goalVersion.value = version.data.substring(
+      version.data.indexOf("\n") + 1,
+      version.data.indexOf("dev") - 1
+    );
+
+    if (goalVersion.value) store.ready = true;
+
+    const latest = (await axios({ url: ALGOWIN })).data;
+    latestRelease.value = latest.name.substring(1, latest.name.indexOf("-"));
+
+    if (!goalVersion.value) update(true);
+
+    store.updateAvailable = latestRelease.value !== goalVersion.value;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
+}
+
+async function update(bypass = false) {
+  if (
+    !bypass &&
+    !confirm("Are you sure you want to update your node to the latest version?")
+  )
+    return;
+  try {
+    store.downloading = true;
+    store.stopNodeServices = true;
+    await delay(500);
+    store.ready = false;
+    await AWN.api.post("goal/update");
+    await getVersion();
+    store.stopNodeServices = false;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
+  store.downloading = false;
+}
 
 const showFNet = computed(() => activeNetwork.value === "fnet");
 

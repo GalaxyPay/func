@@ -1,7 +1,7 @@
 <template>
   <div v-if="nodeStatus">
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
-    <v-container class="pl-5">
+    <v-container class="pl-5" fluid>
       <v-row>
         <v-col cols="3">
           <div class="py-1">
