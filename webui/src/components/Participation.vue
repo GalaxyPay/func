@@ -32,33 +32,39 @@
           />
         </template>
         <template #expanded-row="{ columns, item }">
-          <tr style="background-color: #1acbf715">
+          <tr style="background-color: #1acbf712">
             <td :colspan="columns.length">
               <v-row class="text-center">
-                <v-col>
+                <v-col class="text-subtitle-1">
                   Stake:
-                  {{
-                    (
-                      Number(
-                        acctInfos.find((a) => a.address === item.address)
-                          ?.amount
-                      ) /
-                      10 ** 6
-                    ).toLocaleString()
-                  }}
+                  <span class="font-weight-bold">
+                    {{
+                      (
+                        Number(
+                          acctInfos.find((a) => a.address === item.address)
+                            ?.amount
+                        ) /
+                        10 ** 6
+                      ).toLocaleString()
+                    }}
+                  </span>
                 </v-col>
-                <v-col>
+                <v-col class="text-subtitle-1">
                   Blocks Proposed:
-                  {{ partStats[item.address].proposals }}
+                  <span class="font-weight-bold">
+                    {{ partStats[item.address]?.proposals }}
+                  </span>
                 </v-col>
-                <v-col>
+                <v-col class="text-subtitle-1">
                   Blocks Voted:
-                  {{ partStats[item.address].votes }}
+                  <span class="font-weight-bold">
+                    {{ partStats[item.address]?.votes }}
+                  </span>
                 </v-col>
               </v-row>
             </td>
           </tr>
-          <tr style="background-color: #1acbf715" class="text-caption">
+          <tr style="background-color: #1acbf70d" class="text-caption">
             <td :colspan="3">
               <div class="pa-1">
                 <div class="pa-1">

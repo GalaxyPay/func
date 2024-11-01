@@ -139,7 +139,9 @@
           <v-col cols="3" class="text-center">
             <div class="text-h4">
               {{
-                algodStatus ? algodStatus["last-round"].toLocaleString() : "-"
+                algodStatus
+                  ? algodStatus["last-round"].toLocaleString() || "-"
+                  : "-"
               }}
             </div>
             <div>Current Block</div>
@@ -150,7 +152,7 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails ? partDetails.proposals : "-" }}
+              {{ partDetails?.proposals == null ? "-" : partDetails.proposals }}
             </div>
             <div>Blocks Proposed</div>
             <div class="mt-13 text-h4">
@@ -164,12 +166,12 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails ? partDetails.votes : "-" }}
+              {{ partDetails?.votes == null ? "-" : partDetails.votes }}
             </div>
             <div>Blocks Voted</div>
             <div
               :class="partDetails ? 'pointer' : 'text-grey'"
-              @click="reloadPartDetials()"
+              @click="reloadPartDetails()"
             >
               <v-icon class="mt-14 mb-1" :icon="mdiRefresh" size="x-large" />
               <div class="text-decoration-underline">Refresh Data</div>
@@ -493,7 +495,7 @@ function setGeneratingKey(val: boolean) {
   generatingKey.value = val;
 }
 
-function reloadPartDetials() {
+function reloadPartDetails() {
   if (!partDetails.value) return;
   partDetails.value = undefined;
   componentKey.value++;
