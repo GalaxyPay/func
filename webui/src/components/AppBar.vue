@@ -7,7 +7,10 @@
     </div>
     <v-spacer />
     <v-btn icon @click="showSettings = true">
-      <v-icon :icon="mdiCog" :color="store.updateAvailable ? 'warning' : ''" />
+      <v-icon
+        :icon="mdiCog"
+        :color="store.updateAvailable && !store.downloading ? 'warning' : ''"
+      />
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
     <v-btn color="primary" variant="tonal" class="mr-3">

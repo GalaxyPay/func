@@ -241,12 +241,12 @@ const algodStatus = ref();
 const retiLatest = ref<string>();
 
 const retiRunning = computed(
-  () => nodeStatus.value?.retiStatus?.serviceStatus === "Running"
+  () => nodeStatus.value?.retiStatus?.exeStatus === "Running"
 );
 
 const retiUpdate = computed(() => {
   const current = nodeStatus.value?.retiStatus?.version;
-  if (!current || !retiRunning.value) return false;
+  if (!current || !retiLatest.value) return false;
   return (
     current.slice(27, 27 + current.slice(27).indexOf(" ")) !== retiLatest.value
   );
@@ -334,6 +334,8 @@ async function autoRefresh() {
   refreshing = false;
 }
 
+let restartAttempted = false;
+
 async function getNodeStatus() {
   const resp = await AWN.api.get(props.name);
   nodeStatus.value = resp.data;
@@ -353,8 +355,10 @@ async function getNodeStatus() {
   }
   if (
     nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
-    nodeStatus.value.retiStatus.exeStatus === "Stopped"
+    nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
+    !restartAttempted
   ) {
+    restartAttempted = true;
     console.error("reti.exe not running - atempting restart");
     await AWN.api.put("reti/stop");
     await AWN.api.put("reti/start");
