@@ -1,5 +1,5 @@
 <template>
-  <v-container v-show="store.ready" fluid>
+  <v-container v-show="store.ready" fluid :max-width="1200">
     <v-card>
       <v-tabs
         :model-value="tab"

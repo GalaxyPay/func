@@ -115,24 +115,41 @@
         </template>
       </v-row>
     </v-container>
-    <template v-if="algodStatus?.['catchpoint']">
-      <v-data-table
-        :headers="headers"
-        :items="catchupData"
-        density="comfortable"
-      >
-        <template #[`item.total`]="{ value }">
-          {{ value.toLocaleString() }}
-        </template>
-        <template #[`item.processed`]="{ value }">
-          {{ value.toLocaleString() }}
-        </template>
-        <template #[`item.verified`]="{ value }">
-          {{ value.toLocaleString() }}
-        </template>
-        <template #bottom />
-      </v-data-table>
-    </template>
+    <v-container v-if="algodStatus?.catchpoint" fluid>
+      <v-divider />
+      <v-card-title>Fast Catchup</v-card-title>
+      <v-card-text class="pb-0">
+        Block:
+        {{
+          algodStatus.catchpoint.substring(
+            0,
+            algodStatus.catchpoint.indexOf("#")
+          )
+        }}
+      </v-card-text>
+      <v-container :max-width="500">
+        <div class="pb-4" v-for="prog in catchupProgress">
+          {{ prog.name }}
+          {{
+            prog.verified > 0
+              ? "(Verifying)"
+              : prog.processed > 0 && prog.processed < 100
+              ? "(Processing)"
+              : ""
+          }}
+          <v-progress-linear
+            v-show="prog.processed != 100"
+            :model-value="prog.processed"
+            color="warning"
+          />
+          <v-progress-linear
+            v-show="prog.processed == 100"
+            :model-value="prog.verified"
+            color="primary"
+          />
+        </div>
+      </v-container>
+    </v-container>
     <Participation
       v-if="algodClient && algodStatus?.['last-round'] > 100"
       :name="name"
@@ -276,35 +293,40 @@ async function getNodeStatus() {
   }
 }
 
-const headers: any[] = [
-  { key: "entity", sortable: false },
-  { title: "Total", key: "total", sortable: false },
-  { title: "Processed", key: "processed", sortable: false },
-  { title: "Verified", key: "verified", sortable: false },
-];
-
-const catchupData = computed(() => {
-  const val: any[] = [];
-  if (!algodStatus.value?.["catchpoint"]) return val;
-  val.push({
-    entity: "Accounts",
-    total: algodStatus.value["catchpoint-total-accounts"],
-    processed: algodStatus.value["catchpoint-processed-accounts"],
-    verified: algodStatus.value["catchpoint-verified-accounts"],
-  });
-  val.push({
-    entity: "KVs",
-    total: algodStatus.value["catchpoint-total-kvs"],
-    processed: algodStatus.value["catchpoint-processed-kvs"],
-    verified: algodStatus.value["catchpoint-verified-kvs"],
-  });
-  val.push({
-    entity: "Blocks",
-    total: algodStatus.value["catchpoint-total-blocks"],
-    processed: "",
-    verified: algodStatus.value["catchpoint-acquired-blocks"],
-  });
-  return val;
+const catchupProgress = computed(() => {
+  if (!algodStatus.value?.catchpoint) return undefined;
+  return [
+    {
+      name: "Accounts",
+      processed:
+        (algodStatus.value["catchpoint-processed-accounts"] /
+          algodStatus.value["catchpoint-total-accounts"]) *
+        100,
+      verified:
+        (algodStatus.value["catchpoint-verified-accounts"] /
+          algodStatus.value["catchpoint-total-accounts"]) *
+        100,
+    },
+    {
+      name: "KVs",
+      processed:
+        (algodStatus.value["catchpoint-processed-kvs"] /
+          algodStatus.value["catchpoint-total-kvs"]) *
+        100,
+      verified:
+        (algodStatus.value["catchpoint-verified-kvs"] /
+          algodStatus.value["catchpoint-total-kvs"]) *
+        100,
+    },
+    {
+      name: "Blocks",
+      processed: 100,
+      verified:
+        (algodStatus.value["catchpoint-total-blocks"] /
+          algodStatus.value["catchpoint-acquired-blocks"]) *
+        100,
+    },
+  ];
 });
 
 async function updateReti() {
