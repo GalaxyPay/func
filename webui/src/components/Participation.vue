@@ -1,5 +1,6 @@
 <template>
-  <v-container>
+  <v-container fluid>
+    <v-divider />
     <v-card-title class="d-flex">
       Participation Keys <v-spacer />
       <v-btn
@@ -7,10 +8,10 @@
         variant="plain"
         color="primary"
         :disabled="status !== 'Running'"
-        @click="generateDialog"
+        @click="showGenerateDialog"
       />
     </v-card-title>
-    <v-container>
+    <v-container fluid>
       <v-data-table
         :headers="headers"
         :items="keys"
@@ -30,8 +31,94 @@
             :icon="mdiCheck"
           />
         </template>
+        <template #expanded-row="{ columns, item }">
+          <tr style="background-color: #1acbf712">
+            <td :colspan="columns.length">
+              <v-row class="text-center">
+                <v-col class="text-subtitle-1">
+                  Stake:
+                  <span class="font-weight-bold">
+                    {{
+                      (
+                        Number(
+                          acctInfos.find((a) => a.address === item.address)
+                            ?.amount
+                        ) /
+                        10 ** 6
+                      ).toLocaleString()
+                    }}
+                  </span>
+                </v-col>
+                <v-col class="text-subtitle-1">
+                  Blocks Proposed:
+                  <span class="font-weight-bold">
+                    {{ partStats[item.address]?.proposals.toLocaleString() }}
+                  </span>
+                </v-col>
+                <v-col class="text-subtitle-1">
+                  Blocks Voted:
+                  <span class="font-weight-bold">
+                    {{ partStats[item.address]?.votes.toLocaleString() }}
+                  </span>
+                </v-col>
+              </v-row>
+            </td>
+          </tr>
+          <tr style="background-color: #1acbf70d" class="text-caption">
+            <td :colspan="2">
+              <div class="pa-1">
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteFirstValid)"
+                  />
+                  First Valid: {{ item.key.voteFirstValid.toLocaleString() }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteLastValid)"
+                  />
+                  Last Valid: {{ item.key.voteLastValid.toLocaleString() }}
+                </div>
+                <div class="pa-1">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(item.key.voteKeyDilution)"
+                  />
+                  Key Dilution: {{ item.key.voteKeyDilution.toLocaleString() }}
+                </div>
+              </div>
+            </td>
+            <td :colspan="columns.length - 2" style="max-width: 0">
+              <div class="pa-1">
+                <div class="pa-1 ellipsis">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.voteParticipationKey))"
+                  />
+                  Vote Key: {{ b64(item.key.voteParticipationKey) }}
+                </div>
+                <div class="pa-1 ellipsis">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.selectionParticipationKey))"
+                  />
+                  Selection Key: {{ b64(item.key.selectionParticipationKey) }}
+                </div>
+                <div class="pa-1 ellipsis">
+                  <v-icon
+                    :icon="mdiClipboardOutline"
+                    @click="copyVal(b64(item.key.stateProofKey))"
+                  />
+                  State Proof Key: {{ b64(item.key.stateProofKey) }}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </template>
         <template #[`item.address`]="{ value }">
-          <span @click="copyAddrToClipboard(value)" class="pointer">
+          <span @click="copyVal(value)" class="pointer">
             {{ formatAddr(value, 7) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
@@ -40,19 +127,6 @@
           {{ expireDt(Number(item.key.voteLastValid)) }}
         </template>
         <template #[`item.actions`]="{ item }">
-          <span>
-            <v-btn
-              variant="plain"
-              :icon="mdiContentCopy"
-              color="currentColor"
-              @click="copyKeyToClipboard(item)"
-            />
-            <v-tooltip
-              activator="parent"
-              location="top"
-              text="Copy Key Details"
-            />
-          </span>
           <span>
             <v-btn
               variant="plain"
@@ -136,11 +210,11 @@
 
 <script lang="ts" setup>
 import { Participation } from "@/types";
-import { delay, formatAddr } from "@/utils";
+import { b64, delay, execAtc, formatAddr } from "@/utils";
 import {
   mdiCheck,
+  mdiClipboardOutline,
   mdiClose,
-  mdiContentCopy,
   mdiDelete,
   mdiHandshake,
   mdiPlus,
@@ -149,11 +223,14 @@ import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
 const props = defineProps({
+  name: { type: String, required: true },
   port: { type: Number, required: true },
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
   status: { type: String, required: true },
 });
+
+const emit = defineEmits(["partDetails", "generatingKey"]);
 
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
@@ -172,20 +249,9 @@ const validAddress = (v: string) =>
 
 const headers = computed<any[]>(() => {
   const val = [
+    { key: "data-table-expand" },
     { title: "Active", key: "active", sortable: false, align: "center" },
     { title: "Address", key: "address", sortable: false, align: "center" },
-    {
-      title: "First Valid",
-      key: "key.voteFirstValid",
-      sortable: false,
-      align: "center",
-    },
-    {
-      title: "Last Valid",
-      key: "key.voteLastValid",
-      sortable: false,
-      align: "center",
-    },
     {
       title: "Approx. Expire",
       key: "expire",
@@ -202,6 +268,8 @@ const required = (v: number) => !!v || v === 0 || "Required";
 const baseUrl = computed(
   () => `http://localhost:${props.port}/v2/participation`
 );
+
+const partStats = ref<any>({});
 
 async function getKeys() {
   const response = await fetch(baseUrl.value, {
@@ -227,6 +295,50 @@ async function getKeys() {
         acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
       })
     );
+
+    const activeKeys = keys.value?.filter((k) => isKeyActive(k));
+    let proposals: number | undefined;
+    let votes: number | undefined;
+    if (activeKeys?.length) {
+      if (props.name === "Algorand") {
+        proposals = 0;
+        votes = 0;
+        partStats.value = {};
+        const stats = await getAlgoStats(activeKeys.map((k) => k.address));
+        partStats.value = stats.data.data;
+      }
+      if (props.name === "Voi") {
+        proposals = 0;
+        votes = 0;
+        partStats.value = {};
+        await Promise.all(
+          activeKeys?.map(async (k) => {
+            const stats = await axios({
+              url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
+            });
+            partStats.value[k.address] = {
+              proposals: stats.data.total_blocks,
+              votes: stats.data.vote_count,
+            };
+          })
+        );
+      }
+      for (const value of Object.values(partStats.value) as any[]) {
+        proposals += value.proposals;
+        votes += value.votes;
+      }
+    }
+
+    const activeStake = acctInfos.value
+      .filter((a) => activeKeys?.some((k) => k.address === a.address))
+      .reduce((a, c) => a + Number(c.amount), 0);
+    const partDetails = {
+      activeKeys: activeKeys?.length || 0,
+      activeStake,
+      proposals,
+      votes,
+    };
+    emit("partDetails", partDetails);
   } else {
     keys.value = undefined;
   }
@@ -262,7 +374,7 @@ async function deleteKey(id: string) {
   }
 }
 
-async function generateDialog() {
+async function showGenerateDialog() {
   await getLastRound();
   loadDefaults();
   showGenerate.value = true;
@@ -278,6 +390,7 @@ async function generateKey() {
   if (!valid) return;
   try {
     loading.value = true;
+    emit("generatingKey", true);
     await fetch(
       `${baseUrl.value}/generate/${addr.value}` +
         `?first=${gen.value.first}&last=${gen.value.last}`,
@@ -312,19 +425,6 @@ async function generateKey() {
   resetAll();
 }
 
-async function execAtc(
-  atc: algosdk.AtomicTransactionComposer,
-  success: string
-) {
-  const store = useAppStore();
-  store.setSnackbar("Awaiting Signatures...", "info", -1);
-  await atc.gatherSignatures();
-  store.setSnackbar("Processing...", "info", -1);
-  await atc.execute(props.algodClient, 4);
-  store.setSnackbar(success, "success");
-  store.refresh++;
-}
-
 async function registerKey(item: Participation) {
   try {
     if (isKeyActive(item)) {
@@ -345,7 +445,7 @@ async function registerKey(item: Participation) {
       stateProofKey: item.key.stateProofKey!,
     });
     atc.addTransaction({ txn, signer: transactionSigner });
-    await execAtc(atc, "Participation Key Registered");
+    await execAtc(atc, props.algodClient, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -367,7 +467,7 @@ async function offline() {
         nonParticipation: false,
       });
       atc.addTransaction({ txn, signer: transactionSigner });
-      await execAtc(atc, "Account Offline");
+      await execAtc(atc, props.algodClient, "Account Offline");
     } catch (err: any) {
       console.error(err);
       store.setSnackbar(err.message, "error");
@@ -392,6 +492,7 @@ function expireDt(lastValid: number) {
 }
 
 function resetAll() {
+  emit("generatingKey", false);
   form.value.reset();
   showGenerate.value = false;
   loading.value = false;
@@ -402,14 +503,32 @@ watch(
   async () => await getKeys()
 );
 
-function copyKeyToClipboard(item: Participation) {
-  const formatted = { ...item, key: item.key.get_obj_for_encoding() };
-  navigator.clipboard.writeText(JSON.stringify(formatted));
-  store.setSnackbar("Key Copied", "info", 1000);
+function copyVal(val: string | number | bigint | undefined) {
+  if (!val) return;
+  navigator.clipboard.writeText(val.toString());
+  store.setSnackbar("Copied", "info", 1000);
 }
 
-function copyAddrToClipboard(addr: string) {
-  navigator.clipboard.writeText(addr);
-  store.setSnackbar("Address Copied", "info", 1000);
+function getAlgoStats(addrs: string[]) {
+  let query = "    query bulkAccounts {";
+  addrs.forEach((a) => {
+    query += `
+      ${a}: votingAddrStat(
+        addrBin: "${a}"
+      ) { ...addrData	}`;
+  });
+  query += `
+    }
+    fragment addrData on VotingAddrStat {
+      lastProposalRound
+      lastVoteRound
+      proposals
+      votes
+    }`;
+  return axios({
+    url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
+    method: "post",
+    data: { query, operationName: "bulkAccounts" },
+  });
 }
 </script>

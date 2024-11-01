@@ -7,7 +7,10 @@
     </div>
     <v-spacer />
     <v-btn icon @click="showSettings = true">
-      <v-icon :icon="mdiCog" />
+      <v-icon
+        :icon="mdiCog"
+        :color="store.updateAvailable && !store.downloading ? 'warning' : ''"
+      />
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
     <v-btn color="primary" variant="tonal" class="mr-3">
@@ -28,8 +31,8 @@
               </v-col>
             </v-row>
             <v-row>
-              <v-col class="py-0">Balance:</v-col>
-              <v-col class="py-0 text-right">
+              <v-col>Balance:</v-col>
+              <v-col class="text-right">
                 <span
                   v-if="activeNetwork === 'voimain'"
                   class="font-weight-bold"
@@ -51,20 +54,6 @@
                       )
                     : "-"
                 }}
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col class="py-0" align-self="center">Show Balance For:</v-col>
-              <v-col class="py-0">
-                <v-switch
-                  :model-value="activeNetwork"
-                  :false-value="algoNetwork"
-                  :label="balanceLabel"
-                  true-value="voimain"
-                  @click.stop
-                  @update:model-value="switchNetwork()"
-                  hide-details
-                />
               </v-col>
             </v-row>
           </v-container>
@@ -138,23 +127,12 @@ import {
   mdiMinusCircleOutline,
   mdiPlusCircleOutline,
 } from "@mdi/js";
-import {
-  NetworkId,
-  Wallet,
-  WalletAccount,
-  useWallet,
-} from "@txnlab/use-wallet-vue";
+import { Wallet, WalletAccount, useWallet } from "@txnlab/use-wallet-vue";
 import { modelsv2 } from "algosdk";
 
 const store = useAppStore();
-const {
-  activeAccount,
-  activeNetwork,
-  activeWallet,
-  algodClient,
-  wallets,
-  setActiveNetwork,
-} = useWallet();
+const { activeAccount, activeNetwork, activeWallet, algodClient, wallets } =
+  useWallet();
 
 const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
@@ -185,28 +163,6 @@ const items = computed(() => {
   }));
   return val;
 });
-
-const algoNetwork = computed(() => (store.showFNet ? "fnet" : "mainnet"));
-const balanceLabel = computed(() => {
-  switch (activeNetwork.value) {
-    case "mainnet":
-      return "Algorand";
-    case "voimain":
-      return "Voi";
-    case "fnet":
-      return "FNet";
-  }
-});
-
-async function switchNetwork() {
-  account.value = undefined;
-  setActiveNetwork(
-    (activeNetwork.value === algoNetwork.value
-      ? "voimain"
-      : algoNetwork.value) as NetworkId
-  );
-  store.refresh++;
-}
 
 async function switchAccount(wallet: Wallet, acct: WalletAccount) {
   wallet.setActiveAccount(acct.address);

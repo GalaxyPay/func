@@ -2,10 +2,8 @@
   <v-app>
     <AppBar />
     <v-main>
-      <Goal />
-      <Node v-show="store.ready && !store.showFNet" name="Algorand" />
-      <Node v-show="store.ready && !store.showFNet" name="Voi" />
-      <Node v-show="store.ready && store.showFNet" name="FNet" />
+      <Loading />
+      <NodeTabs />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
     <Snackbar />
@@ -31,5 +29,23 @@ a {
 }
 .arrow {
   cursor: default;
+}
+.ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pulsate {
+  animation: pulse 3s ease infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
 }
 </style>
