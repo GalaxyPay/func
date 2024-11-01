@@ -64,7 +64,7 @@
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
           <v-col cols="3" class="text-center">
-            <div class="text-h4">
+            <div class="text-h4" style="white-space: nowrap">
               {{
                 algodStatus
                   ? algodStatus["last-round"].toLocaleString() || "-"
@@ -79,10 +79,14 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails?.proposals == null ? "-" : partDetails.proposals }}
+              {{
+                partDetails?.proposals == null
+                  ? "-"
+                  : partDetails.proposals.toLocaleString()
+              }}
             </div>
             <div>Blocks Proposed</div>
-            <div class="mt-13 text-h4">
+            <div class="mt-13 text-h4" style="white-space: nowrap">
               {{
                 partDetails
                   ? (partDetails.activeStake / 10 ** 6).toLocaleString()
@@ -93,7 +97,11 @@
           </v-col>
           <v-col cols="3" class="text-center">
             <div class="text-h4">
-              {{ partDetails?.votes == null ? "-" : partDetails.votes }}
+              {{
+                partDetails?.votes == null
+                  ? "-"
+                  : partDetails.votes.toLocaleString()
+              }}
             </div>
             <div>Blocks Voted</div>
             <div

@@ -52,13 +52,13 @@
                 <v-col class="text-subtitle-1">
                   Blocks Proposed:
                   <span class="font-weight-bold">
-                    {{ partStats[item.address]?.proposals }}
+                    {{ partStats[item.address]?.proposals.toLocaleString() }}
                   </span>
                 </v-col>
                 <v-col class="text-subtitle-1">
                   Blocks Voted:
                   <span class="font-weight-bold">
-                    {{ partStats[item.address]?.votes }}
+                    {{ partStats[item.address]?.votes.toLocaleString() }}
                   </span>
                 </v-col>
               </v-row>
