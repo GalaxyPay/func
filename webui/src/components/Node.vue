@@ -322,8 +322,8 @@ const catchupProgress = computed(() => {
       name: "Blocks",
       processed: 100,
       verified:
-        (algodStatus.value["catchpoint-total-blocks"] /
-          algodStatus.value["catchpoint-acquired-blocks"]) *
+        (algodStatus.value["catchpoint-acquired-blocks"] /
+          algodStatus.value["catchpoint-total-blocks"]) *
         100,
     },
   ];
