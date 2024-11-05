@@ -160,6 +160,20 @@
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
     />
+    <v-container fluid>
+      <v-divider />
+      <v-card-title>Peers</v-card-title>
+      <v-container fluid>
+        <v-data-table
+          :items="peers"
+          density="comfortable"
+          items-per-page="-1"
+          hover
+        >
+          <template #bottom />
+        </v-data-table>
+      </v-container>
+    </v-container>
     <Reti
       :visible="showReti"
       :port="nodeStatus.port"
@@ -264,6 +278,13 @@ async function autoRefresh() {
 
 let restartAttempted = false;
 
+interface Peer {
+  address: string;
+  network: string;
+  outgoing: boolean;
+}
+const peers = ref<Peer[]>([]);
+
 async function getNodeStatus() {
   const resp = await AWN.api.get(props.name);
   nodeStatus.value = resp.data;
@@ -271,6 +292,15 @@ async function getNodeStatus() {
     if (algodClient.value) {
       algodStatus.value = await algodClient.value?.status().do();
     }
+
+    const response = (
+      await axios({
+        url: `http://localhost:${nodeStatus.value!.port}/v2/status/peers`,
+        headers: { "X-Algo-Api-Token": nodeStatus.value!.token },
+      })
+    ).data as Peer[];
+    peers.value = response.sort((a, b) => a.address.localeCompare(b.address));
+
     if (!refreshing) autoRefresh();
   } else {
     algodStatus.value = undefined;
