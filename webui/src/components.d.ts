@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AlgoIcon: typeof import('./components/AlgoIcon.vue')['default']
     AppBar: typeof import('./components/AppBar.vue')['default']
+    Config: typeof import('./components/Config.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     Manage: typeof import('./components/Manage.vue')['default']
     Node: typeof import('./components/Node.vue')['default']

@@ -55,11 +55,10 @@ export async function checkCatchup(algodStatus: any, name: string) {
   if (algodStatus?.["catchup-time"]) {
     const catchpoint = await getCatchpoint(name);
     if (!catchpoint) throw Error("Invald Catchpoint");
-    const catchpointRound = +catchpoint.split("#")[0];
+    const [round, label] = catchpoint.split("#");
     const isCatchingUp = algodStatus?.["catchpoint"] === catchpoint;
-    const needsCatchUp = catchpointRound - algodStatus?.["last-round"] > 20000;
+    const needsCatchUp = Number(round) - algodStatus?.["last-round"] > 20000;
     if (!isCatchingUp && needsCatchUp) {
-      const [round, label] = catchpoint.split("#");
       await AWN.api.post(`${name}/catchup`, { round, label });
     }
   }

@@ -19,9 +19,7 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                string net = ":0";
-                try { net = System.IO.File.ReadAllText(_dataPath + @"voi\algod.net").Replace("\n", ""); } catch { }
-                int port = int.Parse(net[(net.LastIndexOf(":") + 1)..]);
+                int port = 0;
                 string token = string.Empty;
                 try { token = System.IO.File.ReadAllText(_dataPath + @"voi\algod.admin.token"); } catch { }
                 string sc = await Utils.ExecCmd(@"sc query ""Voi Node""");
@@ -32,6 +30,9 @@ namespace AvmWinNode.Controllers
                 if (configText != null)
                 {
                     JObject config = JObject.Parse(configText);
+                    var endpointAddressToken = config.GetValue("EndpointAddress");
+                    string endpointAddress = endpointAddressToken?.Value<string>() ?? ":0";
+                    port = int.Parse(endpointAddress[(endpointAddress.IndexOf(":") + 1)..]);
                     var enableP2PToken = config.GetValue("EnableP2P");
                     var enableP2PHybridModeToken = config.GetValue("EnableP2PHybridMode");
                     bool enableP2P = enableP2PToken != null && enableP2PToken.Value<bool>();
@@ -146,6 +147,26 @@ namespace AvmWinNode.Controllers
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // GET: voi/config
+        [HttpGet("config")]
+        public ActionResult<string> GetConfig()
+        {
+            string config = string.Empty;
+            try { config = System.IO.File.ReadAllText($@"{_dataPath}voi\config.json"); } catch { }
+            return config;
+        }
+
+        // PUT: voi/config
+        [HttpPut("config")]
+        public ActionResult SetConfig(Config model)
+        {
+            using (StreamWriter writer = new($@"{_dataPath}voi\config.json", false))
+            {
+                writer.Write(model.Json);
+            }
+            return Ok();
         }
     }
 }
