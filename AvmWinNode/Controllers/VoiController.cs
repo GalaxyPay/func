@@ -1,5 +1,6 @@
 using AvmWinNode.Models;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using static System.Environment;
 
 namespace AvmWinNode.Controllers
@@ -25,11 +26,24 @@ namespace AvmWinNode.Controllers
                 try { token = System.IO.File.ReadAllText(_dataPath + @"voi\algod.admin.token"); } catch { }
                 string sc = await Utils.ExecCmd(@"sc query ""Voi Node""");
                 string serviceStatus = Utils.ParseServiceStatus(sc);
+                bool p2p = false;
+                string? configText = null;
+                try { configText = System.IO.File.ReadAllText(_dataPath + @"voi\config.json"); } catch { }
+                if (configText != null)
+                {
+                    JObject config = JObject.Parse(configText);
+                    var enableP2PToken = config.GetValue("EnableP2P");
+                    var enableP2PHybridModeToken = config.GetValue("EnableP2PHybridMode");
+                    bool enableP2P = enableP2PToken != null && enableP2PToken.Value<bool>();
+                    bool enableP2PHybridMode = enableP2PHybridModeToken != null && enableP2PHybridModeToken.Value<bool>();
+                    if (enableP2P || enableP2PHybridMode) p2p = true;
+                }
                 NodeStatus nodeStatus = new()
                 {
+                    ServiceStatus = serviceStatus,
                     Port = port,
                     Token = token,
-                    ServiceStatus = serviceStatus
+                    P2p = p2p,
                 };
                 return nodeStatus;
             }
@@ -83,14 +97,7 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                var round = model.Catchpoint.Split('#')[0];
-                var data = model.Catchpoint.Split('#')[1];
-                if (string.IsNullOrEmpty(model.Catchpoint)
-                    || model.Catchpoint.Any(Char.IsWhiteSpace)
-                    || !int.TryParse(round, out _)
-                    || data.Length != 52)
-                    return BadRequest();
-                string cmd = string.Format(_dataPath + "goal node catchup {0} -d " + _dataPath + "voi", model.Catchpoint);
+                string cmd = $"{_dataPath}goal node catchup {model.Round}#{model.Label} -d {_dataPath}voi";
                 return await Utils.ExecCmd(cmd);
             }
             catch (Exception ex)

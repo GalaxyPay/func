@@ -19,7 +19,7 @@
               :color="store.updateAvailable ? 'warning' : ''"
               variant="tonal"
               :disabled="!store.updateAvailable || store.downloading"
-              @click="update()"
+              @click="updateLatest()"
             >
               Update
               <v-tooltip
@@ -28,14 +28,17 @@
                 :text="`Update to ${latestRelease}`"
               />
             </v-btn>
+            <Releases
+              class="ml-2"
+              :algowin="ALGOWIN"
+              @release="updateRelease"
+            />
           </v-col>
         </v-row>
         <v-row align="center">
           <v-col>
             <div>Show FNet</div>
-            <div class="text-caption text-grey">
-              Must install FNet binaries manually
-            </div>
+            <div class="text-caption text-grey">Must install FNet binaries</div>
           </v-col>
           <v-col>
             <v-switch
@@ -74,8 +77,7 @@ const show = computed({
   },
 });
 
-const ALGOWIN =
-  "https://api.github.com/repos/GalaxyPay/algowin/releases/latest";
+const ALGOWIN = "https://api.github.com/repos/GalaxyPay/algowin";
 
 const goalVersion = ref();
 const latestRelease = ref();
@@ -94,10 +96,10 @@ async function getVersion() {
 
     if (goalVersion.value) store.ready = true;
 
-    const latest = (await axios({ url: ALGOWIN })).data;
+    const latest = (await axios({ url: `${ALGOWIN}/releases/latest` })).data;
     latestRelease.value = latest.name.substring(1, latest.name.indexOf("-"));
 
-    if (!goalVersion.value) update(true);
+    if (!goalVersion.value) updateLatest(true);
 
     store.updateAvailable = latestRelease.value !== goalVersion.value;
   } catch (err: any) {
@@ -106,18 +108,22 @@ async function getVersion() {
   }
 }
 
-async function update(bypass = false) {
+async function updateLatest(bypass = false) {
   if (
     !bypass &&
     !confirm("Are you sure you want to update your node to the latest version?")
   )
     return;
+  await updateRelease("latest");
+}
+
+async function updateRelease(release: string) {
   try {
     store.downloading = true;
     store.stopNodeServices = true;
     await delay(500);
     store.ready = false;
-    await AWN.api.post("goal/update");
+    await AWN.api.post("goal/update", { name: release });
     await getVersion();
     store.stopNodeServices = false;
   } catch (err: any) {

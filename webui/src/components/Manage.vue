@@ -1,6 +1,5 @@
 <template>
   <v-btn
-    class="mt-4"
     variant="tonal"
     color="primary"
     block
