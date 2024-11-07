@@ -305,7 +305,7 @@ async function getKeys() {
         votes = 0;
         partStats.value = {};
         const stats = await getAlgoStats(activeKeys.map((k) => k.address));
-        partStats.value = stats.data.data;
+        partStats.value = stats?.data.data || {};
       }
       if (props.name === "Voi") {
         proposals = 0;
@@ -324,8 +324,8 @@ async function getKeys() {
         );
       }
       for (const value of Object.values(partStats.value) as any[]) {
-        proposals += value.proposals;
-        votes += value.votes;
+        proposals += value?.proposals || 0;
+        votes += value?.votes || 0;
       }
     }
 
@@ -525,10 +525,15 @@ function getAlgoStats(addrs: string[]) {
       proposals
       votes
     }`;
-  return axios({
-    url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
-    method: "post",
-    data: { query, operationName: "bulkAccounts" },
-  });
+  try {
+    return axios({
+      url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
+      method: "post",
+      data: { query, operationName: "bulkAccounts" },
+    });
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
 }
 </script>

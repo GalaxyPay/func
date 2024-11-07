@@ -262,7 +262,7 @@ const status = computed(() =>
 );
 
 const algodClient = computed(() => {
-  if (!nodeStatus.value?.port) return undefined;
+  if (!nodeStatus.value?.token) return undefined;
   return new Algodv2(
     nodeStatus.value.token,
     "http://localhost",
