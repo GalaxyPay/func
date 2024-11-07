@@ -151,10 +151,13 @@ namespace AvmWinNode.Controllers
 
         // GET: voi/config
         [HttpGet("config")]
-        public ActionResult<string> GetConfig()
+        public async Task<ActionResult<string>> GetConfig()
         {
-            string config = string.Empty;
-            try { config = System.IO.File.ReadAllText($@"{_dataPath}voi\config.json"); } catch { }
+            if (!Directory.Exists($"{_dataPath}voi"))
+            {
+                await Utils.ExecCmd($@"tar -xf ""{AppContext.BaseDirectory}Templates\voi.zip"" -C {_dataPath}");
+            }
+            string config = System.IO.File.ReadAllText($@"{_dataPath}voi\config.json");
             return config;
         }
 

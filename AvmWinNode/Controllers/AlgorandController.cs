@@ -151,10 +151,13 @@ namespace AvmWinNode.Controllers
 
         // GET: algorand/config
         [HttpGet("config")]
-        public ActionResult<string> GetConfig()
+        public async Task<ActionResult<string>> GetConfig()
         {
-            string config = string.Empty;
-            try { config = System.IO.File.ReadAllText($@"{_dataPath}algorand\config.json"); } catch { }
+            if (!Directory.Exists($"{_dataPath}algorand"))
+            {
+                await Utils.ExecCmd($@"tar -xf ""{AppContext.BaseDirectory}Templates\algorand.zip"" -C {_dataPath}");
+            }
+            string config = System.IO.File.ReadAllText($@"{_dataPath}algorand\config.json");
             return config;
         }
 

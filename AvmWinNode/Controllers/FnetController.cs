@@ -186,10 +186,13 @@ namespace AvmWinNode.Controllers
 
         // GET: fnet/config
         [HttpGet("config")]
-        public ActionResult<string> GetConfig()
+        public async Task<ActionResult<string>> GetConfig()
         {
-            string config = string.Empty;
-            try { config = System.IO.File.ReadAllText($@"{_dataPath}fnet\config.json"); } catch { }
+            if (!Directory.Exists($"{_dataPath}fnet"))
+            {
+                await Utils.ExecCmd($@"tar -xf ""{AppContext.BaseDirectory}Templates\fnet.zip"" -C {_dataPath}");
+            }
+            string config = System.IO.File.ReadAllText($@"{_dataPath}fnet\config.json");
             return config;
         }
 
