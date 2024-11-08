@@ -46,7 +46,7 @@ async function getCatchpoint(name: string): Promise<string | undefined> {
     case "FNet": {
       // const resp = await axios({ url: FNET_URL });
       // return resp.data["last-catchpoint"];
-      return "2070000#PGQJYGIMR24TFYNJJDI3SVAIEEOZPU7TALVBPOKI7LLKWQXJB42A";
+      return "2330000#UENIUVU6ZTMPM5ZGYYY75ESP5H77E4IHHCBQRRCC2ULN753GSQIQA";
     }
   }
 }
