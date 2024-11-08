@@ -1,10 +1,6 @@
 <template>
-  <v-btn
-    variant="tonal"
-    :append-icon="mdiChevronDown"
-    :disabled="store.downloading"
-  >
-    Advanced
+  <v-btn variant="tonal" :disabled="store.downloading">
+    <v-icon :icon="mdiChevronDown" />
     <v-menu activator="parent" bottom scrim>
       <v-list density="compact">
         <v-list-subheader title="Choose a Release" />

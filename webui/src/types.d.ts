@@ -26,3 +26,9 @@ export interface Participation {
   id: string;
   key: modelsv2.AccountParticipation;
 }
+
+export interface Peer {
+  address: string;
+  network: string;
+  outgoing: boolean;
+}

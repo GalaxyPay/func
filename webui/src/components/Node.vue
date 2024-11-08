@@ -201,7 +201,7 @@
 
 <script setup lang="ts">
 import AWN from "@/services/api";
-import { NodeStatus } from "@/types";
+import { NodeStatus, Peer } from "@/types";
 import { checkCatchup, delay } from "@/utils";
 import { mdiArrowLeft, mdiLanConnect, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
@@ -294,11 +294,6 @@ async function autoRefresh() {
 
 let restartAttempted = false;
 
-interface Peer {
-  address: string;
-  network: string;
-  outgoing: boolean;
-}
 const peers = ref<Peer[]>();
 
 async function getNodeStatus() {
@@ -311,8 +306,8 @@ async function getNodeStatus() {
         try {
           const response = (
             await axios({
-              url: `http://localhost:${nodeStatus.value!.port}/v2/status/peers`,
-              headers: { "X-Algo-Api-Token": nodeStatus.value!.token },
+              url: `http://localhost:${nodeStatus.value.port}/v2/status/peers`,
+              headers: { "X-Algo-Api-Token": nodeStatus.value.token },
             })
           ).data as Peer[];
           peers.value = response.sort((a, b) =>
