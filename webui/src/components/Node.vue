@@ -190,12 +190,6 @@
         </div>
       </v-card-text>
     </v-container>
-    <Reti
-      :visible="showReti"
-      :port="nodeStatus.port"
-      :token="nodeStatus.token"
-      @close="showReti = false"
-    />
   </div>
 </template>
 
@@ -210,7 +204,6 @@ const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
-const showReti = ref(false);
 const algodStatus = ref();
 const retiLatest = ref<string>();
 const partDetails = ref();

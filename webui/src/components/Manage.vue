@@ -85,6 +85,12 @@
         emit('getStatus');
       "
     />
+    <Reti
+      :visible="showReti"
+      :port="nodeStatus.port"
+      :token="nodeStatus.token"
+      @close="showReti = false"
+    />
   </v-btn>
 </template>
 
