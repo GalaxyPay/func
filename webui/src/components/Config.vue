@@ -1,11 +1,7 @@
 <template>
   <v-dialog v-model="show" max-width="800" persistent>
     <v-card :disabled="loading">
-      <v-card-title class="d-flex">
-        Config
-        <v-spacer />
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
-      </v-card-title>
+      <v-card-title> Configure Node </v-card-title>
       <v-container v-if="config">
         <v-text-field label="Port" v-model.number="port" type="number" />
         <v-checkbox-btn v-model="showDNSBootstrapID" label="DNS Bootstrap ID" />
@@ -22,6 +18,7 @@
         />
       </v-container>
       <v-card-actions>
+        <v-btn text="Cancel" variant="tonal" @click="show = false" />
         <v-btn
           text="Save"
           color="primary"
@@ -35,7 +32,6 @@
 
 <script lang="ts" setup>
 import AWN from "@/services/api";
-import { mdiClose } from "@mdi/js";
 
 const props = defineProps({
   visible: { type: Boolean, required: true },

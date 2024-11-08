@@ -319,6 +319,8 @@ async function getNodeStatus() {
             a.address.localeCompare(b.address)
           );
         } catch {}
+      } else {
+        peers.value = undefined;
       }
     }
     if (!refreshing) autoRefresh();
