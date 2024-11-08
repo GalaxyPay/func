@@ -48,7 +48,12 @@
         </v-container>
         <v-card-actions>
           <v-spacer />
-          <v-btn type="submit" text="Start Reti Service" />
+          <v-btn
+            type="submit"
+            text="Start Reti Service"
+            color="primary"
+            variant="tonal"
+          />
         </v-card-actions>
       </v-form>
     </v-card>

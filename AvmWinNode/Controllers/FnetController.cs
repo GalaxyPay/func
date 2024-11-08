@@ -1,5 +1,6 @@
 using AvmWinNode.Models;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using static System.Environment;
 
 namespace AvmWinNode.Controllers
@@ -18,14 +19,26 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                string net = ":0";
-                try { net = System.IO.File.ReadAllText(_dataPath + @"fnet\algod.net").Replace("\n", ""); } catch { }
-                int port = int.Parse(net[(net.LastIndexOf(":") + 1)..]);
+                int port = 0;
                 string token = string.Empty;
                 try { token = System.IO.File.ReadAllText(_dataPath + @"fnet\algod.admin.token"); } catch { }
                 string fnetQuery = await Utils.ExecCmd(@"sc query ""Fnet Node""");
                 string nodeServiceStatus = Utils.ParseServiceStatus(fnetQuery);
-
+                bool p2p = false;
+                string? configText = null;
+                try { configText = System.IO.File.ReadAllText(_dataPath + @"fnet\config.json"); } catch { }
+                if (configText != null)
+                {
+                    JObject config = JObject.Parse(configText);
+                    var endpointAddressToken = config.GetValue("EndpointAddress");
+                    string endpointAddress = endpointAddressToken?.Value<string>() ?? ":0";
+                    port = int.Parse(endpointAddress[(endpointAddress.IndexOf(":") + 1)..]);
+                    var enableP2PToken = config.GetValue("EnableP2P");
+                    var enableP2PHybridModeToken = config.GetValue("EnableP2PHybridMode");
+                    bool enableP2P = enableP2PToken != null && enableP2PToken.Value<bool>();
+                    bool enableP2PHybridMode = enableP2PHybridModeToken != null && enableP2PHybridModeToken.Value<bool>();
+                    if (enableP2P || enableP2PHybridMode) p2p = true;
+                }
                 // Reti Status
                 string retiQuery = await Utils.ExecCmd(@"sc query ""Reti Validator""");
                 string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
@@ -64,7 +77,8 @@ namespace AvmWinNode.Controllers
                     ServiceStatus = nodeServiceStatus,
                     Port = port,
                     Token = token,
-                    RetiStatus = retiStatus
+                    P2p = p2p,
+                    RetiStatus = retiStatus,
                 };
 
                 return nodeStatus;
@@ -119,14 +133,7 @@ namespace AvmWinNode.Controllers
         {
             try
             {
-                var round = model.Catchpoint.Split('#')[0];
-                var data = model.Catchpoint.Split('#')[1];
-                if (string.IsNullOrEmpty(model.Catchpoint)
-                    || model.Catchpoint.Any(Char.IsWhiteSpace)
-                    || !int.TryParse(round, out _)
-                    || data.Length != 52)
-                    return BadRequest();
-                string cmd = string.Format(_dataPath + "goal node catchup {0} -d " + _dataPath + "fnet", model.Catchpoint);
+                string cmd = $"{_dataPath}goal node catchup {model.Round}#{model.Label} -d {_dataPath}fnet";
                 return await Utils.ExecCmd(cmd);
             }
             catch (Exception ex)
@@ -175,6 +182,29 @@ namespace AvmWinNode.Controllers
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // GET: fnet/config
+        [HttpGet("config")]
+        public async Task<ActionResult<string>> GetConfig()
+        {
+            if (!Directory.Exists($"{_dataPath}fnet"))
+            {
+                await Utils.ExecCmd($@"tar -xf ""{AppContext.BaseDirectory}Templates\fnet.zip"" -C {_dataPath}");
+            }
+            string config = System.IO.File.ReadAllText($@"{_dataPath}fnet\config.json");
+            return config;
+        }
+
+        // PUT: fnet/config
+        [HttpPut("config")]
+        public ActionResult SetConfig(Config model)
+        {
+            using (StreamWriter writer = new($@"{_dataPath}fnet\config.json", false))
+            {
+                writer.Write(model.Json);
+            }
+            return Ok();
         }
     }
 }

@@ -28,7 +28,7 @@ export async function execAtc(
   store.refresh++;
 }
 
-async function getCatchpoint(name: string) {
+async function getCatchpoint(name: string): Promise<string | undefined> {
   const MAINNET_URL =
     "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current";
   const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
@@ -54,11 +54,12 @@ async function getCatchpoint(name: string) {
 export async function checkCatchup(algodStatus: any, name: string) {
   if (algodStatus?.["catchup-time"]) {
     const catchpoint = await getCatchpoint(name);
-    const catchpointRound = +catchpoint.split("#")[0];
+    if (!catchpoint) throw Error("Invald Catchpoint");
+    const [round, label] = catchpoint.split("#");
     const isCatchingUp = algodStatus?.["catchpoint"] === catchpoint;
-    const needsCatchUp = catchpointRound - algodStatus?.["last-round"] > 20000;
+    const needsCatchUp = Number(round) - algodStatus?.["last-round"] > 20000;
     if (!isCatchingUp && needsCatchUp) {
-      await AWN.api.post(`${name}/catchup`, { catchpoint });
+      await AWN.api.post(`${name}/catchup`, { round, label });
     }
   }
 }

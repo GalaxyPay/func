@@ -4,6 +4,7 @@ export interface NodeStatus {
   serviceStatus: string;
   port: number;
   token: string;
+  p2p: boolean;
   retiStatus?: RetiStatus;
 }
 
@@ -24,4 +25,10 @@ export interface Participation {
   address: string;
   id: string;
   key: modelsv2.AccountParticipation;
+}
+
+export interface Peer {
+  address: string;
+  network: string;
+  outgoing: boolean;
 }

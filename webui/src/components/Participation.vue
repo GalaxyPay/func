@@ -305,7 +305,7 @@ async function getKeys() {
         votes = 0;
         partStats.value = {};
         const stats = await getAlgoStats(activeKeys.map((k) => k.address));
-        partStats.value = stats.data.data;
+        partStats.value = stats;
       }
       if (props.name === "Voi") {
         proposals = 0;
@@ -324,8 +324,8 @@ async function getKeys() {
         );
       }
       for (const value of Object.values(partStats.value) as any[]) {
-        proposals += value.proposals;
-        votes += value.votes;
+        proposals += value?.proposals || 0;
+        votes += value?.votes || 0;
       }
     }
 
@@ -509,11 +509,11 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
-function getAlgoStats(addrs: string[]) {
+async function getAlgoStats(addrs: string[]) {
   let query = "    query bulkAccounts {";
   addrs.forEach((a) => {
     query += `
-      ${a}: votingAddrStat(
+      addr_${a}: votingAddrStat(
         addrBin: "${a}"
       ) { ...addrData	}`;
   });
@@ -525,10 +525,20 @@ function getAlgoStats(addrs: string[]) {
       proposals
       votes
     }`;
-  return axios({
-    url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
-    method: "post",
-    data: { query, operationName: "bulkAccounts" },
-  });
+  try {
+    const { data } = await axios({
+      url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
+      method: "post",
+      data: { query, operationName: "bulkAccounts" },
+    });
+    const stats: any = {};
+    Object.keys(data.data).forEach((key) => {
+      stats[key.substring(5)] = data.data[key];
+    });
+    return stats;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
 }
 </script>

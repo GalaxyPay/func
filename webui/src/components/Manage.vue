@@ -1,6 +1,5 @@
 <template>
   <v-btn
-    class="mt-4"
     variant="tonal"
     color="primary"
     block
@@ -30,6 +29,7 @@
           @click="deleteNode()"
           v-show="status === 'Stopped'"
         />
+        <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
           title="Delete Node Data"
           base-color="error"
@@ -76,6 +76,21 @@
         </template>
       </v-list>
     </v-menu>
+    <Config
+      :visible="showConfig"
+      :name="name"
+      :running="nodeStatus.serviceStatus === 'Running'"
+      @close="
+        showConfig = false;
+        emit('getStatus');
+      "
+    />
+    <Reti
+      :visible="showReti"
+      :port="nodeStatus.port"
+      :token="nodeStatus.token"
+      @close="showReti = false"
+    />
   </v-btn>
 </template>
 
@@ -94,6 +109,7 @@ const emit = defineEmits(["getStatus"]);
 const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
+const showConfig = ref(false);
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
 

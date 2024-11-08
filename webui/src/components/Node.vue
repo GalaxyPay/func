@@ -57,6 +57,7 @@
             </v-chip>
           </div>
           <Manage
+            class="mt-4"
             :name="name"
             :node-status="nodeStatus"
             @get-status="getNodeStatus()"
@@ -160,27 +161,49 @@
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
     />
-    <Reti
-      :visible="showReti"
-      :port="nodeStatus.port"
-      :token="nodeStatus.token"
-      @close="showReti = false"
-    />
+    <v-container fluid v-if="peers">
+      <v-divider />
+      <v-card-title>Peers ({{ peers.length }})</v-card-title>
+      <v-card-text>
+        <div v-for="item in peers">
+          {{ item.address }}
+          <span>
+            <v-icon
+              v-if="item.network === 'p2p'"
+              class="ml-1"
+              size="small"
+              color="primary"
+              :icon="mdiLanConnect"
+            />
+            <v-tooltip activator="parent" location="right" text="P2P" />
+          </span>
+          <span>
+            <v-icon
+              v-if="!item.outgoing"
+              class="ml-1"
+              size="small"
+              color="success"
+              :icon="mdiArrowLeft"
+            />
+            <v-tooltip activator="parent" location="right" text="Inbound" />
+          </span>
+        </div>
+      </v-card-text>
+    </v-container>
   </div>
 </template>
 
 <script setup lang="ts">
 import AWN from "@/services/api";
-import { NodeStatus } from "@/types";
+import { NodeStatus, Peer } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import { mdiRefresh } from "@mdi/js";
+import { mdiArrowLeft, mdiLanConnect, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
-const showReti = ref(false);
 const algodStatus = ref();
 const retiLatest = ref<string>();
 const partDetails = ref();
@@ -232,7 +255,7 @@ const status = computed(() =>
 );
 
 const algodClient = computed(() => {
-  if (!nodeStatus.value?.port) return undefined;
+  if (!nodeStatus.value?.token) return undefined;
   return new Algodv2(
     nodeStatus.value.token,
     "http://localhost",
@@ -264,22 +287,40 @@ async function autoRefresh() {
 
 let restartAttempted = false;
 
+const peers = ref<Peer[]>();
+
 async function getNodeStatus() {
   const resp = await AWN.api.get(props.name);
   nodeStatus.value = resp.data;
   if (nodeStatus.value?.serviceStatus === "Running") {
     if (algodClient.value) {
       algodStatus.value = await algodClient.value?.status().do();
+      if (nodeStatus.value.p2p) {
+        try {
+          const response = (
+            await axios({
+              url: `http://localhost:${nodeStatus.value.port}/v2/status/peers`,
+              headers: { "X-Algo-Api-Token": nodeStatus.value.token },
+            })
+          ).data as Peer[];
+          peers.value = response.sort((a, b) =>
+            a.address.localeCompare(b.address)
+          );
+        } catch {}
+      } else {
+        peers.value = undefined;
+      }
     }
     if (!refreshing) autoRefresh();
   } else {
     algodStatus.value = undefined;
+    peers.value = undefined;
   }
   if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
     const releases = await axios({
-      url: "https://api.github.com/repos/algorandfoundation/reti/releases",
+      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
     });
-    retiLatest.value = releases.data[0].tag_name;
+    retiLatest.value = releases.data.name;
   }
   if (
     nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
@@ -333,13 +374,9 @@ async function updateReti() {
   if (!retiUpdate.value) return;
   loading.value = true;
   await AWN.api.post("reti/update");
-  await finish("Reti Updated");
-}
-
-async function finish(message: string) {
   await getNodeStatus();
   loading.value = false;
-  store.setSnackbar(message, "success");
+  store.setSnackbar("Reti Updated", "success");
 }
 
 watch(
@@ -361,15 +398,18 @@ let paused = false;
 
 watch(
   () => store.stopNodeServices,
-  (val) => {
+  async (val) => {
     if (val && nodeStatus.value?.serviceStatus === "Running") {
       paused = true;
       AWN.api.put(`${props.name}/stop`);
       nodeStatus.value.serviceStatus = "Stopped";
+      algodStatus.value = undefined;
+      peers.value = undefined;
     }
     if (!val && paused) {
       paused = false;
-      AWN.api.put(`${props.name}/start`);
+      await AWN.api.put(`${props.name}/start`);
+      getNodeStatus();
     }
   }
 );
