@@ -80,6 +80,7 @@
       :visible="showConfig"
       :name="name"
       :running="nodeStatus.serviceStatus === 'Running'"
+      :token="nodeStatus.token"
       @close="
         showConfig = false;
         emit('getStatus');

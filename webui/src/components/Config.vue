@@ -4,6 +4,13 @@
       <v-card-title> Configure Node </v-card-title>
       <v-container v-if="config">
         <v-text-field label="Port" v-model.number="port" type="number" />
+        <v-text-field
+          label="Token (Read-Only)"
+          readonly
+          :model-value="token"
+          :append-inner-icon="mdiContentCopy"
+          @click:append-inner="copyVal(token)"
+        />
         <v-checkbox-btn v-model="showDNSBootstrapID" label="DNS Bootstrap ID" />
         <v-textarea
           :disabled="!showDNSBootstrapID"
@@ -32,11 +39,13 @@
 
 <script lang="ts" setup>
 import AWN from "@/services/api";
+import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
   visible: { type: Boolean, required: true },
   name: { type: String, required: true },
   running: { type: Boolean, required: true },
+  token: { type: String },
 });
 const emit = defineEmits(["close"]);
 
@@ -51,6 +60,7 @@ const show = computed({
   },
 });
 
+const store = useAppStore();
 const config = ref();
 
 const port = computed({
@@ -119,6 +129,12 @@ async function saveConfig() {
   }
   show.value = false;
   loading.value = false;
+}
+
+function copyVal(val: string | number | bigint | undefined) {
+  if (!val) return;
+  navigator.clipboard.writeText(val.toString());
+  store.setSnackbar("Copied", "info", 1000);
 }
 
 watch(show, async (val) => {
