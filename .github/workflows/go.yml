@@ -59,4 +59,4 @@ jobs:
         with:
           allowUpdates: true
           tag: v1.3.2
-          artifacts: "Output\\AvmWinNode_Setup.exe"
+          artifacts: "Output\\AvmWinNode_*_Setup.exe"
