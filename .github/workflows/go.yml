@@ -58,5 +58,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v1.3.2
+          tag: v1.3.3
           artifacts: "Output\\AvmWinNode_*_Setup.exe"

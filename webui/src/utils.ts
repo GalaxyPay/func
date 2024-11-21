@@ -32,7 +32,7 @@ async function getCatchpoint(name: string): Promise<string | undefined> {
   const MAINNET_URL =
     "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current";
   const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
-  // const FNET_URL = "https://fnet-api.4160.nodely.io/v2/status";
+  const FNET_URL = "https://fnet-catchpoints.algorand.green/latest";
 
   switch (name) {
     case "Algorand": {
@@ -44,9 +44,8 @@ async function getCatchpoint(name: string): Promise<string | undefined> {
       return resp.data["last-catchpoint"];
     }
     case "FNet": {
-      // const resp = await axios({ url: FNET_URL });
-      // return resp.data["last-catchpoint"];
-      return "2520000#PRWW73GNIFJFFDLXQZRIC2HV2TXDCW6C6L4VLUBD26K5FBOV3FOA";
+      const resp = await axios({ url: FNET_URL });
+      return resp.data.trim();
     }
   }
 }
