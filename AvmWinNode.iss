@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "AvmWinNode"
-#define MyAppVersion "1.3.2"
+#define MyAppVersion "1.3.3"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"
