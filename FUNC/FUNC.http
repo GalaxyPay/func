@@ -1,0 +1,45 @@
+@FUNC_HostAddress = http://localhost:3536
+
+### GOAL
+GET {{FUNC_HostAddress}}/goal/version
+Accept: application/text
+
+### ALGORAND
+GET {{FUNC_HostAddress}}/algorand/
+Accept: application/json
+
+### Create Algorand
+POST {{FUNC_HostAddress}}/algorand
+Accept: application/text
+
+### Start Algorand
+PUT {{FUNC_HostAddress}}/algorand/start
+Accept: application/text
+
+### Stop Algorand
+PUT {{FUNC_HostAddress}}/algorand/stop
+Accept: application/text
+
+### Delete Algorand
+DELETE {{FUNC_HostAddress}}/algorand
+Accept: application/text
+
+### VOI
+GET {{FUNC_HostAddress}}/voi/
+Accept: application/json
+
+### Create Voi
+POST {{FUNC_HostAddress}}/voi
+Accept: application/text
+
+### Start Voi
+PUT {{FUNC_HostAddress}}/voi/start
+Accept: application/text
+
+### Stop Voi
+PUT {{FUNC_HostAddress}}/voi/stop
+Accept: application/text
+
+### Delete Voi
+DELETE {{FUNC_HostAddress}}/voi
+Accept: application/text

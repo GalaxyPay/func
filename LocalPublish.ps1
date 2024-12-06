@@ -1,7 +1,7 @@
 Remove-Item Output -Force -Recurse -ErrorAction Ignore
 Remove-Item publish -Force -Recurse -ErrorAction Ignore
 
-Set-Location AvmWinNode
+Set-Location FUNC
 dotnet publish -o ..\publish
 
 Set-Location ..\NodeService
@@ -15,4 +15,4 @@ pnpm install
 pnpm build
 
 Set-Location ..
-iscc AvmWinNode.iss
+iscc FUNC.iss

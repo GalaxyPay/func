@@ -24,7 +24,7 @@ export function registerPlugins(app: App) {
       wallets: [
         {
           id: WalletId.LUTE,
-          options: { siteName: "AvmWinNode" },
+          options: { siteName: "FUNC" },
         },
         WalletId.DEFLY,
         WalletId.PERA,

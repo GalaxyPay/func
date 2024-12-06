@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import AWN from "@/services/api";
+import FUNC from "@/services/api";
 import { NodeStatus, Peer } from "@/types";
 import { checkCatchup, delay } from "@/utils";
 import { mdiArrowLeft, mdiLanConnect, mdiRefresh } from "@mdi/js";
@@ -216,9 +216,8 @@ const retiRunning = computed(
 const retiUpdate = computed(() => {
   const current = nodeStatus.value?.retiStatus?.version;
   if (!current || !retiLatest.value) return false;
-  return (
-    current.slice(27, 27 + current.slice(27).indexOf(" ")) !== retiLatest.value
-  );
+  const trimL = current.slice(current.indexOf("version") + 8);
+  return trimL.slice(0, trimL.indexOf(" ")) !== retiLatest.value;
 });
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
@@ -258,7 +257,7 @@ const algodClient = computed(() => {
   if (!nodeStatus.value?.token) return undefined;
   return new Algodv2(
     nodeStatus.value.token,
-    "http://localhost",
+    `http://${location.hostname}`,
     nodeStatus.value.port
   );
 });
@@ -290,7 +289,7 @@ let restartAttempted = false;
 const peers = ref<Peer[]>();
 
 async function getNodeStatus() {
-  const resp = await AWN.api.get(props.name);
+  const resp = await FUNC.api.get(props.name);
   nodeStatus.value = resp.data;
   if (nodeStatus.value?.serviceStatus === "Running") {
     if (algodClient.value) {
@@ -299,7 +298,7 @@ async function getNodeStatus() {
         try {
           const response = (
             await axios({
-              url: `http://localhost:${nodeStatus.value.port}/v2/status/peers`,
+              url: `http://${location.hostname}:${nodeStatus.value.port}/v2/status/peers`,
               headers: { "X-Algo-Api-Token": nodeStatus.value.token },
             })
           ).data as Peer[];
@@ -325,12 +324,13 @@ async function getNodeStatus() {
   if (
     nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
     nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
+    !store.stoppingReti &&
     !restartAttempted
   ) {
     restartAttempted = true;
-    console.error("reti.exe not running - atempting restart");
-    await AWN.api.put("reti/stop");
-    await AWN.api.put("reti/start");
+    console.error("reti not running - atempting restart");
+    await FUNC.api.put("reti/stop");
+    await FUNC.api.put("reti/start");
   }
 }
 
@@ -373,7 +373,7 @@ const catchupProgress = computed(() => {
 async function updateReti() {
   if (!retiUpdate.value) return;
   loading.value = true;
-  await AWN.api.post("reti/update");
+  await FUNC.api.post("reti/update");
   await getNodeStatus();
   loading.value = false;
   store.setSnackbar("Reti Updated", "success");
@@ -401,14 +401,14 @@ watch(
   async (val) => {
     if (val && nodeStatus.value?.serviceStatus === "Running") {
       paused = true;
-      AWN.api.put(`${props.name}/stop`);
+      FUNC.api.put(`${props.name}/stop`);
       nodeStatus.value.serviceStatus = "Stopped";
       algodStatus.value = undefined;
       peers.value = undefined;
     }
     if (!val && paused) {
       paused = false;
-      await AWN.api.put(`${props.name}/start`);
+      await FUNC.api.put(`${props.name}/start`);
       getNodeStatus();
     }
   }

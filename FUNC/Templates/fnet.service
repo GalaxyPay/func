@@ -1,0 +1,13 @@
+[Unit]
+Description=Algorand daemon for fnet in /usr/share/func/fnet
+After=network.target
+AssertPathExists=/usr/share/func/fnet
+
+[Service]
+ExecStart=/usr/share/func/bin/algod -d /usr/share/func/fnet
+Restart=always
+RestartSec=5s
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target
