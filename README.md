@@ -80,6 +80,6 @@ The app is a **Node Service Manager** - uninstalling it will **_not_** remove no
 
 ## Build (for Developers)
 
-You can fork the repo and let Github Actions do the build for you, or you can run the [LocalPublish](LocalPublish.ps1) script.
+You can fork the repo and let Github Actions do the build for you, or you can run [LocalPublish.ps1](LocalPublish.ps1) for Windows, or [local-publish.sh](local-publish.sh) and [create-package.sh](create-package.sh) for Linux.
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
