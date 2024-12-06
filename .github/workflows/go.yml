@@ -4,31 +4,11 @@ on:
     branches: [main]
 
 jobs:
-  publish-and-release:
-    runs-on: windows-latest
+  webui:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Publish AvmWinNode
-        run: |
-          cd AvmWinNode
-          dotnet publish -o ..\publish
-
-      - name: Publish NodeService
-        run: |
-          cd NodeService
-          dotnet publish -o ..\publish\Services
-
-      - name: Publish RetiService
-        run: |
-          cd RetiService
-          dotnet publish -o ..\publish\Services
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -48,15 +28,116 @@ jobs:
           cd webui
           pnpm install
           pnpm build
+          cd ..
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webui
+          path: "publish/wwwroot"
+          retention-days: 1
+
+  debian-package:
+    runs-on: ubuntu-latest
+    needs: webui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish FUNC
+        run: |
+          cd FUNC
+          dotnet publish -o ../publish
+          cd ..
+
+      - name: Download webui Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webui
+          path: "publish/wwwroot"
+
+      - name: Create Package
+        run: ./create-package.sh
+
+      - name: Upload deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: "Output/*.deb"
+          retention-days: 1
+
+  windows-setup:
+    runs-on: windows-latest
+    needs: webui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish FUNC
+        run: |
+          cd FUNC
+          dotnet publish -o ..\publish
+          cd ..
+
+      - name: Publish NodeService
+        run: |
+          cd NodeService
+          dotnet publish -o ..\publish\Services
+          cd ..
+
+      - name: Publish RetiService
+        run: |
+          cd RetiService
+          dotnet publish -o ..\publish\Services
+          cd ..
+
+      - name: Download webui Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webui
+          path: "publish/wwwroot"
 
       - name: Create Setup
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
         with:
-          path: ./AvmWinNode.iss
+          path: ./FUNC.iss
+
+      - name: Upload win Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-setup
+          path: "Output"
+          retention-days: 1
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [debian-package, windows-setup]
+    steps:
+      - name: Download deb Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-package
+          path: "Output"
+
+      - name: Download win Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: win-setup
+          path: "Output"
 
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v1.3.3
-          artifacts: "Output\\AvmWinNode_*_Setup.exe"
+          tag: v2.0.0
+          artifacts: "Output/*"

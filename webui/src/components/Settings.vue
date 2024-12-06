@@ -11,7 +11,7 @@
           <v-col>
             <div>Node Version</div>
             <div class="text-caption text-grey">
-              {{ goalVersion }}
+              {{ goalVersion?.installed }}
             </div>
           </v-col>
           <v-col class="text-right">
@@ -25,14 +25,10 @@
               <v-tooltip
                 activator="parent"
                 location="left"
-                :text="`Update to ${latestRelease}`"
+                :text="`Update to ${goalVersion?.latest}`"
               />
             </v-btn>
-            <Releases
-              class="ml-2"
-              :algowin="ALGOWIN"
-              @release="updateRelease"
-            />
+            <Releases class="ml-2" @release="updateRelease" />
           </v-col>
         </v-row>
         <v-row align="center">
@@ -55,8 +51,8 @@
 </template>
 
 <script lang="ts" setup>
-import AWN from "@/services/api";
-import { delay } from "@/utils";
+import FUNC from "@/services/api";
+import { GoalVersion } from "@/types";
 import { mdiClose } from "@mdi/js";
 import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
@@ -77,10 +73,7 @@ const show = computed({
   },
 });
 
-const ALGOWIN = "https://api.github.com/repos/GalaxyPay/algowin";
-
-const goalVersion = ref();
-const latestRelease = ref();
+const goalVersion = ref<GoalVersion>();
 
 onBeforeMount(() => {
   getVersion();
@@ -88,20 +81,13 @@ onBeforeMount(() => {
 
 async function getVersion() {
   try {
-    const version = await AWN.api.get("goal/version");
-    goalVersion.value = version.data.substring(
-      version.data.indexOf("\n") + 1,
-      version.data.indexOf("dev") - 1
-    );
+    const version = await FUNC.api.get("goal/version");
+    goalVersion.value = version.data;
+    if (goalVersion.value?.installed) store.ready = true;
+    else updateLatest(true);
 
-    if (goalVersion.value) store.ready = true;
-
-    const latest = (await axios({ url: `${ALGOWIN}/releases/latest` })).data;
-    latestRelease.value = latest.name.substring(1, latest.name.indexOf("-"));
-
-    if (!goalVersion.value) updateLatest(true);
-
-    store.updateAvailable = latestRelease.value !== goalVersion.value;
+    store.updateAvailable =
+      goalVersion.value?.latest !== goalVersion.value?.installed;
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -121,9 +107,7 @@ async function updateRelease(release: string) {
   try {
     store.downloading = true;
     store.stopNodeServices = true;
-    await delay(500);
-    store.ready = false;
-    await AWN.api.post("goal/update", { name: release });
+    await FUNC.api.post("goal/update", { name: release });
     await getVersion();
     store.stopNodeServices = false;
   } catch (err: any) {

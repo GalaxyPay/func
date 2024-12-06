@@ -6,8 +6,8 @@ namespace RetiService
     public class Worker(ILogger<Worker> logger) : BackgroundService
     {
         private readonly ILogger<Worker> _logger = logger;
-        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti\reti.exe");
-        private readonly string _envPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\reti\.env");
+        private readonly string _exePath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"func\reti\reti.exe");
+        private readonly string _envPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"func\reti\.env");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

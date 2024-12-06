@@ -1,5 +1,9 @@
 <template>
-  <v-container v-show="store.ready" fluid :max-width="1200">
+  <v-container
+    v-show="store.ready && !store.downloading"
+    fluid
+    :max-width="1200"
+  >
     <v-card>
       <v-tabs
         :model-value="tab"

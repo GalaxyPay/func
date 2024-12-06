@@ -7,7 +7,7 @@ namespace NodeService
     {
         private readonly ILogger<Worker> _logger = logger;
         private readonly ArgsService _argsService = argsService;
-        private readonly string _appData = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"AvmWinNode\");
+        private readonly string _appData = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), @"func\");
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -15,7 +15,7 @@ namespace NodeService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = _appData + "algod.exe",
+                    FileName = _appData + @"bin\algod.exe",
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     Arguments = "-d " + _appData + _argsService.GetArgs()[0]

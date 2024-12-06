@@ -266,7 +266,7 @@ const headers = computed<any[]>(() => {
 const required = (v: number) => !!v || v === 0 || "Required";
 
 const baseUrl = computed(
-  () => `http://localhost:${props.port}/v2/participation`
+  () => `http://${location.hostname}:${props.port}/v2/participation`
 );
 
 const partStats = ref<any>({});

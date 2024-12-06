@@ -1,0 +1,13 @@
+[Unit]
+Description=Algorand daemon for mainnet in /usr/share/func/algorand
+After=network.target
+AssertPathExists=/usr/share/func/algorand
+
+[Service]
+ExecStart=/usr/share/func/bin/algod -d /usr/share/func/algorand
+Restart=always
+RestartSec=5s
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target

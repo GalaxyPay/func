@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import AWN from "@/services/api";
+import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
@@ -124,44 +124,46 @@ const status = computed(() =>
 
 async function createNode() {
   loading.value = true;
-  await AWN.api.post(props.name);
+  await FUNC.api.post(props.name);
   store.setSnackbar("Service Created. Starting...", "success", -1);
   await startNode();
 }
 
 async function startNode() {
   loading.value = true;
-  await AWN.api.put(`${props.name}/start`);
+  await FUNC.api.put(`${props.name}/start`);
   await finish("Node Started");
 }
 
 async function stopNode() {
   loading.value = true;
-  await AWN.api.put(`${props.name}/stop`);
+  await FUNC.api.put(`${props.name}/stop`);
   await finish("Node Stopped");
 }
 
 async function deleteNode() {
   loading.value = true;
-  await AWN.api.delete(props.name);
+  await FUNC.api.delete(props.name);
   await finish("Service Removed");
 }
 
 async function startReti() {
   loading.value = true;
-  await AWN.api.put("reti/start");
+  store.stoppingReti = false;
+  await FUNC.api.put("reti/start");
   await finish("Reti Started");
 }
 
 async function stopReti() {
   loading.value = true;
-  await AWN.api.put("reti/stop");
+  store.stoppingReti = true;
+  await FUNC.api.put("reti/stop");
   await finish("Reti Stopped");
 }
 
 async function deleteReti() {
   loading.value = true;
-  await AWN.api.delete("reti");
+  await FUNC.api.delete("reti");
   await finish("Reti Removed");
 }
 
@@ -179,7 +181,7 @@ async function resetNode() {
   )
     return;
   loading.value = true;
-  await AWN.api.post(`${props.name}/reset`);
+  await FUNC.api.post(`${props.name}/reset`);
   loading.value = false;
   store.setSnackbar("Data Deleted", "success");
 }

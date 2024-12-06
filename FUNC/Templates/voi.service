@@ -1,0 +1,13 @@
+[Unit]
+Description=Algorand daemon for voimain in /usr/share/func/voi
+After=network.target
+AssertPathExists=/usr/share/func/voi
+
+[Service]
+ExecStart=/usr/share/func/bin/algod -d /usr/share/func/voi
+Restart=always
+RestartSec=5s
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target

@@ -2,7 +2,7 @@
   <v-app-bar app :order="0">
     <NodeIcon color="currentColor" :width="30" class="ml-3 text-primary" />
     <div class="ml-2 text-subtitle-1 text-blu">
-      AvmWinNode
+      FUNC
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
