@@ -1,0 +1,7 @@
+Package: func
+Version: 2.0.0
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: Andy Funk <acfunk@gmail.com>
+Description: Algorand Node Manager

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace AvmWinNode.Models
+namespace FUNC.Models
 {
     public class Catchup
     {

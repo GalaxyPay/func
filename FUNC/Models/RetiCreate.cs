@@ -1,4 +1,4 @@
-﻿namespace AvmWinNode.Models
+﻿namespace FUNC.Models
 {
     public class RetiCreate
     {

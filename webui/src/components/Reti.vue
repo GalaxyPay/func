@@ -61,7 +61,7 @@
 </template>
 
 <script lang="ts" setup>
-import AWN from "@/services/api";
+import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -120,8 +120,8 @@ ALGO_ALGOD_TOKEN=${props.token}
 RETI_VALIDATORID=${validatorId.value}
 RETI_NODENUM=${nodeNum.value}
 MANAGER_MNEMONIC=${mnemonic.value}`;
-  await AWN.api.post("reti", { env });
-  await AWN.api.put("reti/start");
+  await FUNC.api.post("reti", { env });
+  await FUNC.api.put("reti/start");
   show.value = false;
 }
 </script>

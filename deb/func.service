@@ -1,0 +1,11 @@
+[Unit]
+Description=FUNC Daemon
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/func
+ExecStart=/opt/func/FUNC
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

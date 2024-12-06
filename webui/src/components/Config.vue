@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts" setup>
-import AWN from "@/services/api";
+import FUNC from "@/services/api";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -120,12 +120,12 @@ const loading = ref(false);
 
 async function saveConfig() {
   loading.value = true;
-  await AWN.api.put(`${props.name}/config`, {
+  await FUNC.api.put(`${props.name}/config`, {
     json: JSON.stringify(config.value, null, 4),
   });
   if (props.running) {
-    await AWN.api.put(`${props.name}/stop`);
-    await AWN.api.put(`${props.name}/start`);
+    await FUNC.api.put(`${props.name}/stop`);
+    await FUNC.api.put(`${props.name}/start`);
   }
   show.value = false;
   loading.value = false;
@@ -139,7 +139,7 @@ function copyVal(val: string | number | bigint | undefined) {
 
 watch(show, async (val) => {
   if (val) {
-    const resp = await AWN.api.get(`${props.name}/config`);
+    const resp = await FUNC.api.get(`${props.name}/config`);
     config.value = resp.data;
   }
 });

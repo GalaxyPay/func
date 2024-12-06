@@ -1,5 +1,5 @@
 import algosdk from "algosdk";
-import AWN from "./services/api";
+import FUNC from "./services/api";
 
 export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,7 +58,7 @@ export async function checkCatchup(algodStatus: any, name: string) {
     const isCatchingUp = algodStatus?.["catchpoint"] === catchpoint;
     const needsCatchUp = Number(round) - algodStatus?.["last-round"] > 20000;
     if (!isCatchingUp && needsCatchUp) {
-      await AWN.api.post(`${name}/catchup`, { round, label });
+      await FUNC.api.post(`${name}/catchup`, { round, label });
     }
   }
 }

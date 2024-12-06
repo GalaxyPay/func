@@ -32,3 +32,8 @@ export interface Peer {
   network: string;
   outgoing: boolean;
 }
+
+export interface GoalVersion {
+  installed: string;
+  latest: string;
+}

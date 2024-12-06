@@ -17,16 +17,15 @@
 <script setup lang="ts">
 import { mdiChevronDown } from "@mdi/js";
 
-const props = defineProps({
-  algowin: { type: String, required: true },
-});
 const emit = defineEmits(["release"]);
+
+const GOALGOWIN = "https://api.github.com/repos/GalaxyPay/go-algo-win";
 
 const store = useAppStore();
 const releases = ref();
 
 onMounted(async () => {
-  releases.value = (await axios({ url: `${props.algowin}/releases` })).data.map(
+  releases.value = (await axios({ url: `${GOALGOWIN}/releases` })).data.map(
     (t: any) => t.name
   );
 });
