@@ -79,6 +79,8 @@ namespace FUNC.Controllers
                         release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
                     }
                     url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
+                    if (url == null) return BadRequest();
+                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
                 }
                 else if (IsLinux())
                 {
@@ -91,11 +93,10 @@ namespace FUNC.Controllers
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
                     url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
                         && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    if (url == null) return BadRequest();
+                    await Utils.ExecCmd($"wget -L -o {Utils.dataPath}/node.tar.gz {url}");
                 }
 
-                if (url == null) return BadRequest();
-
-                await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
                 await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/node.tar.gz -C {Utils.dataPath} bin");
                 await Utils.ExecCmd($"rm {Utils.dataPath}/node.tar.gz");
 
