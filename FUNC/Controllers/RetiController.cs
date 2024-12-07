@@ -40,7 +40,7 @@ namespace FUNC.Controllers
                     {
                         var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl;
                         if (url == null) return BadRequest();
-                        await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.tar.gz {url}");
+                        await Utils.ExecCmd($"wget -L -o {Utils.dataPath}/reti.tar.gz {url}");
                         await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
                     }
                 }
@@ -108,7 +108,7 @@ namespace FUNC.Controllers
                 {
                     var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl;
                     if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.tar.gz {url}");
+                    await Utils.ExecCmd($"wget -L -o {Utils.dataPath}/reti.tar.gz {url}");
                     await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Utils.dataPath} reti");
                 }
 
