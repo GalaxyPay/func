@@ -74,6 +74,7 @@ const show = computed({
 });
 
 const goalVersion = ref<GoalVersion>();
+let init = false;
 
 onBeforeMount(() => {
   getVersion();
@@ -84,7 +85,14 @@ async function getVersion() {
     const version = await FUNC.api.get("goal/version");
     goalVersion.value = version.data;
     if (goalVersion.value?.installed) store.ready = true;
-    else updateLatest(true);
+    else {
+      if (!init) {
+        init = true;
+        updateLatest(true);
+      } else {
+        throw Error("Download Failed");
+      }
+    }
 
     store.updateAvailable =
       goalVersion.value?.latest !== goalVersion.value?.installed;
