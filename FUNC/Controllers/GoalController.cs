@@ -94,7 +94,7 @@ namespace FUNC.Controllers
                     url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
                         && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
                     if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"wget -L -o {Utils.dataPath}/node.tar.gz {url}");
+                    await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/node.tar.gz {url}");
                 }
 
                 await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/node.tar.gz -C {Utils.dataPath} bin");
