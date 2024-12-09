@@ -1,3 +1,4 @@
 systemctl daemon-reload
 systemctl start func
 systemctl restart func
+systemctl enable func
