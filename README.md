@@ -23,7 +23,7 @@ When updating a previous installation, the installer will recommend to let it au
 After downloading the `.deb` file to your machine, run
 
 ```sh
-sudo dpkg -i func_<version>_amd64.deb
+sudo dpkg -i func_<version>_linux-<architecture>.deb
 ```
 
 Then visit the locally hosted webpage at <http://localhost:3536> (for remote access see notes below)
