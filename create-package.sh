@@ -1,6 +1,6 @@
 rm -r Output
 
-PKG=Output/func_2.0.5_amd64
+PKG=Output/func_2.0.5_linux-$1
 
 mkdir -p $PKG/lib/systemd/system
 mkdir -p $PKG/opt/func
@@ -10,7 +10,7 @@ cp deb/func.service $PKG/lib/systemd/system/
 cp -r publish/* $PKG/opt/func
 
 mkdir $PKG/DEBIAN
-cp deb/control deb/postinst $PKG/DEBIAN
+cp deb/$1/control deb/postinst $PKG/DEBIAN
 
 chmod 0755 $PKG/DEBIAN/postinst
 

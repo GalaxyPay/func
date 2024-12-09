@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
@@ -22,27 +23,7 @@ namespace FUNC.Controllers
 
                 if (!System.IO.File.Exists(exePath))
                 {
-                    string workspaceName = "algorandfoundation";
-                    string repositoryName = "reti";
-                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-                    var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-
-                    Directory.CreateDirectory(Path.Combine(Utils.dataPath, "reti"));
-
-                    if (IsWindows())
-                    {
-                        var url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("windows-amd64.zip"))?.BrowserDownloadUrl;
-                        if (url == null) return BadRequest();
-                        await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.zip {url}");
-                        await Utils.ExecCmd($"tar -xf {Utils.dataPath}/reti.zip -C {Path.Combine(Utils.dataPath, "reti")}");
-                    }
-                    else if (IsLinux())
-                    {
-                        var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl;
-                        if (url == null) return BadRequest();
-                        await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/reti.tar.gz {url}");
-                        await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
-                    }
+                    await DownloadExtractReti();
                 }
 
                 if (!System.IO.File.Exists(exePath))
@@ -88,30 +69,7 @@ namespace FUNC.Controllers
             try
             {
                 await StopRetiService();
-
-                string workspaceName = "algorandfoundation";
-                string repositoryName = "reti";
-                var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-
-                var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-
-                Directory.CreateDirectory(Path.Combine(Utils.dataPath, "reti"));
-
-                if (IsWindows())
-                {
-                    var url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("windows-amd64.zip"))?.BrowserDownloadUrl;
-                    if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.zip {url}");
-                    await Utils.ExecCmd($"tar -xf {Utils.dataPath}/reti.zip -C {Utils.dataPath} reti");
-                }
-                else if (IsLinux())
-                {
-                    var url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl;
-                    if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/reti.tar.gz {url}");
-                    await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Utils.dataPath} reti");
-                }
-
+                await DownloadExtractReti();
                 await StartRetiService();
                 return Ok();
             }
@@ -190,6 +148,40 @@ namespace FUNC.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        private static async Task DownloadExtractReti()
+        {
+            string workspaceName = "algorandfoundation";
+            string repositoryName = "reti";
+            var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+            var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+
+            Directory.CreateDirectory(Path.Combine(Utils.dataPath, "reti"));
+
+            if (IsWindows())
+            {
+                var url = (latest.Assets.FirstOrDefault(a => a.Name.EndsWith("windows-amd64.zip"))?.BrowserDownloadUrl)
+                    ?? throw new Exception("Binary Not Found");
+                await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.zip {url}");
+                await Utils.ExecCmd($"tar -xf {Utils.dataPath}/reti.zip -C {Path.Combine(Utils.dataPath, "reti")}");
+            }
+            else if (IsLinux())
+            {
+                string? url = null;
+                if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+                {
+                    url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-arm64.tar.gz"))?.BrowserDownloadUrl
+                        ?? throw new Exception("Binary Not Found");
+                }
+                else
+                {
+                    url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl
+                        ?? throw new Exception("Binary Not Found");
+                }
+                await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/reti.tar.gz {url}");
+                await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
             }
         }
     }

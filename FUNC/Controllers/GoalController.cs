@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
@@ -62,7 +63,6 @@ namespace FUNC.Controllers
         {
             try
             {
-                string? url = string.Empty;
                 if (IsWindows())
                 {
                     string workspaceName = "GalaxyPay";
@@ -78,7 +78,7 @@ namespace FUNC.Controllers
                     {
                         release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
                     }
-                    url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
+                    var url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
                     if (url == null) return BadRequest();
                     await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
                 }
@@ -91,8 +91,18 @@ namespace FUNC.Controllers
 
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                    url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
+
+                    string? url = null;
+                    if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+                    {
+                        url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-arm64")
                         && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    }
+                    else
+                    {
+                        url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
+                           && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    }
                     if (url == null) return BadRequest();
                     await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/node.tar.gz {url}");
                 }
