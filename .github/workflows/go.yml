@@ -64,7 +64,7 @@ jobs:
       - name: Create Package
         run: ./create-package.sh amd64
 
-      - name: Upload deb Artifact
+      - name: Upload amd64 Artifact
         uses: actions/upload-artifact@v4
         with:
           name: amd64-package
@@ -98,7 +98,7 @@ jobs:
       - name: Create Package
         run: ./create-package.sh arm64
 
-      - name: Upload deb Artifact
+      - name: Upload arm64 Artifact
         uses: actions/upload-artifact@v4
         with:
           name: arm64-package
@@ -155,12 +155,18 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [amd64-package, windows-setup]
+    needs: [amd64-package, arm64-package, windows-setup]
     steps:
-      - name: Download deb Artifact
+      - name: Download amd64 Artifact
         uses: actions/download-artifact@v4
         with:
           name: amd64-package
+          path: "Output"
+
+      - name: Download arm64 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: arm64-package
           path: "Output"
 
       - name: Download win Artifact
