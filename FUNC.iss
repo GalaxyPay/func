@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "FUNC"
-#define MyAppVersion "2.0.6"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"

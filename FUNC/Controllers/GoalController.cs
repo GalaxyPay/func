@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
-using static System.Environment;
 using static System.OperatingSystem;
 
 namespace FUNC.Controllers

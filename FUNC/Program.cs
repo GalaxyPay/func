@@ -1,3 +1,4 @@
+using FUNC;
 using Microsoft.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,9 +8,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddWindowsService();
 builder.Services.AddSystemd();
-builder.WebHost.ConfigureKestrel(serverOptions =>
+builder.WebHost.ConfigureKestrel(options =>
 {
-    serverOptions.ListenAnyIP(3536);
+    options.ListenAnyIP(3536);
+    options.ListenAnyIP(3537, listenOptions =>
+    {
+        listenOptions.UseHttps(X509.Generate(subject: "FUNC"));
+    });
 });
 
 var app = builder.Build();
