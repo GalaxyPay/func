@@ -2,3 +2,4 @@ systemctl daemon-reload
 systemctl start func
 systemctl restart func
 systemctl enable func
+echo "FUNC App:    http://localhost:3536"

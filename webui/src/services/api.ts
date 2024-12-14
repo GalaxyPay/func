@@ -1,6 +1,6 @@
 const FUNC = {
   get api() {
-    return axios.create({ baseURL: `http://${location.hostname}:3536` });
+    return axios.create({ baseURL: location.origin });
   },
 };
 
