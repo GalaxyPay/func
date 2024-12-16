@@ -43,6 +43,10 @@ namespace FUNC
             {
                 sc = await Utils.ExecCmd($"systemctl show {name} --property=LoadState --property=ActiveState");
             }
+            else if (IsMacOS())
+            {
+                sc = await Utils.ExecCmd($"launchctl list | grep -i func.{name} || echo none");
+            }
 
             string serviceStatus = Utils.ParseServiceStatus(sc);
 
@@ -68,6 +72,10 @@ namespace FUNC
                 else if (IsLinux())
                 {
                     retiQuery = await Utils.ExecCmd($"systemctl show reti --property=LoadState --property=ActiveState");
+                }
+                else if (IsMacOS())
+                {
+                    sc = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
                 }
 
                 string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
@@ -125,6 +133,12 @@ namespace FUNC
                 await Utils.ExecCmd($"systemctl daemon-reload");
                 await Utils.ExecCmd($"systemctl enable {name}");
             }
+            else if (IsMacOS())
+            {
+                string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.{name}.plist");
+                await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
+                await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
+            }
         }
 
         public static async Task ResetData(string name)
@@ -153,6 +167,12 @@ namespace FUNC
                 if (cmd == "delete") await Utils.ExecCmd($"rm /lib/systemd/system/{name}.service");
                 else await Utils.ExecCmd($"systemctl {cmd} {name}");
                 await Utils.ExecCmd($"systemctl daemon-reload");
+            }
+            else if (IsMacOS())
+            {
+                if (cmd == "start") await Utils.ExecCmd($"launchctl kickstart system/func.{name}");
+                else if (cmd == "stop") await Utils.ExecCmd($"launchctl kill 9 system/func.{name}");
+                else if (cmd == "delete") await Utils.ExecCmd($"launchctl bootout system /Library/LaunchDaemons/func.{name}.plist");
             }
         }
 

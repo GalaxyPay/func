@@ -98,6 +98,7 @@
 <script setup lang="ts">
 import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
+import { delay } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
 
@@ -132,6 +133,7 @@ async function createNode() {
 async function startNode() {
   loading.value = true;
   await FUNC.api.put(`${props.name}/start`);
+  await delay(500);
   await finish("Node Started");
 }
 

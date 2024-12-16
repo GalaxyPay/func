@@ -38,7 +38,7 @@ namespace FUNC.Controllers
                     workspaceName = "GalaxyPay";
                     repositoryName = "go-algo-win";
                 }
-                else if (IsLinux())
+                else if (IsLinux() || IsMacOS())
                 {
                     workspaceName = "algorand";
                     repositoryName = "go-algorand";
@@ -104,6 +104,21 @@ namespace FUNC.Controllers
                     }
                     if (url == null) return BadRequest();
                     await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/node.tar.gz {url}");
+                }
+                else if (IsMacOS())
+                {
+                    if (model.Name != "latest") return BadRequest("Custom versions not supported on MacOS");
+
+                    string workspaceName = "algorand";
+                    string repositoryName = "go-algorand";
+
+                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+                    var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+
+                    string? url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin")
+                       && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    if (url == null) return BadRequest();
+                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
                 }
 
                 await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/node.tar.gz -C {Utils.dataPath} bin");
