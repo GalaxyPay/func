@@ -53,6 +53,12 @@ namespace FUNC.Controllers
                     await Utils.ExecCmd($"systemctl daemon-reload");
                     await Utils.ExecCmd($"systemctl enable reti");
                 }
+                else if (IsMacOS())
+                {
+                    string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.reti.plist");
+                    await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
+                    await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
+                }
 
                 return Ok();
             }
@@ -94,6 +100,10 @@ namespace FUNC.Controllers
                     await Utils.ExecCmd($"systemctl start reti");
                     await Utils.ExecCmd($"systemctl daemon-reload");
                 }
+                else if (IsMacOS())
+                {
+                    await Utils.ExecCmd($"launchctl kickstart system/func.reti");
+                }
 
                 return Ok();
             }
@@ -118,6 +128,10 @@ namespace FUNC.Controllers
                     await Utils.ExecCmd($"systemctl stop reti");
                     await Utils.ExecCmd($"systemctl daemon-reload");
                 }
+                else if (IsMacOS())
+                {
+                    await Utils.ExecCmd($"launchctl kill 9 system/func.reti");
+                }
 
                 return Ok();
             }
@@ -141,6 +155,10 @@ namespace FUNC.Controllers
                 {
                     await Utils.ExecCmd($"rm /lib/systemd/system/reti.service");
                     await Utils.ExecCmd($"systemctl daemon-reload");
+                }
+                else if (IsMacOS())
+                {
+                    await Utils.ExecCmd($"launchctl bootout system/func.reti");
                 }
 
                 return Ok();
@@ -172,15 +190,31 @@ namespace FUNC.Controllers
                 string? url = null;
                 if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
                 {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-arm64.tar.gz"))?.BrowserDownloadUrl
+                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("linux-arm64.tar.gz"))?.BrowserDownloadUrl
                         ?? throw new Exception("Binary Not Found");
                 }
                 else
                 {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.Contains("linux-amd64.tar.gz"))?.BrowserDownloadUrl
+                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("linux-amd64.tar.gz"))?.BrowserDownloadUrl
                         ?? throw new Exception("Binary Not Found");
                 }
                 await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/reti.tar.gz {url}");
+                await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
+            }
+            else if (IsMacOS())
+            {
+                string? url = null;
+                if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+                {
+                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("darwin-arm64.tar.gz"))?.BrowserDownloadUrl
+                        ?? throw new Exception("Binary Not Found");
+                }
+                else
+                {
+                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("darwin-amd64.tar.gz"))?.BrowserDownloadUrl
+                        ?? throw new Exception("Binary Not Found");
+                }
+                await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.tar.gz {url}");
                 await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
             }
         }

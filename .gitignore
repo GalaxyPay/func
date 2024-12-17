@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Inno Setup
 Output/
+
+# MacOS
+.DS_Store
