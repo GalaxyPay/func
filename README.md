@@ -116,6 +116,10 @@ Here's how to do it:
 
 ## Build (for Developers)
 
-You can fork the repo and let Github Actions do the build for you, or you can run [LocalPublish.ps1](LocalPublish.ps1) for Windows, or [local-publish.sh](local-publish.sh) and [create-package.sh](create-package.sh) for Linux.
+You can fork the repo and let Github Actions do the build for you, or you can run:
+
+- [LocalPublish.ps1](LocalPublish.ps1) (Windows)
+- [local-publish.sh](local-publish.sh) and [create-package-pkg.sh](create-package-pkg.sh) (Mac)
+- [local-publish.sh](local-publish.sh) and [create-package-deb.sh](create-package-deb.sh) (Linux)
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
