@@ -5,11 +5,11 @@
         <key>Label</key>
         <string>func.algorand</string>
         <key>Program</key>
-        <string>/usr/local/func/bin/algod</string>
+        <string>/usr/local/share/func/bin/algod</string>
         <key>EnvironmentVariables</key>
         <dict>
             <key>ALGORAND_DATA</key>
-            <string>/usr/local/func/algorand</string>
+            <string>/usr/local/share/func/algorand</string>
         </dict>
         <key>RunAtLoad</key>
         <true/>

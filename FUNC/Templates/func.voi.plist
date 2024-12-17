@@ -5,11 +5,11 @@
         <key>Label</key>
         <string>func.voi</string>
         <key>Program</key>
-        <string>/usr/local/func/bin/algod</string>
+        <string>/usr/local/share/func/bin/algod</string>
         <key>EnvironmentVariables</key>
         <dict>
             <key>ALGORAND_DATA</key>
-            <string>/usr/local/func/voi</string>
+            <string>/usr/local/share/func/voi</string>
         </dict>
         <key>RunAtLoad</key>
         <true/>
