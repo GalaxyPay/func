@@ -172,7 +172,7 @@ namespace FUNC
             {
                 if (cmd == "start") await Utils.ExecCmd($"launchctl kickstart system/func.{name}");
                 else if (cmd == "stop") await Utils.ExecCmd($"launchctl kill 9 system/func.{name}");
-                else if (cmd == "delete") await Utils.ExecCmd($"launchctl bootout system /Library/LaunchDaemons/func.{name}.plist");
+                else if (cmd == "delete") await Utils.ExecCmd($"launchctl bootout system/func.{name}");
             }
         }
 

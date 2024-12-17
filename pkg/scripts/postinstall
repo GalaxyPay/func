@@ -1,0 +1,8 @@
+#!/bin/sh
+mkdir -p /usr/local/func
+cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
+launchctl bootstrap system /Library/LaunchDaemons/func.api.plist
+launchctl kickstart -k system/func.api
+sleep 2
+open http://localhost:3536
+exit 0

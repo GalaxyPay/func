@@ -158,7 +158,7 @@ namespace FUNC.Controllers
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd($"launchctl bootout system /Library/LaunchDaemons/func.reti.plist");
+                    await Utils.ExecCmd($"launchctl bootout system/func.reti");
                 }
 
                 return Ok();
