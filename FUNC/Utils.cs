@@ -6,7 +6,7 @@ namespace FUNC
 {
     public class Utils
     {
-        public static readonly string dataPath = IsMacOS() ? "/usr/local/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
+        public static readonly string dataPath = IsMacOS() ? "/usr/local/share/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
 
         public static string Cap(string name)
         {
