@@ -20,6 +20,21 @@ The code is open-source so you can review it yourself or have a trusted friend d
 
 When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
 
+### MacOS
+
+After downloading the `.pkg` file to your machine, run
+
+```sh
+sudo installer -pkg func_<version>_darwin-<architecture>.pkg -target /
+```
+
+If instead you wish to install the package by double-clicking the `.pkg` file , you will have to follow [these instuctions](https://support.apple.com/guide/mac-help/apple-cant-check-app-for-malicious-software-mchleab3a043/mac) for bypassing unsigned packages:
+
+1. On your Mac, choose Apple menu > System Settings, then click Privacy & Security in the sidebar. (You may need to scroll down.)
+2. Go to Security, then click Open.
+3. Click Open Anyway. (This button is available for about an hour after you try to open the app.)
+4. Enter your login password, then click OK.
+
 ### Linux
 
 After downloading the `.deb` file to your machine, run
