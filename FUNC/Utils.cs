@@ -6,7 +6,7 @@ namespace FUNC
 {
     public class Utils
     {
-        public static readonly string dataPath = Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
+        public static readonly string dataPath = IsMacOS() ? "/usr/local/share/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
 
         public static string Cap(string name)
         {
@@ -22,7 +22,7 @@ namespace FUNC
                 p.StartInfo.FileName = "cmd.exe";
                 p.StartInfo.Arguments = "/C " + cmd;
             }
-            else if (IsLinux())
+            else if (IsLinux() || IsMacOS())
             {
                 p.StartInfo.FileName = "sh";
                 p.StartInfo.Arguments = $"-c \"{cmd}\"";
@@ -49,6 +49,12 @@ namespace FUNC
                 if (sc.Contains("not-found")) { status = "Not Found"; }
                 else if (sc.Contains("=inactive")) { status = "Stopped"; }
                 else if (sc.Contains("=active")) { status = "Running"; }
+            }
+            else if (IsMacOS())
+            {
+                if (sc.StartsWith("none")) { status = "Not Found"; }
+                else if (sc.StartsWith("-")) { status = "Stopped"; }
+                else { status = "Running"; }
             }
             return status;
         }

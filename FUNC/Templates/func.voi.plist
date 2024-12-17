@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "<http://www.apple.com/DTDs/PropertyList$>
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>func.voi</string>
+        <key>Program</key>
+        <string>/usr/local/func/bin/algod</string>
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>ALGORAND_DATA</key>
+            <string>/usr/local/func/voi</string>
+        </dict>
+        <key>RunAtLoad</key>
+        <true/>
+    </dict>
+</plist>

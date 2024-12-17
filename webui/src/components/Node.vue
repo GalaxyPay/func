@@ -409,6 +409,7 @@ watch(
     if (!val && paused) {
       paused = false;
       await FUNC.api.put(`${props.name}/start`);
+      await delay(500);
       getNodeStatus();
     }
   }
