@@ -1,6 +1,6 @@
 {
   "name": "func-webui",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
