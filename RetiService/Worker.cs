@@ -18,7 +18,7 @@ namespace RetiService
                     FileName = _exePath,
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-n fnet -e " + _envPath + " d"
+                    Arguments = "-n mainnet -e " + _envPath + " d"
                 }
             };
 

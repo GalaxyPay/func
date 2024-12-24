@@ -31,20 +31,6 @@
             <Releases class="ml-2" @release="updateRelease" />
           </v-col>
         </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Show FNet</div>
-            <div class="text-caption text-grey">Must install FNet binaries</div>
-          </v-col>
-          <v-col>
-            <v-switch
-              :model-value="showFNet"
-              class="d-flex"
-              style="justify-content: right"
-              @click.prevent="setFNet()"
-            />
-          </v-col>
-        </v-row>
       </v-container>
     </v-card>
   </v-dialog>
@@ -54,13 +40,11 @@
 import FUNC from "@/services/api";
 import { GoalVersion } from "@/types";
 import { mdiClose } from "@mdi/js";
-import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
 const emit = defineEmits(["close"]);
 
 const store = useAppStore();
-const { activeNetwork, setActiveNetwork } = useWallet();
 
 const show = computed({
   get() {
@@ -123,12 +107,5 @@ async function updateRelease(release: string) {
     store.setSnackbar(err.message, "error");
   }
   store.downloading = false;
-}
-
-const showFNet = computed(() => activeNetwork.value === "fnet");
-
-async function setFNet() {
-  setActiveNetwork((showFNet.value ? "mainnet" : "fnet") as NetworkId);
-  store.refresh++;
 }
 </script>

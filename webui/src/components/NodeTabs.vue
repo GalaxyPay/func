@@ -15,7 +15,6 @@
           :key="n.id"
           :text="n.title"
           :value="n.title"
-          v-show="showFNet ? n.id === 'fnet' : n.id !== 'fnet'"
         />
       </v-tabs>
       <v-window disabled :model-value="tab">
@@ -36,10 +35,7 @@ const { activeNetwork, setActiveNetwork } = useWallet();
 const networks = [
   { title: "Algorand", id: "mainnet" },
   { title: "Voi", id: "voimain" },
-  { title: "FNet", id: "fnet" },
 ];
-
-const showFNet = computed(() => activeNetwork.value === "fnet");
 
 const tab = computed(() => {
   return networks.find((n) => n.id === activeNetwork.value)?.title;

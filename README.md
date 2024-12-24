@@ -106,7 +106,6 @@ Here's how to do it:
   - 3536 AND 3537 - FUNC UI and API
   - 8081 - Algorand algod
   - 8082 - Voi algod
-  - 8083 - Fnet algod
 
 - The `algod` ports are configurable through the UI, and you only need to open the ones for the networks you use
 

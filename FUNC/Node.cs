@@ -58,7 +58,7 @@ namespace FUNC
                 P2p = p2p,
             };
 
-            if (name == "fnet")
+            if (name == "algorand")
             {
                 // Reti Status
                 string retiQuery = string.Empty;

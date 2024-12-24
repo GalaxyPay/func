@@ -10,8 +10,8 @@
       <v-form ref="form" @submit.prevent="startValidator()">
         <v-card-text>
           You first need to register your validator and pool(s) with
-          <a href="https://reti-fnet.nodely.io/" target="_blank">Reti</a>. There
-          you will receive a Validator ID, and configure your Node Number and
+          <a href="https://reti.nodely.io/" target="_blank">Reti</a>. There you
+          will receive a Validator ID, and configure your Node Number and
           Manager Address.
         </v-card-text>
         <v-container>
