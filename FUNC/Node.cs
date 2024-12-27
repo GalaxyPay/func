@@ -9,17 +9,17 @@ namespace FUNC
         private static async Task ExtractTemplate(string name)
         {
             string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.tar");
-            await Utils.ExecCmd($"tar -xf \"{templatePath}\" -C {Utils.dataPath}");
+            await Utils.ExecCmd($"tar -xf \"{templatePath}\" -C {Utils.nodeDataParent}");
         }
 
         public static async Task<NodeStatus> Get(string name)
         {
             int port = 0;
             string token = string.Empty;
-            try { token = File.ReadAllText(Path.Combine(Utils.dataPath, name, "algod.admin.token")); } catch { }
+            try { token = File.ReadAllText(Path.Combine(Utils.nodeDataParent, name, "algod.admin.token")); } catch { }
             bool p2p = false;
             string? configText = null;
-            try { configText = File.ReadAllText(Path.Combine(Utils.dataPath, name, "config.json")); } catch { }
+            try { configText = File.ReadAllText(Path.Combine(Utils.nodeDataParent, name, "config.json")); } catch { }
             if (configText != null)
             {
                 JObject config = JObject.Parse(configText);
@@ -62,7 +62,7 @@ namespace FUNC
             {
                 // Reti Status
                 string retiQuery = string.Empty;
-                string exePath = Path.Combine(Utils.dataPath, "reti", "reti");
+                string exePath = Path.Combine(Utils.appDataDir, "reti", "reti");
 
                 if (IsWindows())
                 {
@@ -116,45 +116,46 @@ namespace FUNC
 
         public static async Task CreateService(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (!Directory.Exists(Path.Combine(Utils.nodeDataParent, name)))
             {
                 await ExtractTemplate(name);
             }
 
             if (IsWindows())
             {
-                // TODO: make nodeDataDir dynamic
-                string nodeDataDir = Path.Combine(Utils.dataPath, name);
-                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \"{nodeDataDir}\"";
+                string nodeDataDir = Path.Combine(Utils.nodeDataParent, name);
+                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \\\"{nodeDataDir}\\\"";
                 await Utils.ExecCmd($"sc create \"{Utils.Cap(name)} Node\" binPath= \"{binPath}\" start= auto");
             }
             else if (IsLinux())
             {
                 string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.service");
-                await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
+                // TODO: format template node.service
+                // await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
                 await Utils.ExecCmd($"systemctl daemon-reload");
                 await Utils.ExecCmd($"systemctl enable {name}");
             }
             else if (IsMacOS())
             {
                 string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.{name}.plist");
-                await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
+                // TODO: format template func.node.plist
+                // await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
                 await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
             }
         }
 
         public static async Task ResetData(string name)
         {
-            if (Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (Directory.Exists(Path.Combine(Utils.nodeDataParent, name)))
             {
-                Directory.Delete(Path.Combine(Utils.dataPath, name), true);
+                Directory.Delete(Path.Combine(Utils.nodeDataParent, name), true);
             }
             await ExtractTemplate(name);
         }
 
         public static async Task<string> Catchup(string name, Catchup model)
         {
-            string cmd = $"{Path.Combine(Utils.dataPath, "bin", "goal")} node catchup {model.Round}#{model.Label} -d {Path.Combine(Utils.dataPath, name)}";
+            string cmd = $"{Path.Combine(Utils.appDataDir, "bin", "goal")} node catchup {model.Round}#{model.Label} -d {Path.Combine(Utils.nodeDataParent, name)}";
             return await Utils.ExecCmd(cmd);
         }
 
@@ -184,18 +185,18 @@ namespace FUNC
 
         public static async Task<string> GetConfig(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (!Directory.Exists(Path.Combine(Utils.nodeDataParent, name)))
             {
                 await ExtractTemplate(name);
             }
-            string configPath = Path.Combine(Utils.dataPath, name, "config.json");
+            string configPath = Path.Combine(Utils.nodeDataParent, name, "config.json");
             string config = File.ReadAllText(configPath);
             return config;
         }
 
         public static void SetConfig(string name, Config model)
         {
-            using StreamWriter writer = new(Path.Combine(Utils.dataPath, name, "config.json"), false);
+            using StreamWriter writer = new(Path.Combine(Utils.nodeDataParent, name, "config.json"), false);
             writer.Write(model.Json);
         }
     }

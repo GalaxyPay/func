@@ -1,0 +1,13 @@
+[Unit]
+Description=Algod for __NAME__
+After=network.target
+AssertPathExists=__PARENTDIR__/__NAME__
+
+[Service]
+ExecStart=/usr/share/func/bin/algod -d __PARENTDIR__/__NAME__
+Restart=always
+RestartSec=5s
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target
