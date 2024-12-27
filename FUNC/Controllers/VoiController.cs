@@ -141,5 +141,34 @@ namespace FUNC.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        // GET: voi/dir
+        [HttpGet("dir")]
+        public ActionResult<string> GetNodeDataDir()
+        {
+            try
+            {
+                return Utils.NodeDataParent(_name);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // PUT: voi/dir
+        [HttpPut("dir")]
+        public ActionResult<string> SetNodeDataDir(Dir model)
+        {
+            try
+            {
+                Node.SetDir(_name, model);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

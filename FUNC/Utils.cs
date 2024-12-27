@@ -7,8 +7,14 @@ namespace FUNC
     public class Utils
     {
         public static readonly string appDataDir = IsMacOS() ? "/usr/local/share/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
-        // TODO: make nodeDataParent dynamic
-        public static readonly string nodeDataParent = appDataDir;
+
+        public static string NodeDataParent(string name)
+        {
+            string nodeDataParent = appDataDir;
+            string path = Path.Combine(appDataDir, $"{name}.data");
+            try { nodeDataParent = File.ReadAllText(path); } catch { }
+            return nodeDataParent;
+        }
 
         public static string Cap(string name)
         {

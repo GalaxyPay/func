@@ -31,6 +31,11 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
+          title="Node Data Directory"
+          @click="showDataDir = true"
+          v-show="status === 'Not Found'"
+        />
+        <v-list-item
           title="Delete Node Data"
           base-color="error"
           @click="resetNode()"
@@ -86,6 +91,14 @@
         emit('getStatus');
       "
     />
+    <DataDir
+      :visible="showDataDir"
+      :name="name"
+      @close="
+        showDataDir = false;
+        emit('getStatus');
+      "
+    />
     <Reti
       :visible="showReti"
       :port="nodeStatus.port"
@@ -112,6 +125,7 @@ const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
 const showConfig = ref(false);
+const showDataDir = ref(false);
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
 

@@ -10,6 +10,7 @@ declare module 'vue' {
     AlgoIcon: typeof import('./components/AlgoIcon.vue')['default']
     AppBar: typeof import('./components/AppBar.vue')['default']
     Config: typeof import('./components/Config.vue')['default']
+    DataDir: typeof import('./components/DataDir.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     Manage: typeof import('./components/Manage.vue')['default']
     Node: typeof import('./components/Node.vue')['default']

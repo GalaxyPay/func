@@ -1,6 +1,6 @@
 const FUNC = {
   get api() {
-    return axios.create({ baseURL: location.origin });
+    return axios.create({ baseURL: "http://localhost:3536" });
   },
 };
 

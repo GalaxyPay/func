@@ -235,7 +235,7 @@ const runningColor = computed(() =>
 );
 
 const syncedColor = computed(() =>
-  algodStatus.value?.["last-round"] == 0
+  algodStatus.value?.["last-round"] == 0 && !isSyncing.value
     ? "red"
     : isSyncing.value && !generatingKey.value
     ? "warning"
