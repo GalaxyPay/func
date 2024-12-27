@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "FUNC"
-#define MyAppVersion "2.2.3"
+#define MyAppVersion "3.0.0"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"
@@ -44,7 +44,7 @@ Name: "{commondesktop}\FUNC"; Filename: "http://localhost:3536/"; IconFilename: 
 [Run]
 Filename: "sc.exe"; Parameters: "create FUNC binPath= ""{app}\FUNC.exe"" start= auto"
 Filename: "sc.exe"; Parameters: "start FUNC"
-Filename: "cmd.exe"; Parameters: "/c md {commonappdata}\FUNC\bin"
+Filename: "cmd.exe"; Parameters: "/c md {commonappdata}\FUNC"
 Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch FUNC"
 
 [UninstallRun]
