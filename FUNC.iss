@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "FUNC"
-#define MyAppVersion "2.2.2"
+#define MyAppVersion "2.2.3"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"
@@ -42,18 +42,9 @@ Name: "{group}\FUNC"; Filename: "http://localhost:3536/"; IconFilename: "{app}\n
 Name: "{commondesktop}\FUNC"; Filename: "http://localhost:3536/"; IconFilename: "{app}\node.ico"
 
 [Run]
-; Kill old services if installed
-Filename: "sc.exe"; Parameters: "stop AvmWinNode"
-Filename: "sc.exe"; Parameters: "delete AvmWinNode"
-
 Filename: "sc.exe"; Parameters: "create FUNC binPath= ""{app}\FUNC.exe"" start= auto"
 Filename: "sc.exe"; Parameters: "start FUNC"
-
-; Migrate old data
-Filename: "cmd.exe"; Parameters: "/c ren {commonappdata}\AvmWinNode FUNC"
 Filename: "cmd.exe"; Parameters: "/c md {commonappdata}\FUNC\bin"
-Filename: "cmd.exe"; Parameters: "/c move {commonappdata}\FUNC\* {commonappdata}\FUNC\bin"
-
 Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch FUNC"
 
 [UninstallRun]

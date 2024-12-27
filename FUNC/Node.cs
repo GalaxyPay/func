@@ -123,7 +123,9 @@ namespace FUNC
 
             if (IsWindows())
             {
-                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeService.exe")}\\\" {name}";
+                // TODO: make nodeDataDir dynamic
+                string nodeDataDir = Path.Combine(Utils.dataPath, name);
+                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \"{nodeDataDir}\"";
                 await Utils.ExecCmd($"sc create \"{Utils.Cap(name)} Node\" binPath= \"{binPath}\" start= auto");
             }
             else if (IsLinux())

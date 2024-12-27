@@ -50,14 +50,14 @@ namespace FUNC.Controllers
                 {
                     string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", "reti.service");
                     await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
-                    await Utils.ExecCmd($"systemctl daemon-reload");
-                    await Utils.ExecCmd($"systemctl enable reti");
+                    await Utils.ExecCmd("systemctl daemon-reload");
+                    await Utils.ExecCmd("systemctl enable reti");
                 }
                 else if (IsMacOS())
                 {
-                    string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.reti.plist");
+                    string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.reti.plist");
                     await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
-                    await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
+                    await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
                 }
 
                 return Ok();
@@ -115,7 +115,7 @@ namespace FUNC.Controllers
 
         // PUT: reti/stop
         [HttpPut("stop")]
-        public async Task<ActionResult<string>> StopRetiService()
+        public async Task<ActionResult> StopRetiService()
         {
             try
             {
@@ -143,7 +143,7 @@ namespace FUNC.Controllers
 
         // DELETE: reti
         [HttpDelete]
-        public async Task<ActionResult<string>> DeleteRetiService()
+        public async Task<ActionResult> DeleteRetiService()
         {
             try
             {
