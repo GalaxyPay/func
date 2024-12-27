@@ -223,14 +223,23 @@ const retiUpdate = computed(() => {
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
 
 const createdColor = computed(() =>
-  nodeStatus.value?.serviceStatus !== "Not Found" ? "success" : "red"
+  nodeStatus.value?.serviceStatus === "Unknown"
+    ? "grey"
+    : nodeStatus.value?.serviceStatus !== "Not Found"
+    ? "success"
+    : "red"
 );
+
 const runningColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Running" ? "success" : "red"
 );
 
 const syncedColor = computed(() =>
-  isSyncing.value && !generatingKey.value ? "warning" : runningColor.value
+  algodStatus.value?.["last-round"] == 0
+    ? "red"
+    : isSyncing.value && !generatingKey.value
+    ? "warning"
+    : runningColor.value
 );
 
 const participatingColor = computed(() =>
