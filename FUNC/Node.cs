@@ -129,17 +129,19 @@ namespace FUNC
             }
             else if (IsLinux())
             {
-                string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.service");
-                // TODO: format template node.service
-                // await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "node.service");
+                string template = File.ReadAllText(templatePath);
+                string service = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.nodeDataParent);
+                File.WriteAllText($"/lib/systemd/system/{name}.service", service);
                 await Utils.ExecCmd($"systemctl daemon-reload");
                 await Utils.ExecCmd($"systemctl enable {name}");
             }
             else if (IsMacOS())
             {
-                string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.{name}.plist");
-                // TODO: format template func.node.plist
-                // await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.node.plist");
+                string template = File.ReadAllText(templatePath);
+                string plist = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.nodeDataParent);
+                File.WriteAllText($"/Library/LaunchDaemons/func.{name}.plist", plist);
                 await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
             }
         }
