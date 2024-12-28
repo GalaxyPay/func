@@ -337,7 +337,7 @@ async function getNodeStatus() {
     !restartAttempted
   ) {
     restartAttempted = true;
-    console.error("reti not running - atempting restart");
+    console.error("reti not running - attempting restart");
     await FUNC.api.put("reti/stop");
     await FUNC.api.put("reti/start");
   }

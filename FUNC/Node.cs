@@ -75,7 +75,7 @@ namespace FUNC
                 }
                 else if (IsMacOS())
                 {
-                    sc = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
+                    retiQuery = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
                 }
 
                 string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
