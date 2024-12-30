@@ -21,6 +21,10 @@
         <v-window-item v-for="n in networks" :key="n.id" :value="n.title">
           <Node v-if="tab === n.title" :name="n.title" />
         </v-window-item>
+        <v-container class="text-caption text-grey text-center">
+          This dashboard does NOT need to be open for the node to run. It fact,
+          it is more efficient to close it when you are not using it.
+        </v-container>
       </v-window>
     </v-card>
   </v-container>
