@@ -1,9 +1,9 @@
 <template>
-  <v-dialog v-model="show" max-width="800" persistent>
+  <v-dialog v-model="show" max-width="500" persistent>
     <v-card :disabled="loading">
       <v-card-title> Change Data Directory </v-card-title>
       <v-container v-if="dataDir">
-        <v-text-field label="Data Directory" v-model.number="dataDir">
+        <v-text-field v-model.number="dataDir" density="comfortable">
           <template #append-inner> /{{ name.toLowerCase() }} </template>
         </v-text-field>
       </v-container>
