@@ -53,15 +53,20 @@ async function save() {
     show.value = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
   loading.value = false;
 }
 
 watch(show, async (val) => {
   if (val) {
-    const resp = await FUNC.api.get(`${props.name}/dir`);
-    dataDir.value = resp.data;
+    try {
+      const resp = await FUNC.api.get(`${props.name}/dir`);
+      dataDir.value = resp.data;
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(err?.response?.data || err.message, "error");
+    }
   }
 });
 </script>

@@ -80,7 +80,7 @@ async function getVersion() {
       store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
@@ -99,11 +99,11 @@ async function updateRelease(release: string) {
     store.stopNodeServices = true;
     await FUNC.api.post("goal/update", { name: release });
     await getVersion();
-    store.stopNodeServices = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
+  store.stopNodeServices = false;
   store.downloading = false;
 }
 </script>

@@ -119,15 +119,20 @@ const showDNSBootstrapID = computed({
 const loading = ref(false);
 
 async function saveConfig() {
-  loading.value = true;
-  await FUNC.api.put(`${props.name}/config`, {
-    json: JSON.stringify(config.value, null, 4),
-  });
-  if (props.running) {
-    await FUNC.api.put(`${props.name}/stop`);
-    await FUNC.api.put(`${props.name}/start`);
+  try {
+    loading.value = true;
+    await FUNC.api.put(`${props.name}/config`, {
+      json: JSON.stringify(config.value, null, 4),
+    });
+    if (props.running) {
+      await FUNC.api.put(`${props.name}/stop`);
+      await FUNC.api.put(`${props.name}/start`);
+    }
+    show.value = false;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
-  show.value = false;
   loading.value = false;
 }
 
@@ -139,8 +144,13 @@ function copyVal(val: string | number | bigint | undefined) {
 
 watch(show, async (val) => {
   if (val) {
-    const resp = await FUNC.api.get(`${props.name}/config`);
-    config.value = resp.data;
+    try {
+      const resp = await FUNC.api.get(`${props.name}/config`);
+      config.value = resp.data;
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(err?.response?.data || err.message, "error");
+    }
   }
 });
 </script>

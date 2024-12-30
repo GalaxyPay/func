@@ -72,6 +72,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close"]);
 
+const store = useAppStore();
 const required = (v: any) => !!v || "Required";
 const validMnemonic = () => !!mnemonicAcct.value?.addr || "Invalid Mnemonic";
 const form = ref();
@@ -113,15 +114,20 @@ const mnemonicHint = computed(
 );
 
 async function startValidator() {
-  const { valid } = await form.value.validate();
-  if (!valid) return;
-  const env = `ALGO_ALGOD_URL=http://localhost:${props.port}
+  try {
+    const { valid } = await form.value.validate();
+    if (!valid) return;
+    const env = `ALGO_ALGOD_URL=http://localhost:${props.port}
 ALGO_ALGOD_TOKEN=${props.token}
 RETI_VALIDATORID=${validatorId.value}
 RETI_NODENUM=${nodeNum.value}
 MANAGER_MNEMONIC=${mnemonic.value}`;
-  await FUNC.api.post("reti", { env });
-  await FUNC.api.put("reti/start");
-  show.value = false;
+    await FUNC.api.post("reti", { env });
+    await FUNC.api.put("reti/start");
+    show.value = false;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 </script>

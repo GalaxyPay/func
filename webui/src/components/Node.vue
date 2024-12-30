@@ -298,48 +298,53 @@ let restartAttempted = false;
 const peers = ref<Peer[]>();
 
 async function getNodeStatus() {
-  const resp = await FUNC.api.get(props.name);
-  nodeStatus.value = resp.data;
-  if (nodeStatus.value?.serviceStatus === "Running") {
-    if (algodClient.value) {
-      algodStatus.value = await algodClient.value?.status().do();
-      if (nodeStatus.value.p2p) {
-        try {
-          const response = (
-            await axios({
-              url: `http://${location.hostname}:${nodeStatus.value.port}/v2/status/peers`,
-              headers: { "X-Algo-Api-Token": nodeStatus.value.token },
-            })
-          ).data as Peer[];
-          peers.value = response.sort((a, b) =>
-            a.address.localeCompare(b.address)
-          );
-        } catch {}
-      } else {
-        peers.value = undefined;
+  try {
+    const resp = await FUNC.api.get(props.name);
+    nodeStatus.value = resp.data;
+    if (nodeStatus.value?.serviceStatus === "Running") {
+      if (algodClient.value) {
+        algodStatus.value = await algodClient.value?.status().do();
+        if (nodeStatus.value.p2p) {
+          try {
+            const response = (
+              await axios({
+                url: `http://${location.hostname}:${nodeStatus.value.port}/v2/status/peers`,
+                headers: { "X-Algo-Api-Token": nodeStatus.value.token },
+              })
+            ).data as Peer[];
+            peers.value = response.sort((a, b) =>
+              a.address.localeCompare(b.address)
+            );
+          } catch {}
+        } else {
+          peers.value = undefined;
+        }
       }
+      if (!refreshing) autoRefresh();
+    } else {
+      algodStatus.value = undefined;
+      peers.value = undefined;
     }
-    if (!refreshing) autoRefresh();
-  } else {
-    algodStatus.value = undefined;
-    peers.value = undefined;
-  }
-  if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
-    const releases = await axios({
-      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
-    });
-    retiLatest.value = releases.data.name;
-  }
-  if (
-    nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
-    nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
-    !store.stoppingReti &&
-    !restartAttempted
-  ) {
-    restartAttempted = true;
-    console.error("reti not running - attempting restart");
-    await FUNC.api.put("reti/stop");
-    await FUNC.api.put("reti/start");
+    if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
+      const releases = await axios({
+        url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
+      });
+      retiLatest.value = releases.data.name;
+    }
+    if (
+      nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
+      nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
+      !store.stoppingReti &&
+      !restartAttempted
+    ) {
+      restartAttempted = true;
+      console.error("reti not running - attempting restart");
+      await FUNC.api.put("reti/stop");
+      await FUNC.api.put("reti/start");
+    }
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
@@ -380,19 +385,29 @@ const catchupProgress = computed(() => {
 });
 
 async function updateReti() {
-  if (!retiUpdate.value) return;
-  loading.value = true;
-  await FUNC.api.post("reti/update");
-  await getNodeStatus();
+  try {
+    if (!retiUpdate.value) return;
+    loading.value = true;
+    await FUNC.api.post("reti/update");
+    await getNodeStatus();
+    store.setSnackbar("Reti Updated", "success");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
   loading.value = false;
-  store.setSnackbar("Reti Updated", "success");
 }
 
 watch(
   () => status.value,
-  (val) => {
+  async (val) => {
     if (val === "Syncing") {
-      checkCatchup(algodStatus.value, props.name);
+      try {
+        await checkCatchup(algodStatus.value, props.name);
+      } catch (err: any) {
+        console.error(err);
+        store.setSnackbar(err?.response?.data || err.message, "error");
+      }
     }
   }
 );
@@ -408,18 +423,23 @@ let paused = false;
 watch(
   () => store.stopNodeServices,
   async (val) => {
-    if (val && nodeStatus.value?.serviceStatus === "Running") {
-      paused = true;
-      FUNC.api.put(`${props.name}/stop`);
-      nodeStatus.value.serviceStatus = "Stopped";
-      algodStatus.value = undefined;
-      peers.value = undefined;
-    }
-    if (!val && paused) {
-      paused = false;
-      await FUNC.api.put(`${props.name}/start`);
-      await delay(500);
-      getNodeStatus();
+    try {
+      if (val && nodeStatus.value?.serviceStatus === "Running") {
+        paused = true;
+        await FUNC.api.put(`${props.name}/stop`);
+        nodeStatus.value.serviceStatus = "Stopped";
+        algodStatus.value = undefined;
+        peers.value = undefined;
+      }
+      if (!val && paused) {
+        paused = false;
+        await FUNC.api.put(`${props.name}/start`);
+        await delay(500);
+        getNodeStatus();
+      }
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(err?.response?.data || err.message, "error");
     }
   }
 );

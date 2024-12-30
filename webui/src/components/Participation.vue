@@ -435,7 +435,7 @@ async function generateKey() {
     });
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
   resetAll();
 }
@@ -463,7 +463,7 @@ async function registerKey(item: Participation) {
     await execAtc(atc, props.algodClient, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
   store.overlay = false;
 }
@@ -485,7 +485,7 @@ async function offline() {
       await execAtc(atc, props.algodClient, "Account Offline");
     } catch (err: any) {
       console.error(err);
-      store.setSnackbar(err.message, "error");
+      store.setSnackbar(err?.response?.data || err.message, "error");
     }
     store.overlay = false;
   }
@@ -553,7 +553,7 @@ async function getAlgoStats(addrs: string[]) {
     return stats;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 </script>

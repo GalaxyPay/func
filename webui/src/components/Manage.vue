@@ -139,49 +139,84 @@ const status = computed(() =>
 );
 
 async function createNode() {
-  loading.value = true;
-  await FUNC.api.post(props.name);
-  store.setSnackbar("Service Created. Starting...", "success", -1);
-  await startNode();
+  try {
+    loading.value = true;
+    await FUNC.api.post(props.name);
+    store.setSnackbar("Service Created. Starting...", "success", -1);
+    await startNode();
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function startNode() {
-  loading.value = true;
-  await FUNC.api.put(`${props.name}/start`);
-  await delay(500);
-  await finish("Node Started");
+  try {
+    loading.value = true;
+    await FUNC.api.put(`${props.name}/start`);
+    await delay(500);
+    await finish("Node Started");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function stopNode() {
-  loading.value = true;
-  await FUNC.api.put(`${props.name}/stop`);
-  await finish("Node Stopped");
+  try {
+    loading.value = true;
+    await FUNC.api.put(`${props.name}/stop`);
+    await finish("Node Stopped");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function deleteNode() {
-  loading.value = true;
-  await FUNC.api.delete(props.name);
-  await finish("Service Removed");
+  try {
+    loading.value = true;
+    await FUNC.api.delete(props.name);
+    await finish("Service Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function startReti() {
-  loading.value = true;
-  store.stoppingReti = false;
-  await FUNC.api.put("reti/start");
-  await finish("Reti Started");
+  try {
+    loading.value = true;
+    store.stoppingReti = false;
+    await FUNC.api.put("reti/start");
+    await finish("Reti Started");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function stopReti() {
-  loading.value = true;
-  store.stoppingReti = true;
-  await FUNC.api.put("reti/stop");
-  await finish("Reti Stopped");
+  try {
+    loading.value = true;
+    store.stoppingReti = true;
+    await FUNC.api.put("reti/stop");
+    await finish("Reti Stopped");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function deleteReti() {
-  loading.value = true;
-  await FUNC.api.delete("reti");
-  await finish("Reti Removed");
+  try {
+    loading.value = true;
+    await FUNC.api.delete("reti");
+    await finish("Reti Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function finish(message: string) {
@@ -197,9 +232,14 @@ async function resetNode() {
     )
   )
     return;
-  loading.value = true;
-  await FUNC.api.post(`${props.name}/reset`);
+  try {
+    loading.value = true;
+    await FUNC.api.post(`${props.name}/reset`);
+    store.setSnackbar("Data Deleted", "success");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
   loading.value = false;
-  store.setSnackbar("Data Deleted", "success");
 }
 </script>
