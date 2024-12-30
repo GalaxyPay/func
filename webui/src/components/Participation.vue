@@ -23,13 +23,48 @@
           <i>No participation keys on this node</i>
         </template>
         <template #bottom />
-        <template #[`item.active`]="{ item }">
-          <v-icon
-            v-show="isKeyActive(item)"
-            size="small"
-            color="success"
-            :icon="mdiCheck"
-          />
+        <template #[`item.status`]="{ item }">
+          <v-btn variant="flat" size="small">
+            <span>
+              <v-badge floating dot :color="keyStatus(item).color" />
+              <v-icon :icon="mdiChevronDown" class="ml-2" size="large" />
+            </span>
+            <v-tooltip
+              activator="parent"
+              location="top"
+              :text="keyStatus(item).text"
+            />
+            <v-menu activator="parent" bottom scrim>
+              <v-list density="compact">
+                <v-list-item
+                  :title="(isKeyActive(item) ? 'Re-' : '') + 'Register'"
+                  @click="registerKey(item)"
+                  v-show="
+                    !isKeyActive(item) || incentiveIneligible(item.address)
+                  "
+                />
+                <v-list-item
+                  title="Go Offline"
+                  @click="offline()"
+                  v-show="isKeyActive(item)"
+                />
+                <v-list-item
+                  title="Delete Key"
+                  @click="deleteKey(item.id)"
+                  v-show="!isKeyActive(item)"
+                />
+              </v-list>
+            </v-menu>
+          </v-btn>
+        </template>
+        <template #[`item.address`]="{ value }">
+          <span @click="copyVal(value)" class="pointer">
+            {{ formatAddr(value, 7) }}
+            <v-tooltip activator="parent" location="top" :text="value" />
+          </span>
+        </template>
+        <template #[`item.expire`]="{ item }">
+          {{ expireDt(Number(item.key.voteLastValid)) }}
         </template>
         <template #expanded-row="{ columns, item }">
           <tr style="background-color: #1acbf712">
@@ -117,41 +152,6 @@
             </td>
           </tr>
         </template>
-        <template #[`item.address`]="{ value }">
-          <span @click="copyVal(value)" class="pointer">
-            {{ formatAddr(value, 7) }}
-            <v-tooltip activator="parent" location="top" :text="value" />
-          </span>
-        </template>
-        <template #[`item.expire`]="{ item }">
-          {{ expireDt(Number(item.key.voteLastValid)) }}
-        </template>
-        <template #[`item.actions`]="{ item }">
-          <span>
-            <v-btn
-              variant="plain"
-              :icon="mdiHandshake"
-              color="currentColor"
-              :disabled="activeAccount?.address != item.address"
-              @click="registerKey(item)"
-            />
-            <v-tooltip
-              activator="parent"
-              location="top"
-              :text="isKeyActive(item) ? 'Unregister' : 'Register'"
-            />
-          </span>
-          <span>
-            <v-btn
-              variant="plain"
-              :icon="mdiDelete"
-              :disabled="isKeyActive(item)"
-              color="error"
-              @click="deleteKey(item.id)"
-            />
-            <v-tooltip activator="parent" location="top" text="Delete" />
-          </span>
-        </template>
       </v-data-table>
     </v-container>
     <v-dialog v-model="showGenerate" max-width="600" persistent>
@@ -212,11 +212,9 @@
 import { Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
 import {
-  mdiCheck,
+  mdiChevronDown,
   mdiClipboardOutline,
   mdiClose,
-  mdiDelete,
-  mdiHandshake,
   mdiPlus,
 } from "@mdi/js";
 import { useWallet } from "@txnlab/use-wallet-vue";
@@ -249,8 +247,7 @@ const validAddress = (v: string) =>
 
 const headers = computed<any[]>(() => {
   const val = [
-    { key: "data-table-expand" },
-    { title: "Active", key: "active", sortable: false, align: "center" },
+    { title: "Status", key: "status", sortable: false, align: "center" },
     { title: "Address", key: "address", sortable: false, align: "center" },
     {
       title: "Approx. Expire",
@@ -258,7 +255,7 @@ const headers = computed<any[]>(() => {
       sortable: false,
       align: "center",
     },
-    { title: "Actions", key: "actions", sortable: false, align: "center" },
+    { key: "data-table-expand" },
   ];
   return val;
 });
@@ -314,7 +311,7 @@ async function getKeys() {
         await Promise.all(
           activeKeys?.map(async (k) => {
             const stats = await axios({
-              url: `https://api.voirewards.com/proposers/index_main_2.php?action=walletDetails&wallet=${k.address}`,
+              url: `https://api.voirewards.com/proposers/index_main_3.php?action=walletDetails&wallet=${k.address}`,
             });
             partStats.value[k.address] = {
               proposals: stats.data.total_blocks,
@@ -362,6 +359,24 @@ function isKeyActive(item: Participation) {
     item.key.voteParticipationKey.toString() ==
     acctInfo.participation?.voteParticipationKey.toString()
   );
+}
+
+function incentiveIneligible(addr: string) {
+  if (!store.isIncentiveReady) return false;
+  const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
+  return (
+    (acctInfo?.amount || 0) >= 3 * 10 ** 10 &&
+    (acctInfo?.amount || 0) < 7 * 10 ** 16 &&
+    !acctInfo?.incentiveEligible
+  );
+}
+
+function keyStatus(item: Participation) {
+  return !isKeyActive(item)
+    ? { text: "Unregistered", color: "red" }
+    : incentiveIneligible(item.address)
+    ? { text: "Ineligible For Incentives", color: "warning" }
+    : { text: "Online", color: "success" };
 }
 
 async function deleteKey(id: string) {
@@ -427,13 +442,13 @@ async function generateKey() {
 
 async function registerKey(item: Participation) {
   try {
-    if (isKeyActive(item)) {
-      await offline();
-      return;
-    }
     store.overlay = true;
     const atc = new algosdk.AtomicTransactionComposer();
     const suggestedParams = await props.algodClient.getTransactionParams().do();
+    if (incentiveIneligible(item.address)) {
+      suggestedParams.flatFee = true;
+      suggestedParams.fee = 2 * 10 ** 6;
+    }
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       from: item.address,
       suggestedParams,

@@ -1,5 +1,5 @@
 // Utilities
-import { SnackBar } from "@/types";
+import { GoalVersion, SnackBar } from "@/types";
 import { defineStore } from "pinia";
 
 export const useAppStore = defineStore("app", {
@@ -18,8 +18,13 @@ export const useAppStore = defineStore("app", {
     updateAvailable: false,
     downloading: false,
     stoppingReti: false,
+    goalVersion: undefined as GoalVersion | undefined,
   }),
-  getters: {},
+  getters: {
+    isIncentiveReady(state) {
+      return Number(state.goalVersion?.installed.split(".")[0]) >= 4;
+    },
+  },
   actions: {
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color == "error") timeout = 15000;

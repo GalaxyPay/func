@@ -11,7 +11,7 @@
           <v-col>
             <div>Node Version</div>
             <div class="text-caption text-grey">
-              {{ goalVersion?.installed }}
+              {{ store.goalVersion?.installed }}
             </div>
           </v-col>
           <v-col class="text-right">
@@ -25,7 +25,7 @@
               <v-tooltip
                 activator="parent"
                 location="left"
-                :text="`Update to ${goalVersion?.latest}`"
+                :text="`Update to ${store.goalVersion?.latest}`"
               />
             </v-btn>
             <Releases class="ml-2" @release="updateRelease" />
@@ -38,7 +38,6 @@
 
 <script lang="ts" setup>
 import FUNC from "@/services/api";
-import { GoalVersion } from "@/types";
 import { mdiClose } from "@mdi/js";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
@@ -57,7 +56,6 @@ const show = computed({
   },
 });
 
-const goalVersion = ref<GoalVersion>();
 let init = false;
 
 onBeforeMount(() => {
@@ -67,8 +65,8 @@ onBeforeMount(() => {
 async function getVersion() {
   try {
     const version = await FUNC.api.get("goal/version");
-    goalVersion.value = version.data;
-    if (goalVersion.value?.installed) store.ready = true;
+    store.goalVersion = version.data;
+    if (store.goalVersion?.installed) store.ready = true;
     else {
       if (!init) {
         init = true;
@@ -79,7 +77,7 @@ async function getVersion() {
     }
 
     store.updateAvailable =
-      goalVersion.value?.latest !== goalVersion.value?.installed;
+      store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
