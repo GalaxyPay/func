@@ -60,7 +60,7 @@
             <v-badge floating dot class="mx-3 mb-1" :color="telemetryColor" />
             Telemetry
             <a :href="telemetryLink" target="_blank" v-if="telemetryEnabled">
-              <v-icon :icon="mdiOpenInNew" class="pb-1" />
+              <v-icon :icon="mdiOpenInNew" class="pb-1" color="primary" />
             </a>
           </div>
           <Manage
