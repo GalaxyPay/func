@@ -5,4 +5,4 @@ pkgbuild --root publish \
     --install-location /opt/func \
     --scripts pkg/scripts \
     --identifier func.app \
-    Output/func_2.2.3_darwin-$1.pkg
+    Output/func_3.0.0_darwin-$1.pkg

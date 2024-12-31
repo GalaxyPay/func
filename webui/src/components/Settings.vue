@@ -11,7 +11,7 @@
           <v-col>
             <div>Node Version</div>
             <div class="text-caption text-grey">
-              {{ goalVersion?.installed }}
+              {{ store.goalVersion?.installed }}
             </div>
           </v-col>
           <v-col class="text-right">
@@ -25,24 +25,10 @@
               <v-tooltip
                 activator="parent"
                 location="left"
-                :text="`Update to ${goalVersion?.latest}`"
+                :text="`Update to ${store.goalVersion?.latest}`"
               />
             </v-btn>
             <Releases class="ml-2" @release="updateRelease" />
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Show FNet</div>
-            <div class="text-caption text-grey">Must install FNet binaries</div>
-          </v-col>
-          <v-col>
-            <v-switch
-              :model-value="showFNet"
-              class="d-flex"
-              style="justify-content: right"
-              @click.prevent="setFNet()"
-            />
           </v-col>
         </v-row>
       </v-container>
@@ -52,15 +38,12 @@
 
 <script lang="ts" setup>
 import FUNC from "@/services/api";
-import { GoalVersion } from "@/types";
 import { mdiClose } from "@mdi/js";
-import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
 const emit = defineEmits(["close"]);
 
 const store = useAppStore();
-const { activeNetwork, setActiveNetwork } = useWallet();
 
 const show = computed({
   get() {
@@ -73,7 +56,6 @@ const show = computed({
   },
 });
 
-const goalVersion = ref<GoalVersion>();
 let init = false;
 
 onBeforeMount(() => {
@@ -83,8 +65,8 @@ onBeforeMount(() => {
 async function getVersion() {
   try {
     const version = await FUNC.api.get("goal/version");
-    goalVersion.value = version.data;
-    if (goalVersion.value?.installed) store.ready = true;
+    store.goalVersion = version.data;
+    if (store.goalVersion?.installed) store.ready = true;
     else {
       if (!init) {
         init = true;
@@ -95,10 +77,10 @@ async function getVersion() {
     }
 
     store.updateAvailable =
-      goalVersion.value?.latest !== goalVersion.value?.installed;
+      store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
@@ -117,18 +99,11 @@ async function updateRelease(release: string) {
     store.stopNodeServices = true;
     await FUNC.api.post("goal/update", { name: release });
     await getVersion();
-    store.stopNodeServices = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
+  store.stopNodeServices = false;
   store.downloading = false;
-}
-
-const showFNet = computed(() => activeNetwork.value === "fnet");
-
-async function setFNet() {
-  setActiveNetwork((showFNet.value ? "mainnet" : "fnet") as NetworkId);
-  store.refresh++;
 }
 </script>

@@ -18,7 +18,7 @@ namespace FUNC.Controllers
         {
             try
             {
-                string exePath = Path.Combine(Utils.dataPath, "reti", "reti");
+                string exePath = Path.Combine(Utils.appDataDir, "reti", "reti");
                 if (IsWindows()) exePath += ".exe";
 
                 if (!System.IO.File.Exists(exePath))
@@ -31,7 +31,7 @@ namespace FUNC.Controllers
                     throw new Exception("Failed to download Reti");
                 }
 
-                string envPath = Path.Combine(Utils.dataPath, "reti", ".env");
+                string envPath = Path.Combine(Utils.appDataDir, "reti", ".env");
                 if (System.IO.File.Exists(envPath))
                 {
                     System.IO.File.Delete(envPath);
@@ -50,14 +50,14 @@ namespace FUNC.Controllers
                 {
                     string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", "reti.service");
                     await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
-                    await Utils.ExecCmd($"systemctl daemon-reload");
-                    await Utils.ExecCmd($"systemctl enable reti");
+                    await Utils.ExecCmd("systemctl daemon-reload");
+                    await Utils.ExecCmd("systemctl enable reti");
                 }
                 else if (IsMacOS())
                 {
-                    string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.reti.plist");
+                    string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.reti.plist");
                     await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
-                    await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
+                    await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
                 }
 
                 return Ok();
@@ -115,7 +115,7 @@ namespace FUNC.Controllers
 
         // PUT: reti/stop
         [HttpPut("stop")]
-        public async Task<ActionResult<string>> StopRetiService()
+        public async Task<ActionResult> StopRetiService()
         {
             try
             {
@@ -143,7 +143,7 @@ namespace FUNC.Controllers
 
         // DELETE: reti
         [HttpDelete]
-        public async Task<ActionResult<string>> DeleteRetiService()
+        public async Task<ActionResult> DeleteRetiService()
         {
             try
             {
@@ -177,14 +177,14 @@ namespace FUNC.Controllers
             var client = new GitHubClient(new ProductHeaderValue(repositoryName));
             var latest = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
 
-            Directory.CreateDirectory(Path.Combine(Utils.dataPath, "reti"));
+            Directory.CreateDirectory(Path.Combine(Utils.appDataDir, "reti"));
 
             if (IsWindows())
             {
                 var url = (latest.Assets.FirstOrDefault(a => a.Name.EndsWith("windows-amd64.zip"))?.BrowserDownloadUrl)
                     ?? throw new Exception("Binary Not Found");
-                await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.zip {url}");
-                await Utils.ExecCmd($"tar -xf {Utils.dataPath}/reti.zip -C {Path.Combine(Utils.dataPath, "reti")}");
+                await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/reti.zip {url}");
+                await Utils.ExecCmd($"tar -xf {Utils.appDataDir}/reti.zip -C {Path.Combine(Utils.appDataDir, "reti")}");
             }
             else if (IsLinux())
             {
@@ -199,8 +199,8 @@ namespace FUNC.Controllers
                     url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("linux-amd64.tar.gz"))?.BrowserDownloadUrl
                         ?? throw new Exception("Binary Not Found");
                 }
-                await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/reti.tar.gz {url}");
-                await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
+                await Utils.ExecCmd($"wget -L -O {Utils.appDataDir}/reti.tar.gz {url}");
+                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/reti.tar.gz -C {Path.Combine(Utils.appDataDir, "reti")}");
             }
             else if (IsMacOS())
             {
@@ -215,8 +215,8 @@ namespace FUNC.Controllers
                     url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("darwin-amd64.tar.gz"))?.BrowserDownloadUrl
                         ?? throw new Exception("Binary Not Found");
                 }
-                await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/reti.tar.gz {url}");
-                await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/reti.tar.gz -C {Path.Combine(Utils.dataPath, "reti")}");
+                await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/reti.tar.gz {url}");
+                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/reti.tar.gz -C {Path.Combine(Utils.appDataDir, "reti")}");
             }
         }
     }

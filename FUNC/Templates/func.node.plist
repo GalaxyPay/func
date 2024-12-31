@@ -3,13 +3,13 @@
 <plist version="1.0">
     <dict>
         <key>Label</key>
-        <string>func.fnet</string>
+        <string>func.__NAME__</string>
         <key>Program</key>
         <string>/usr/local/share/func/bin/algod</string>
         <key>EnvironmentVariables</key>
         <dict>
             <key>ALGORAND_DATA</key>
-            <string>/usr/local/share/func/fnet</string>
+            <string>__PARENTDIR__/__NAME__</string>
         </dict>
         <key>RunAtLoad</key>
         <true/>

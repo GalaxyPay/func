@@ -31,6 +31,16 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
+          :title="(telemetryEnabled ? 'Dis' : 'En') + 'able Telemetry'"
+          @click="toggleTelemetry()"
+          v-show="status === 'Running' && nodeStatus.telemetryStatus"
+        />
+        <v-list-item
+          title="Node Data Directory"
+          @click="showDataDir = true"
+          v-show="status === 'Not Found'"
+        />
+        <v-list-item
           title="Delete Node Data"
           base-color="error"
           @click="resetNode()"
@@ -38,6 +48,7 @@
         />
         <template
           v-if="
+            store.isIncentiveReady &&
             nodeStatus.retiStatus &&
             (status === 'Running' ||
               ['Running', 'Stopped'].includes(
@@ -86,6 +97,14 @@
         emit('getStatus');
       "
     />
+    <DataDir
+      :visible="showDataDir"
+      :name="name"
+      @close="
+        showDataDir = false;
+        emit('getStatus');
+      "
+    />
     <Reti
       :visible="showReti"
       :port="nodeStatus.port"
@@ -112,8 +131,12 @@ const loading = ref(false);
 const showReti = ref(false);
 const algodStatus = ref();
 const showConfig = ref(false);
+const showDataDir = ref(false);
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
+const telemetryEnabled = computed(() =>
+  props.nodeStatus?.telemetryStatus?.includes("enabled")
+);
 
 const status = computed(() =>
   isSyncing.value
@@ -124,49 +147,96 @@ const status = computed(() =>
 );
 
 async function createNode() {
-  loading.value = true;
-  await FUNC.api.post(props.name);
-  store.setSnackbar("Service Created. Starting...", "success", -1);
-  await startNode();
+  try {
+    loading.value = true;
+    await FUNC.api.post(props.name);
+    store.setSnackbar("Service Created. Starting...", "success", -1);
+    await startNode();
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function startNode() {
-  loading.value = true;
-  await FUNC.api.put(`${props.name}/start`);
-  await delay(500);
-  await finish("Node Started");
+  try {
+    loading.value = true;
+    await FUNC.api.put(`${props.name}/start`);
+    await delay(500);
+    await finish("Node Started");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function stopNode() {
-  loading.value = true;
-  await FUNC.api.put(`${props.name}/stop`);
-  await finish("Node Stopped");
+  try {
+    loading.value = true;
+    await FUNC.api.put(`${props.name}/stop`);
+    await finish("Node Stopped");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function deleteNode() {
-  loading.value = true;
-  await FUNC.api.delete(props.name);
-  await finish("Service Removed");
+  try {
+    loading.value = true;
+    await FUNC.api.delete(props.name);
+    await finish("Service Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function startReti() {
-  loading.value = true;
-  store.stoppingReti = false;
-  await FUNC.api.put("reti/start");
-  await finish("Reti Started");
+  try {
+    loading.value = true;
+    store.stoppingReti = false;
+    await FUNC.api.put("reti/start");
+    await finish("Reti Started");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function stopReti() {
-  loading.value = true;
-  store.stoppingReti = true;
-  await FUNC.api.put("reti/stop");
-  await finish("Reti Stopped");
+  try {
+    loading.value = true;
+    store.stoppingReti = true;
+    await FUNC.api.put("reti/stop");
+    await finish("Reti Stopped");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function deleteReti() {
-  loading.value = true;
-  await FUNC.api.delete("reti");
-  await finish("Reti Removed");
+  try {
+    loading.value = true;
+    await FUNC.api.delete("reti");
+    await finish("Reti Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+}
+
+async function toggleTelemetry() {
+  try {
+    loading.value = true;
+    const action = telemetryEnabled.value ? "Disable" : "Enable";
+    await FUNC.api.put(`${props.name}/telemetry/${action}`);
+    await finish(`Telemetry ${action}d`);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 async function finish(message: string) {
@@ -182,9 +252,14 @@ async function resetNode() {
     )
   )
     return;
-  loading.value = true;
-  await FUNC.api.post(`${props.name}/reset`);
+  try {
+    loading.value = true;
+    await FUNC.api.post(`${props.name}/reset`);
+    store.setSnackbar("Data Deleted", "success");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
   loading.value = false;
-  store.setSnackbar("Data Deleted", "success");
 }
 </script>

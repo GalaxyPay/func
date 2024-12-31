@@ -5,7 +5,7 @@
         <key>Label</key>
         <string>func.reti</string>
         <key>Program</key>
-        <string>/usr/local/share/func/reti/reti -n fnet -e /usr/local/share/func/reti/.env d</string>
+        <string>/usr/local/share/func/reti/reti -n mainnet -e /usr/local/share/func/reti/.env d</string>
         <key>RunAtLoad</key>
         <true/>
     </dict>

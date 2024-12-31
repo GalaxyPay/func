@@ -152,7 +152,7 @@ async function walletAction(wallet: Wallet) {
     store.connectMenu = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err.message, "error");
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 

@@ -18,7 +18,7 @@ namespace NodeService
                     FileName = _appData + @"bin\algod.exe",
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Arguments = "-d " + _appData + _argsService.GetArgs()[0]
+                    Arguments = "-d " + _argsService.GetArgs()[0]
                 }
             };
 

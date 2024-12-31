@@ -9,17 +9,17 @@ namespace FUNC
         private static async Task ExtractTemplate(string name)
         {
             string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.tar");
-            await Utils.ExecCmd($"tar -xf \"{templatePath}\" -C {Utils.dataPath}");
+            await Utils.ExecCmd($"tar -xf \"{templatePath}\" -C {Utils.NodeDataParent(name)}");
         }
 
         public static async Task<NodeStatus> Get(string name)
         {
             int port = 0;
             string token = string.Empty;
-            try { token = File.ReadAllText(Path.Combine(Utils.dataPath, name, "algod.admin.token")); } catch { }
+            try { token = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "algod.admin.token")); } catch { }
             bool p2p = false;
             string? configText = null;
-            try { configText = File.ReadAllText(Path.Combine(Utils.dataPath, name, "config.json")); } catch { }
+            try { configText = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "config.json")); } catch { }
             if (configText != null)
             {
                 JObject config = JObject.Parse(configText);
@@ -58,11 +58,11 @@ namespace FUNC
                 P2p = p2p,
             };
 
-            if (name == "fnet")
+            if (name == "algorand")
             {
                 // Reti Status
                 string retiQuery = string.Empty;
-                string exePath = Path.Combine(Utils.dataPath, "reti", "reti");
+                string exePath = Path.Combine(Utils.appDataDir, "reti", "reti");
 
                 if (IsWindows())
                 {
@@ -75,7 +75,7 @@ namespace FUNC
                 }
                 else if (IsMacOS())
                 {
-                    sc = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
+                    retiQuery = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
                 }
 
                 string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
@@ -109,6 +109,13 @@ namespace FUNC
                 };
 
                 nodeStatus.RetiStatus = retiStatus;
+
+                // Telemetry Status
+                string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+                string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+                string telemetryStatus = await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry status");
+
+                nodeStatus.TelemetryStatus = telemetryStatus;
             }
 
             return nodeStatus;
@@ -116,43 +123,50 @@ namespace FUNC
 
         public static async Task CreateService(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (!Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
             {
                 await ExtractTemplate(name);
             }
 
             if (IsWindows())
             {
-                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeService.exe")}\\\" {name}";
+                string nodeDataDir = Path.Combine(Utils.NodeDataParent(name), name);
+                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \\\"{nodeDataDir}\\\"";
                 await Utils.ExecCmd($"sc create \"{Utils.Cap(name)} Node\" binPath= \"{binPath}\" start= auto");
             }
             else if (IsLinux())
             {
-                string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.service");
-                await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "node.service");
+                string template = File.ReadAllText(templatePath);
+                string service = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
+                File.WriteAllText($"/lib/systemd/system/{name}.service", service);
                 await Utils.ExecCmd($"systemctl daemon-reload");
                 await Utils.ExecCmd($"systemctl enable {name}");
             }
             else if (IsMacOS())
             {
-                string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", $"func.{name}.plist");
-                await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
+                string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.node.plist");
+                string template = File.ReadAllText(templatePath);
+                string plist = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
+                File.WriteAllText($"/Library/LaunchDaemons/func.{name}.plist", plist);
                 await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
             }
         }
 
         public static async Task ResetData(string name)
         {
-            if (Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
             {
-                Directory.Delete(Path.Combine(Utils.dataPath, name), true);
+                Directory.Delete(Path.Combine(Utils.NodeDataParent(name), name), true);
             }
             await ExtractTemplate(name);
         }
 
         public static async Task<string> Catchup(string name, Catchup model)
         {
-            string cmd = $"{Path.Combine(Utils.dataPath, "bin", "goal")} node catchup {model.Round}#{model.Label} -d {Path.Combine(Utils.dataPath, name)}";
+            string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            string cmd = $"{goalPath} node catchup {model.Round}#{model.Label} -d {dataPath}";
             return await Utils.ExecCmd(cmd);
         }
 
@@ -160,6 +174,11 @@ namespace FUNC
         {
             if (IsWindows())
             {
+                if (cmd == "restart")
+                {
+                    await ControlService(name, "stop");
+                    await ControlService(name, "start");
+                }
                 await Utils.ExecCmd($"sc {cmd} \"{Utils.Cap(name)} Node\"");
             }
             else if (IsLinux())
@@ -172,6 +191,7 @@ namespace FUNC
             {
                 if (cmd == "start") await Utils.ExecCmd($"launchctl kickstart system/func.{name}");
                 else if (cmd == "stop") await Utils.ExecCmd($"launchctl kill 9 system/func.{name}");
+                else if (cmd == "restart") await Utils.ExecCmd($"launchctl kickstart -k system/func.{name}");
                 else if (cmd == "delete")
                 {
                     await Utils.ExecCmd($"launchctl bootout system/func.{name}");
@@ -182,19 +202,46 @@ namespace FUNC
 
         public static async Task<string> GetConfig(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.dataPath, name)))
+            if (!Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
             {
                 await ExtractTemplate(name);
             }
-            string configPath = Path.Combine(Utils.dataPath, name, "config.json");
+            string configPath = Path.Combine(Utils.NodeDataParent(name), name, "config.json");
             string config = File.ReadAllText(configPath);
             return config;
         }
 
         public static void SetConfig(string name, Config model)
         {
-            using StreamWriter writer = new(Path.Combine(Utils.dataPath, name, "config.json"), false);
-            writer.Write(model.Json);
+            string configPath = Path.Combine(Utils.NodeDataParent(name), name, "config.json");
+            File.WriteAllText(configPath, model.Json);
+        }
+
+        public static void SetDir(string name, Dir model)
+        {
+            string currentPath = Path.Combine(Utils.NodeDataParent(name), name);
+            string requestPath = Path.Combine(model.Path, name);
+            Directory.Move(currentPath, requestPath);
+            string filePath = Path.Combine(Utils.appDataDir, $"{name}.data");
+            File.WriteAllText(filePath, model.Path);
+        }
+
+        public static async Task EnableTelemetry(string name)
+        {
+            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry endpoint -e https://tel.4160.nodely.io");
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry name -n anon");
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry enable");
+            await ControlService(name, "restart");
+        }
+
+        public static async Task DisableTelemetry(string name)
+        {
+            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry disable");
+            await ControlService(name, "restart");
         }
     }
 }

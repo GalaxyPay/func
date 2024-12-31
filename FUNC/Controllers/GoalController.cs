@@ -21,7 +21,7 @@ namespace FUNC.Controllers
                 string installed = string.Empty;
                 string latest = string.Empty;
 
-                string goalPath = Path.Combine(Utils.dataPath, "bin", "goal");
+                string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
                 string version = await Utils.ExecCmd($"{goalPath} --version");
                 if (version != string.Empty)
                 {
@@ -79,7 +79,7 @@ namespace FUNC.Controllers
                     }
                     var url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
                     if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
+                    await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/node.tar.gz {url}");
                 }
                 else if (IsLinux())
                 {
@@ -103,7 +103,7 @@ namespace FUNC.Controllers
                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
                     }
                     if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"wget -L -O {Utils.dataPath}/node.tar.gz {url}");
+                    await Utils.ExecCmd($"wget -L -O {Utils.appDataDir}/node.tar.gz {url}");
                 }
                 else if (IsMacOS())
                 {
@@ -118,11 +118,11 @@ namespace FUNC.Controllers
                     string? url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin")
                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
                     if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.dataPath}/node.tar.gz {url}");
+                    await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/node.tar.gz {url}");
                 }
 
-                await Utils.ExecCmd($"tar -zxf {Utils.dataPath}/node.tar.gz -C {Utils.dataPath} bin");
-                await Utils.ExecCmd($"rm {Utils.dataPath}/node.tar.gz");
+                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/node.tar.gz -C {Utils.appDataDir} bin");
+                await Utils.ExecCmd($"rm {Utils.appDataDir}/node.tar.gz");
 
                 return Ok();
             }

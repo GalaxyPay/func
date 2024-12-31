@@ -1,0 +1,2 @@
+#!/bin/sh
+launchctl bootout system/func.api || exit 0

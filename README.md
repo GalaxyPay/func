@@ -59,17 +59,33 @@ The app is a **Node Service Manager** - uninstalling it will **_not_** remove no
 ### Start Node
 
 - Starts Service that runs the Node
-- Only available when Service is stopped
+- Only available when Node is stopped
 
 ### Stop Node
 
 - Stops Service that runs the Node
-- Only available when Service is running
+- Only available when Node is running
 
 ### Remove Service
 
 - Removes Service that runs the Node
-- Only available when Service is stopped
+- Only available when Node is stopped
+
+### Configure
+
+- Change your node's Port, DNS Bootstrap, and P2P settings
+
+### Enable/Disable Telemetry
+
+- Link your node to [Nodely Telemetry Service](https://nodely.io/docs/telemetry/quickstart/)
+- Once enabled, you'll get a link to your node's dashboard on Nodely
+- Only available on Algorand network when Node is running
+
+### Node Data Directory
+
+- Configure the directory for your node data
+- You will need write permission to the new path
+- Only available when Service does not exist
 
 ### Delete Node Data
 
@@ -88,8 +104,8 @@ Here's how to do it:
 2. Connect your wallet.
 3. Click the + icon in the Participation Keys section.
 4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
-5. Once the key is generated, click on the handshake icon to sign the Key Registration transaction.
-6. Your key should now be active, and your Participating in Consensus light should be green.
+5. Once the key is generated, click on the Status dot to Register the key.
+6. Your account should now be Online, and your Participating in Consensus light should be green.
 
 ## Notes
 
@@ -106,7 +122,6 @@ Here's how to do it:
   - 3536 AND 3537 - FUNC UI and API
   - 8081 - Algorand algod
   - 8082 - Voi algod
-  - 8083 - Fnet algod
 
 - The `algod` ports are configurable through the UI, and you only need to open the ones for the networks you use
 
