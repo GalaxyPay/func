@@ -31,7 +31,7 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
-          :title="(telemetryEnabled ? 'Disable' : 'Enable') + ' Telemetry'"
+          :title="(telemetryEnabled ? 'Dis' : 'En') + 'able Telemetry'"
           @click="toggleTelemetry()"
           v-show="status === 'Running' && nodeStatus.telemetryStatus"
         />
