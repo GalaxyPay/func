@@ -170,5 +170,35 @@ namespace FUNC.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        // PUT: algorand/telemetry/enable
+        [HttpPut("telemetry/enable")]
+        public async Task<ActionResult> EnableNodeTelemetry()
+        {
+            try
+            {
+                await Node.EnableTelemetry(_name);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // PUT: algorand/telemetry/disable
+        [HttpPut("telemetry/disable")]
+        public async Task<ActionResult> DisableNodeTelemetry()
+        {
+            try
+            {
+                await Node.DisableTelemetry(_name);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

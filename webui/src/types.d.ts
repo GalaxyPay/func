@@ -5,6 +5,7 @@ export interface NodeStatus {
   port: number;
   token: string;
   p2p: boolean;
+  telemetryStatus?: string;
   retiStatus?: RetiStatus;
 }
 

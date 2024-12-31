@@ -56,6 +56,13 @@
               />
             </v-chip>
           </div>
+          <div class="py-1" v-show="nodeStatus.telemetryStatus">
+            <v-badge floating dot class="mx-3 mb-1" :color="telemetryColor" />
+            Telemetry
+            <a :href="telemetryLink" target="_blank" v-if="telemetryEnabled">
+              <v-icon :icon="mdiOpenInNew" class="pb-1" />
+            </a>
+          </div>
           <Manage
             class="mt-4"
             :name="name"
@@ -197,7 +204,7 @@
 import FUNC from "@/services/api";
 import { NodeStatus, Peer } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import { mdiArrowLeft, mdiLanConnect, mdiRefresh } from "@mdi/js";
+import { mdiArrowLeft, mdiLanConnect, mdiOpenInNew, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const store = useAppStore();
@@ -253,6 +260,22 @@ const participatingColor = computed(() =>
 );
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
+
+const telemetryEnabled = computed(() =>
+  nodeStatus.value?.telemetryStatus?.includes("enabled")
+);
+
+const telemetryColor = computed(() => {
+  if (nodeStatus.value?.serviceStatus !== "Running") return "grey";
+  return telemetryEnabled.value ? "success" : "grey";
+});
+
+const telemetryLink = computed(() => {
+  const ts = nodeStatus.value?.telemetryStatus;
+  if (!ts) return undefined;
+  const guid = ts.slice(ts.lastIndexOf(" ") + 1);
+  return "https://g.nodely.io/d/telemetry?var-GUID=" + guid;
+});
 
 const status = computed(() =>
   isSyncing.value

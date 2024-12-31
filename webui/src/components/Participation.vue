@@ -40,7 +40,8 @@
                   :title="(isKeyActive(item) ? 'Re-' : '') + 'Register'"
                   @click="registerKey(item)"
                   v-show="
-                    !isKeyActive(item) || incentiveIneligible(item.address)
+                    activeAccount?.address === item.address &&
+                    (!isKeyActive(item) || incentiveIneligible(item.address))
                   "
                 />
                 <v-list-item

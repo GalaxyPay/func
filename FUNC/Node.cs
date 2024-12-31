@@ -109,6 +109,13 @@ namespace FUNC
                 };
 
                 nodeStatus.RetiStatus = retiStatus;
+
+                // Telemetry Status
+                string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+                string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+                string telemetryStatus = await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry status");
+
+                nodeStatus.TelemetryStatus = telemetryStatus;
             }
 
             return nodeStatus;
@@ -157,7 +164,9 @@ namespace FUNC
 
         public static async Task<string> Catchup(string name, Catchup model)
         {
-            string cmd = $"{Path.Combine(Utils.appDataDir, "bin", "goal")} node catchup {model.Round}#{model.Label} -d {Path.Combine(Utils.NodeDataParent(name), name)}";
+            string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            string cmd = $"{goalPath} node catchup {model.Round}#{model.Label} -d {dataPath}";
             return await Utils.ExecCmd(cmd);
         }
 
@@ -165,6 +174,11 @@ namespace FUNC
         {
             if (IsWindows())
             {
+                if (cmd == "restart")
+                {
+                    await ControlService(name, "stop");
+                    await ControlService(name, "start");
+                }
                 await Utils.ExecCmd($"sc {cmd} \"{Utils.Cap(name)} Node\"");
             }
             else if (IsLinux())
@@ -177,6 +191,7 @@ namespace FUNC
             {
                 if (cmd == "start") await Utils.ExecCmd($"launchctl kickstart system/func.{name}");
                 else if (cmd == "stop") await Utils.ExecCmd($"launchctl kill 9 system/func.{name}");
+                else if (cmd == "restart") await Utils.ExecCmd($"launchctl kickstart -k system/func.{name}");
                 else if (cmd == "delete")
                 {
                     await Utils.ExecCmd($"launchctl bootout system/func.{name}");
@@ -209,6 +224,24 @@ namespace FUNC
             Directory.Move(currentPath, requestPath);
             string filePath = Path.Combine(Utils.appDataDir, $"{name}.data");
             File.WriteAllText(filePath, model.Path);
+        }
+
+        public static async Task EnableTelemetry(string name)
+        {
+            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry endpoint -e https://tel.4160.nodely.io");
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry name -n anon");
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry enable");
+            await ControlService(name, "restart");
+        }
+
+        public static async Task DisableTelemetry(string name)
+        {
+            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
+            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry disable");
+            await ControlService(name, "restart");
         }
     }
 }

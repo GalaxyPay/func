@@ -31,6 +31,11 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
+          :title="(telemetryEnabled ? 'Disable' : 'Enable') + ' Telemetry'"
+          @click="toggleTelemetry()"
+          v-show="status === 'Running' && nodeStatus.telemetryStatus"
+        />
+        <v-list-item
           title="Node Data Directory"
           @click="showDataDir = true"
           v-show="status === 'Not Found'"
@@ -129,6 +134,9 @@ const showConfig = ref(false);
 const showDataDir = ref(false);
 
 const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
+const telemetryEnabled = computed(() =>
+  props.nodeStatus?.telemetryStatus?.includes("enabled")
+);
 
 const status = computed(() =>
   isSyncing.value
@@ -213,6 +221,18 @@ async function deleteReti() {
     loading.value = true;
     await FUNC.api.delete("reti");
     await finish("Reti Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+}
+
+async function toggleTelemetry() {
+  try {
+    loading.value = true;
+    const action = telemetryEnabled.value ? "Disable" : "Enable";
+    await FUNC.api.put(`${props.name}/telemetry/${action}`);
+    await finish(`Telemetry ${action}d`);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
