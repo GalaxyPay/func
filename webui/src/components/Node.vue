@@ -197,6 +197,13 @@
         </div>
       </v-card-text>
     </v-container>
+    <v-container
+      class="text-caption text-grey text-center"
+      v-show="nodeStatus?.serviceStatus === 'Running'"
+    >
+      This dashboard does NOT need to be open for the node to run. It fact, it
+      is more efficient to close it when you are not using it.
+    </v-container>
   </div>
 </template>
 
