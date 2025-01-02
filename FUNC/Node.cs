@@ -221,9 +221,29 @@ namespace FUNC
         {
             string currentPath = Path.Combine(Utils.NodeDataParent(name), name);
             string requestPath = Path.Combine(model.Path, name);
-            Directory.Move(currentPath, requestPath);
+            CopyFolder(currentPath, requestPath);
             string filePath = Path.Combine(Utils.appDataDir, $"{name}.data");
             File.WriteAllText(filePath, model.Path);
+            Directory.Delete(currentPath, true);
+        }
+
+        public static void CopyFolder(string sourceFolder, string destFolder)
+        {
+            Directory.CreateDirectory(destFolder);
+            string[] files = Directory.GetFiles(sourceFolder);
+            foreach (string file in files)
+            {
+                string name = Path.GetFileName(file);
+                string dest = Path.Combine(destFolder, name);
+                File.Copy(file, dest);
+            }
+            string[] folders = Directory.GetDirectories(sourceFolder);
+            foreach (string folder in folders)
+            {
+                string name = Path.GetFileName(folder);
+                string dest = Path.Combine(destFolder, name);
+                CopyFolder(folder, dest);
+            }
         }
 
         public static async Task EnableTelemetry(string name)

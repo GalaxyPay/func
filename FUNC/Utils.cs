@@ -13,7 +13,7 @@ namespace FUNC
             string nodeDataParent = appDataDir;
             string path = Path.Combine(appDataDir, $"{name}.data");
             try { nodeDataParent = File.ReadAllText(path); } catch { }
-            return nodeDataParent;
+            return nodeDataParent.Trim();
         }
 
         public static string Cap(string name)
