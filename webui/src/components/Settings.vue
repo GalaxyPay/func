@@ -77,6 +77,7 @@ async function getVersion() {
     }
 
     store.updateAvailable =
+      !!store.goalVersion?.latest &&
       store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     console.error(err);
