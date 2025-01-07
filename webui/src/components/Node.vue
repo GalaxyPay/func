@@ -93,7 +93,17 @@
                   : partDetails.proposals.toLocaleString()
               }}
             </div>
-            <div>Blocks Proposed</div>
+            <div>
+              Blocks Created
+              <span>
+                <v-icon :icon="mdiInformation" class="pb-2" />
+                <v-tooltip
+                  activator="parent"
+                  text="via Proposals"
+                  location="bottom"
+                />
+              </span>
+            </div>
             <div class="mt-13 text-h4" style="white-space: nowrap">
               {{
                 partDetails
@@ -111,7 +121,17 @@
                   : partDetails.votes.toLocaleString()
               }}
             </div>
-            <div>Blocks Voted</div>
+            <div>
+              Blocks Certified
+              <span>
+                <v-icon :icon="mdiInformation" class="pb-2" />
+                <v-tooltip
+                  activator="parent"
+                  text="via Votes"
+                  location="bottom"
+                />
+              </span>
+            </div>
             <div
               :class="partDetails ? 'pointer' : 'text-grey'"
               @click="reloadPartDetails()"
@@ -201,7 +221,7 @@
       class="text-caption text-grey text-center"
       v-show="nodeStatus?.serviceStatus === 'Running'"
     >
-      This dashboard does NOT need to be open for the node to run. It fact, it
+      This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
     </v-container>
   </div>
@@ -211,7 +231,13 @@
 import FUNC from "@/services/api";
 import { NodeStatus, Peer } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import { mdiArrowLeft, mdiLanConnect, mdiOpenInNew, mdiRefresh } from "@mdi/js";
+import {
+  mdiArrowLeft,
+  mdiInformation,
+  mdiLanConnect,
+  mdiOpenInNew,
+  mdiRefresh,
+} from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const store = useAppStore();

@@ -44,9 +44,13 @@ namespace FUNC.Controllers
                     repositoryName = "go-algorand";
                 }
 
-                var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-                var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                latest = latestInfo.TagName[1..latestInfo.TagName.IndexOf("-")];
+                try
+                {
+                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+                    var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                    latest = latestInfo.TagName[1..latestInfo.TagName.IndexOf("-")];
+                }
+                catch { }
 
                 return new GoalVersion() { Installed = installed, Latest = latest };
             }
