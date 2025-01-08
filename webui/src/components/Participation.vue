@@ -86,13 +86,13 @@
                   </span>
                 </v-col>
                 <v-col class="text-subtitle-1">
-                  Blocks Proposed:
+                  Blocks Created:
                   <span class="font-weight-bold">
                     {{ partStats[item.address]?.proposals.toLocaleString() }}
                   </span>
                 </v-col>
                 <v-col class="text-subtitle-1">
-                  Blocks Voted:
+                  Blocks Certified:
                   <span class="font-weight-bold">
                     {{ partStats[item.address]?.votes.toLocaleString() }}
                   </span>

@@ -31,6 +31,20 @@
             <Releases class="ml-2" @release="updateRelease" />
           </v-col>
         </v-row>
+        <v-row align="center">
+          <v-col>
+            <div>Show Alternative Networks</div>
+          </v-col>
+          <v-col>
+            <v-switch
+              v-model="store.showNetworks"
+              class="d-flex"
+              style="justify-content: right"
+              color="primary"
+              @click.prevent="setShowNetworks(!store.showNetworks)"
+            />
+          </v-col>
+        </v-row>
       </v-container>
     </v-card>
   </v-dialog>
@@ -39,11 +53,13 @@
 <script lang="ts" setup>
 import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
+import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
 const emit = defineEmits(["close"]);
 
 const store = useAppStore();
+const { activeNetwork, setActiveNetwork } = useWallet();
 
 const show = computed({
   get() {
@@ -59,6 +75,7 @@ const show = computed({
 let init = false;
 
 onBeforeMount(() => {
+  if (activeNetwork.value !== "mainnet") setShowNetworks(true);
   getVersion();
 });
 
@@ -106,5 +123,11 @@ async function updateRelease(release: string) {
   }
   store.stopNodeServices = false;
   store.downloading = false;
+}
+
+async function setShowNetworks(val: boolean) {
+  store.showNetworks = val;
+  localStorage.setItem("showNetworks", val.toString());
+  if (!val) setActiveNetwork("mainnet" as NetworkId);
 }
 </script>

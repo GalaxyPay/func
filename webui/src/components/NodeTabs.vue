@@ -6,6 +6,7 @@
   >
     <v-card>
       <v-tabs
+        v-if="store.showNetworks"
         :model-value="tab"
         color="primary"
         @update:model-value="setNetwork"
