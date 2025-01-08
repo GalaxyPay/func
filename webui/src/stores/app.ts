@@ -19,6 +19,7 @@ export const useAppStore = defineStore("app", {
     downloading: false,
     stoppingReti: false,
     goalVersion: undefined as GoalVersion | undefined,
+    showNetworks: localStorage.getItem("showNetworks") === "true",
   }),
   getters: {
     isIncentiveReady(state) {
