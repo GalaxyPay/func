@@ -26,15 +26,33 @@
         <template #[`item.status`]="{ item }">
           <v-btn variant="flat" size="small">
             <span>
-              <v-badge floating dot :color="keyStatus(item).color" />
-              <v-icon :icon="mdiChevronDown" class="ml-2" size="large" />
+              <v-badge
+                floating
+                dot
+                :color="keyStatus(item).color"
+                class="mr-2"
+              />
+              <v-icon
+                v-show="
+                  activeAccount?.address === item.address || !isKeyActive(item)
+                "
+                :icon="mdiChevronDown"
+                size="large"
+              />
             </span>
             <v-tooltip
               activator="parent"
               location="top"
               :text="keyStatus(item).text"
             />
-            <v-menu activator="parent" bottom scrim>
+            <v-menu
+              activator="parent"
+              :disabled="
+                activeAccount?.address !== item.address && isKeyActive(item)
+              "
+              bottom
+              scrim
+            >
               <v-list density="compact">
                 <v-list-item
                   :title="(isKeyActive(item) ? 'Re-' : '') + 'Register'"
@@ -47,7 +65,9 @@
                 <v-list-item
                   title="Go Offline"
                   @click="offline()"
-                  v-show="isKeyActive(item)"
+                  v-show="
+                    activeAccount?.address === item.address && isKeyActive(item)
+                  "
                 />
                 <v-list-item
                   title="Delete Key"
