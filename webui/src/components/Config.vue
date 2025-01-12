@@ -11,6 +11,16 @@
           :append-inner-icon="mdiContentCopy"
           @click:append-inner="copyVal(token)"
         />
+        <v-select
+          label="BaseLoggerDebugLevel"
+          v-model="baseLoggerDebugLevel"
+          variant="outlined"
+          density="comfortable"
+          :items="[...Array(6).keys()]"
+          hint="Must be 3 or greater for telemetry to work. For best performance, set to 0."
+          persistent-hint
+          class="pb-2"
+        />
         <v-checkbox-btn v-model="showDNSBootstrapID" label="DNS Bootstrap ID" />
         <v-textarea
           :disabled="!showDNSBootstrapID"
@@ -39,6 +49,7 @@
 
 <script lang="ts" setup>
 import FUNC from "@/services/api";
+import { delay } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -72,6 +83,15 @@ const port = computed({
   },
   set(val) {
     config.value.EndpointAddress = `0.0.0.0:${val}`;
+  },
+});
+
+const baseLoggerDebugLevel = computed<number>({
+  get() {
+    return config.value.BaseLoggerDebugLevel ?? 4;
+  },
+  set(val) {
+    config.value.BaseLoggerDebugLevel = val;
   },
 });
 
@@ -126,6 +146,7 @@ async function saveConfig() {
     });
     if (props.running) {
       await FUNC.api.put(`${props.name}/stop`);
+      await delay(500);
       await FUNC.api.put(`${props.name}/start`);
     }
     show.value = false;
