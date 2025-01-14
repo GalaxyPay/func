@@ -48,7 +48,7 @@ namespace FUNC
             string status = "Unknown";
             if (IsWindows())
             {
-                if (sc.Contains("1060:")) { status = "Not Found"; }
+                if (sc.Contains("1060")) { status = "Not Found"; }
                 else if (sc.Contains("1  STOPPED")) { status = "Stopped"; }
                 else if (sc.Contains("4  RUNNING")) { status = "Running"; }
             }
