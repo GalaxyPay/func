@@ -327,6 +327,15 @@ const algodClient = computed(() => {
   );
 });
 
+watch(
+  () => algodStatus.value,
+  (val) => {
+    if (!val?.["last-version"].includes("/925a464")) {
+      store.isIncentiveReady = true;
+    }
+  }
+);
+
 onBeforeMount(async () => {
   await getNodeStatus();
 });

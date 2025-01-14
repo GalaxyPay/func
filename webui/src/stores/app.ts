@@ -20,12 +20,8 @@ export const useAppStore = defineStore("app", {
     stoppingReti: false,
     goalVersion: undefined as GoalVersion | undefined,
     showNetworks: localStorage.getItem("showNetworks") === "true",
+    isIncentiveReady: false,
   }),
-  getters: {
-    isIncentiveReady(state) {
-      return Number(state.goalVersion?.installed.split(".")[0]) >= 4;
-    },
-  },
   actions: {
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color == "error") timeout = 15000;
