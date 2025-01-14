@@ -252,7 +252,7 @@ const props = defineProps({
 const emit = defineEmits(["partDetails", "generatingKey"]);
 
 const store = useAppStore();
-const { activeAccount, transactionSigner } = useWallet();
+const { activeAccount, activeNetwork, transactionSigner } = useWallet();
 
 const loading = ref();
 const keys = ref<Participation[]>();
@@ -383,7 +383,8 @@ function isKeyActive(item: Participation) {
 }
 
 function incentiveIneligible(addr: string) {
-  if (!store.isIncentiveReady) return false;
+  if (!store.isIncentiveReady || activeNetwork.value !== "mainnet")
+    return false;
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   return (
     (acctInfo?.amount || 0) >= 3 * 10 ** 10 &&

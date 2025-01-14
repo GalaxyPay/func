@@ -17,7 +17,7 @@
           variant="outlined"
           density="comfortable"
           :items="[...Array(6).keys()]"
-          hint="Must be 3 or greater for telemetry to work. For best performance, set to 0."
+          hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
           persistent-hint
           class="pb-2"
         />
