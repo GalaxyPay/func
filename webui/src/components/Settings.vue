@@ -19,7 +19,7 @@
             <v-btn
               :color="url ? 'warning' : ''"
               variant="tonal"
-              :disabled="!url || store.downloading"
+              :disabled="!url"
               :href="url"
             >
               Download
