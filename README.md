@@ -25,7 +25,7 @@ When updating a previous installation, the installer will recommend to let it au
 After downloading the `.pkg` file to your machine, run
 
 ```sh
-sudo installer -pkg func_<version>_darwin-<architecture>.pkg -target /
+sudo installer -target / -pkg func_<version>_darwin-<architecture>.pkg
 ```
 
 If instead you wish to install the package by double-clicking the `.pkg` file , you will have to follow [these instuctions](https://support.apple.com/guide/mac-help/apple-cant-check-app-for-malicious-software-mchleab3a043/mac) for bypassing unsigned packages:

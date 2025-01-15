@@ -9,17 +9,42 @@
       <v-container>
         <v-row align="center">
           <v-col>
-            <div>Node Version</div>
+            <div>FUNC Version</div>
             <div class="text-caption text-grey">
-              {{ store.goalVersion?.installed }}
+              {{ appVersion }}
+              {{ !store.funcUpdateAvailable ? "(latest)" : "" }}
             </div>
           </v-col>
           <v-col class="text-right">
             <v-btn
-              :color="store.updateAvailable ? 'warning' : ''"
+              :color="url ? 'warning' : ''"
               variant="tonal"
-              :disabled="!store.updateAvailable || store.downloading"
-              @click="updateLatest()"
+              :disabled="!url || store.downloading"
+              :href="url"
+            >
+              Download
+              <v-tooltip
+                activator="parent"
+                location="left"
+                :text="`Download ${funcLatest}`"
+              />
+            </v-btn>
+          </v-col>
+        </v-row>
+        <v-row align="center">
+          <v-col>
+            <div>Node Version</div>
+            <div class="text-caption text-grey">
+              {{ store.goalVersion?.installed }}
+              {{ !store.nodeUpdateAvailable ? "(latest)" : "" }}
+            </div>
+          </v-col>
+          <v-col class="text-right">
+            <v-btn
+              :color="store.nodeUpdateAvailable ? 'warning' : ''"
+              variant="tonal"
+              :disabled="!store.nodeUpdateAvailable || store.downloading"
+              @click="updateNodeLatest()"
             >
               Update
               <v-tooltip
@@ -28,7 +53,6 @@
                 :text="`Update to ${store.goalVersion?.latest}`"
               />
             </v-btn>
-            <Releases class="ml-2" @release="updateRelease" />
           </v-col>
         </v-row>
         <v-row align="center">
@@ -72,28 +96,39 @@ const show = computed({
   },
 });
 
+const appVersion = __APP_VERSION__;
+const funcLatest = ref();
+const url = ref();
 let init = false;
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
   if (activeNetwork.value !== "mainnet") setShowNetworks(true);
-  getVersion();
+  await getVersion();
+  if (store.funcUpdateAvailable) {
+    url.value = (await FUNC.api.get("func/latest")).data;
+  }
 });
 
 async function getVersion() {
   try {
-    const version = await FUNC.api.get("goal/version");
-    store.goalVersion = version.data;
+    const func = await axios({
+      url: "https://api.github.com/repos/GalaxyPay/func/releases/latest",
+    });
+    funcLatest.value = func.data?.name.slice(1);
+    store.funcUpdateAvailable = funcLatest.value !== appVersion;
+    const goalVersion = await FUNC.api.get("goal/version");
+    store.goalVersion = goalVersion.data;
     if (store.goalVersion?.installed) store.ready = true;
     else {
       if (!init) {
         init = true;
-        updateLatest(true);
+        updateNodeLatest(true);
       } else {
         throw Error("Download Failed");
       }
     }
 
-    store.updateAvailable =
+    store.nodeUpdateAvailable =
       !!store.goalVersion?.latest &&
       store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
@@ -102,16 +137,16 @@ async function getVersion() {
   }
 }
 
-async function updateLatest(bypass = false) {
+async function updateNodeLatest(bypass = false) {
   if (
     !bypass &&
     !confirm("Are you sure you want to update your node to the latest version?")
   )
     return;
-  await updateRelease("latest");
+  await updateNode("latest");
 }
 
-async function updateRelease(release: string) {
+async function updateNode(release: string) {
   try {
     store.downloading = true;
     store.stopNodeServices = true;

@@ -9,7 +9,12 @@
     <v-btn icon @click="showSettings = true">
       <v-icon
         :icon="mdiCog"
-        :color="store.updateAvailable && !store.downloading ? 'warning' : ''"
+        :color="
+          (store.nodeUpdateAvailable || store.funcUpdateAvailable) &&
+          !store.downloading
+            ? 'warning'
+            : ''
+        "
       />
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
