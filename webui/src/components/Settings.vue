@@ -123,8 +123,6 @@ async function getVersion() {
       if (!init) {
         init = true;
         updateNodeLatest(true);
-      } else {
-        throw Error("Download Failed");
       }
     }
 

@@ -127,7 +127,7 @@ Here's how to do it:
 
 - This should **ONLY** be done on a local network - **DO NOT** open these ports to the internet
 
-- If you want to be able to use WalletConnect wallets (e.g. Defly, Pera) while accessing the site via IP, you'll need to use port 3537 which serves the site with a self-signed cert over HTTPS. You'll also need "Allow Insecure Content" for the site in your browser settings so that it can communicate to your node over HTTP.
+- If you want to be able to use WalletConnect wallets (e.g. Defly, Pera) or "copy to clipboard" buttons while accessing the site remotely, you'll need to use port 3537 which serves the site with a self-signed cert over HTTPS. You'll also need "Allow Insecure Content" for the site in your browser settings so that it can communicate to your node over HTTP.
 
 ## Build (for Developers)
 
