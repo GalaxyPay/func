@@ -330,9 +330,7 @@ const algodClient = computed(() => {
 watch(
   () => algodStatus.value,
   (val) => {
-    if (!val?.["last-version"].includes("/925a464")) {
-      store.isIncentiveReady = true;
-    }
+    if (val?.["last-round"] >= 46512890) store.isIncentiveReady = true;
   }
 );
 
