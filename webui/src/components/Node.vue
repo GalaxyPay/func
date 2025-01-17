@@ -2,7 +2,7 @@
   <div v-if="nodeStatus">
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
     <v-container class="pl-5" fluid>
-      <v-row justify="center">
+      <v-row>
         <v-col cols="12" sm="6" md="3">
           <div class="py-1">
             <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
@@ -113,7 +113,13 @@
             </div>
             <div>Online Stake</div>
           </v-col>
-          <v-col cols="6" md="3" class="text-center">
+          <v-col
+            cols="12"
+            sm="6"
+            md="3"
+            class="text-center"
+            align-self="center"
+          >
             <div class="text-h4">
               {{
                 partDetails?.votes == null
