@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -179,45 +181,35 @@ namespace FUNC.Controllers
 
             Directory.CreateDirectory(Path.Combine(Utils.appDataDir, "reti"));
 
+            var pattern = (IsWindows() ? "windows-amd64.zip"
+            : IsLinux() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "linux-arm64.tar.gz" : "linux-amd64.tar.gz")
+            : IsMacOS() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "darwin-arm64.tar.gz" : "darwin-amd64.tar.gz")
+            : null) ?? throw new Exception("Binary Not Found");
+            var asset = latest.Assets.FirstOrDefault(a => a.Name.EndsWith(pattern)) ?? throw new Exception("Binary Not Found");
+
+            string filePath = Path.Combine(Utils.appDataDir, asset.Name);
+            string destDir = Path.Combine(Utils.appDataDir, "reti");
+            using var httpClient = new HttpClient();
+            using var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl);
+            using FileStream fs = new(filePath, System.IO.FileMode.OpenOrCreate);
+            await s.CopyToAsync(fs);
+            fs.Dispose();
+
             if (IsWindows())
             {
-                var url = (latest.Assets.FirstOrDefault(a => a.Name.EndsWith("windows-amd64.zip"))?.BrowserDownloadUrl)
-                    ?? throw new Exception("Binary Not Found");
-                await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/reti.zip {url}");
-                await Utils.ExecCmd($"tar -xf {Utils.appDataDir}/reti.zip -C {Path.Combine(Utils.appDataDir, "reti")}");
+                DirectoryInfo di = new(destDir);
+                foreach (FileInfo file in di.GetFiles()) file.Delete();
+                ZipFile.ExtractToDirectory(filePath, destDir);
             }
-            else if (IsLinux())
+            else
             {
-                string? url = null;
-                if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
-                {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("linux-arm64.tar.gz"))?.BrowserDownloadUrl
-                        ?? throw new Exception("Binary Not Found");
-                }
-                else
-                {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("linux-amd64.tar.gz"))?.BrowserDownloadUrl
-                        ?? throw new Exception("Binary Not Found");
-                }
-                await Utils.ExecCmd($"wget -L -O {Utils.appDataDir}/reti.tar.gz {url}");
-                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/reti.tar.gz -C {Path.Combine(Utils.appDataDir, "reti")}");
+                using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
+                using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
+                await TarFile.ExtractToDirectoryAsync(gz, destDir, true);
+                rfs.Dispose();
             }
-            else if (IsMacOS())
-            {
-                string? url = null;
-                if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
-                {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("darwin-arm64.tar.gz"))?.BrowserDownloadUrl
-                        ?? throw new Exception("Binary Not Found");
-                }
-                else
-                {
-                    url = latest.Assets.FirstOrDefault(a => a.Name.EndsWith("darwin-amd64.tar.gz"))?.BrowserDownloadUrl
-                        ?? throw new Exception("Binary Not Found");
-                }
-                await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/reti.tar.gz {url}");
-                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/reti.tar.gz -C {Path.Combine(Utils.appDataDir, "reti")}");
-            }
+
+            System.IO.File.Delete(filePath);
         }
     }
 }
