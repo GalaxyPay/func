@@ -2,9 +2,9 @@
   <v-btn
     variant="tonal"
     color="primary"
-    block
     :append-icon="mdiChevronDown"
     :disabled="loading"
+    :width="230"
   >
     Manage
     <v-menu activator="parent" bottom scrim>
