@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -66,6 +68,7 @@ namespace FUNC.Controllers
         {
             try
             {
+                string? url = null;
                 if (IsWindows())
                 {
                     string workspaceName = "GalaxyPay";
@@ -81,9 +84,7 @@ namespace FUNC.Controllers
                     {
                         release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
                     }
-                    var url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
-                    if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/node.tar.gz {url}");
+                    url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
                 }
                 else if (IsLinux())
                 {
@@ -95,7 +96,6 @@ namespace FUNC.Controllers
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
 
-                    string? url = null;
                     if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
                     {
                         url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-arm64")
@@ -106,8 +106,6 @@ namespace FUNC.Controllers
                         url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
                     }
-                    if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"wget -L -O {Utils.appDataDir}/node.tar.gz {url}");
                 }
                 else if (IsMacOS())
                 {
@@ -119,14 +117,23 @@ namespace FUNC.Controllers
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
 
-                    string? url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin")
+                    url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin")
                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                    if (url == null) return BadRequest();
-                    await Utils.ExecCmd($"curl -L -o {Utils.appDataDir}/node.tar.gz {url}");
                 }
 
-                await Utils.ExecCmd($"tar -zxf {Utils.appDataDir}/node.tar.gz -C {Utils.appDataDir} bin");
-                await Utils.ExecCmd($"rm {Utils.appDataDir}/node.tar.gz");
+                string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");
+                using var httpClient = new HttpClient();
+                using var s = await httpClient.GetStreamAsync(url);
+                using FileStream fs = new(filePath, System.IO.FileMode.OpenOrCreate);
+                await s.CopyToAsync(fs);
+                fs.Dispose();
+
+                using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
+                using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
+                await TarFile.ExtractToDirectoryAsync(gz, Utils.appDataDir, true);
+                rfs.Dispose();
+
+                System.IO.File.Delete(filePath);
 
                 return Ok();
             }

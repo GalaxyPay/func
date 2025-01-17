@@ -1,4 +1,5 @@
-﻿using FUNC.Models;
+﻿using System.Formats.Tar;
+using FUNC.Models;
 using Newtonsoft.Json.Linq;
 using static System.OperatingSystem;
 
@@ -9,7 +10,7 @@ namespace FUNC
         private static async Task ExtractTemplate(string name)
         {
             string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.tar");
-            await Utils.ExecCmd($"tar -xf \"{templatePath}\" -C {Utils.NodeDataParent(name)}");
+            await TarFile.ExtractToDirectoryAsync(templatePath, Utils.NodeDataParent(name), true);
         }
 
         public static async Task<NodeStatus> Get(string name)
