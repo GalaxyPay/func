@@ -390,7 +390,7 @@ function incentiveIneligible(addr: string) {
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   if ((acctInfo?.amount || 0) < 3 * 10 ** 10)
     return { val: true, reason: "Balance Too Low" };
-  if ((acctInfo?.amount || 0) >= 7 * 10 ** 16)
+  if ((acctInfo?.amount || 0) >= 7 * 10 ** 13)
     return { val: true, reason: "Balance Too High" };
   return { val: !acctInfo?.incentiveEligible, reason: "" };
 }
