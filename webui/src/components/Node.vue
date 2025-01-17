@@ -2,8 +2,8 @@
   <div v-if="nodeStatus">
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
     <v-container class="pl-5" fluid>
-      <v-row>
-        <v-col cols="3">
+      <v-row justify="center">
+        <v-col cols="12" sm="6" md="3">
           <div class="py-1">
             <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
             Service Created
@@ -71,7 +71,7 @@
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
-          <v-col cols="3" class="text-center">
+          <v-col cols="6" md="3" class="text-center">
             <div class="text-h4" style="white-space: nowrap">
               {{
                 algodStatus
@@ -85,7 +85,7 @@
             </div>
             <div>Online Accounts</div>
           </v-col>
-          <v-col cols="3" class="text-center">
+          <v-col cols="6" md="3" class="text-center">
             <div class="text-h4">
               {{
                 partDetails?.proposals == null
@@ -113,7 +113,7 @@
             </div>
             <div>Online Stake</div>
           </v-col>
-          <v-col cols="3" class="text-center">
+          <v-col cols="6" md="3" class="text-center">
             <div class="text-h4">
               {{
                 partDetails?.votes == null
@@ -330,7 +330,8 @@ const algodClient = computed(() => {
 watch(
   () => algodStatus.value,
   (val) => {
-    if (val?.["last-round"] >= 46512890) store.isIncentiveReady = true;
+    if (props.name === "Algorand" && val?.["last-round"] >= 46512890)
+      store.isIncentiveReady = true;
   }
 );
 

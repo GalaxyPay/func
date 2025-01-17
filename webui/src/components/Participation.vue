@@ -59,7 +59,9 @@
                   @click="registerKey(item)"
                   v-show="
                     activeAccount?.address === item.address &&
-                    (!isKeyActive(item) || incentiveIneligible(item.address))
+                    (!isKeyActive(item) ||
+                      (incentiveIneligible(item.address).val &&
+                        !incentiveIneligible(item.address).reason))
                   "
                 />
                 <v-list-item
@@ -384,20 +386,24 @@ function isKeyActive(item: Participation) {
 
 function incentiveIneligible(addr: string) {
   if (!store.isIncentiveReady || activeNetwork.value !== "mainnet")
-    return false;
+    return { val: false, reason: "Not Supported" };
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
-  return (
-    (acctInfo?.amount || 0) >= 3 * 10 ** 10 &&
-    (acctInfo?.amount || 0) < 7 * 10 ** 16 &&
-    !acctInfo?.incentiveEligible
-  );
+  if ((acctInfo?.amount || 0) < 3 * 10 ** 10)
+    return { val: true, reason: "Balance Too Low" };
+  if ((acctInfo?.amount || 0) >= 7 * 10 ** 13)
+    return { val: true, reason: "Balance Too High" };
+  return { val: !acctInfo?.incentiveEligible, reason: "" };
 }
 
 function keyStatus(item: Participation) {
+  const ii = incentiveIneligible(item.address);
   return !isKeyActive(item)
     ? { text: "Unregistered", color: "red" }
-    : incentiveIneligible(item.address)
-    ? { text: "Ineligible For Incentives", color: "warning" }
+    : ii.val
+    ? {
+        text: `Ineligible For Incentives${ii.reason ? ": " + ii.reason : ""}`,
+        color: "warning",
+      }
     : { text: "Online", color: "success" };
 }
 
@@ -467,7 +473,8 @@ async function registerKey(item: Participation) {
     store.overlay = true;
     const atc = new algosdk.AtomicTransactionComposer();
     const suggestedParams = await props.algodClient.getTransactionParams().do();
-    if (incentiveIneligible(item.address)) {
+    const ii = incentiveIneligible(item.address);
+    if (ii.val && !ii.reason) {
       suggestedParams.flatFee = true;
       suggestedParams.fee = 2 * 10 ** 6;
     }
