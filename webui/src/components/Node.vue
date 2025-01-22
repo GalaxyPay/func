@@ -487,30 +487,4 @@ function reloadPartDetails() {
   partDetails.value = undefined;
   store.refresh++;
 }
-
-let paused = false;
-
-watch(
-  () => store.stopNodeServices,
-  async (val) => {
-    try {
-      if (val && nodeStatus.value?.serviceStatus === "Running") {
-        paused = true;
-        await FUNC.api.put(`${props.name}/stop`);
-        nodeStatus.value.serviceStatus = "Stopped";
-        algodStatus.value = undefined;
-        peers.value = undefined;
-      }
-      if (!val && paused) {
-        paused = false;
-        await FUNC.api.put(`${props.name}/start`);
-        await delay(500);
-        getNodeStatus();
-      }
-    } catch (err: any) {
-      console.error(err);
-      store.setSnackbar(err?.response?.data || err.message, "error");
-    }
-  }
-);
 </script>
