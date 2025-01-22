@@ -147,14 +147,12 @@ async function updateNodeLatest(bypass = false) {
 async function updateNode(release: string) {
   try {
     store.downloading = true;
-    store.stopNodeServices = true;
     await FUNC.api.post("goal/update", { name: release });
     await getVersion();
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
   }
-  store.stopNodeServices = false;
   store.downloading = false;
 }
 

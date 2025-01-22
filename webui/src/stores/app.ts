@@ -14,7 +14,6 @@ export const useAppStore = defineStore("app", {
     } as SnackBar,
     refresh: 0,
     connectMenu: false,
-    stopNodeServices: false,
     funcUpdateAvailable: false,
     nodeUpdateAvailable: false,
     downloading: false,

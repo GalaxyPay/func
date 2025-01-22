@@ -23,8 +23,8 @@ namespace FUNC.Controllers
                 string installed = string.Empty;
                 string latest = string.Empty;
 
-                string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
-                string version = await Utils.ExecCmd($"{goalPath} --version");
+                string algodPath = Path.Combine(Utils.appDataDir, "bin", "algod");
+                string version = await Utils.ExecCmd($"{algodPath} -v");
                 if (version != string.Empty)
                 {
                     int firstBreak = version.IndexOf("\n") + 1;
@@ -128,10 +128,34 @@ namespace FUNC.Controllers
                 await s.CopyToAsync(fs);
                 fs.Dispose();
 
+                // Get Node Statuses
+                var algorandStatus = await Node.Get("algorand");
+                var voiStatus = await Node.Get("voi");
+
+                // Stop Running Nodes
+                if (algorandStatus.ServiceStatus == "Running")
+                {
+                    await Node.ControlService("algorand", "stop");
+                }
+                if (voiStatus.ServiceStatus == "Running")
+                {
+                    await Node.ControlService("voi", "stop");
+                }
+
                 using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
                 using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
                 await TarFile.ExtractToDirectoryAsync(gz, Utils.appDataDir, true);
                 rfs.Dispose();
+
+                // Restart Running Nodes
+                if (algorandStatus.ServiceStatus == "Running")
+                {
+                    await Node.ControlService("algorand", "start");
+                }
+                if (voiStatus.ServiceStatus == "Running")
+                {
+                    await Node.ControlService("voi", "start");
+                }
 
                 System.IO.File.Delete(filePath);
 
