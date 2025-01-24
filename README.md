@@ -49,6 +49,28 @@ Then visit the locally hosted webpage at <http://localhost:3536> (for remote acc
 
 The app is a **Node Service Manager** - uninstalling it will **_not_** remove node services that you create with it. If you wish to remove everything, use the app to Remove Services and even Delete Node Data before uninstalling the app.
 
+### Windows (Uninstall)
+
+- Settings > Apps > Installed apps > Search: FUNC > Uninstall
+
+### Mac (Uninstall)
+
+```sh
+sudo launchctl bootout system/func.api
+sudo rm /Library/LaunchDaemons/func.api.plist
+sudo rm -rf /opt/func
+sudo rm -rf /usr/local/share/func
+```
+
+### Linux (Uninstall)
+
+```sh
+sudo systemctl stop func
+sudo rm /lib/systemd/system/func.service
+sudo rm -rf /opt/func
+sudo rm -rf /usr/share/func
+```
+
 ## Manage Node Menu Options
 
 ### Create Service
