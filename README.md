@@ -25,7 +25,7 @@ When updating a previous installation, the installer will recommend to let it au
 After downloading the `.pkg` file to your machine, run
 
 ```sh
-sudo installer -target / -pkg func_<version>_darwin-<architecture>.pkg
+sudo installer -target / -pkg <path to .pkg file>
 ```
 
 If instead you wish to install the package by double-clicking the `.pkg` file , you will have to follow [these instructions](https://support.apple.com/guide/mac-help/apple-cant-check-app-for-malicious-software-mchleab3a043/mac) for bypassing unsigned packages:
@@ -40,7 +40,7 @@ If instead you wish to install the package by double-clicking the `.pkg` file , 
 After downloading the `.deb` file to your machine, run
 
 ```sh
-sudo dpkg -i func_<version>_linux-<architecture>.deb
+sudo dpkg -i <path to .deb file>
 ```
 
 Then visit the locally hosted webpage at <http://localhost:3536> (for remote access see notes below)
@@ -120,13 +120,22 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 [Read more about how Participation Keys function in the Algorand Consensus Protocol](https://developer.algorand.org/docs/get-details/algorand_consensus/#participation-keys)
 
-Here's how to do it:
+### Self-Custody
 
 1. Wait for your node to sync.
 2. Connect your wallet.
 3. Click the + icon in the Participation Keys section.
 4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
 5. Once the key is generated, click on the Status dot to Register the key.
+6. Your account should now be Online, and your Participating in Consensus light should be green.
+
+### Escrow Account
+
+1. Wait for your node to sync.
+2. Click the + icon in the Participation Keys section.
+3. Enter your escrow account in the Address field.
+4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
+5. Copy and paste the key info into escrow site and follow their instructions.
 6. Your account should now be Online, and your Participating in Consensus light should be green.
 
 ## Notes
