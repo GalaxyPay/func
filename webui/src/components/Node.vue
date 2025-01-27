@@ -246,6 +246,7 @@ import {
 } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
+const FuncApi = FUNC.api;
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
@@ -324,20 +325,18 @@ const status = computed(() =>
     : "Unknown"
 );
 
-const algodClient = computed(() => {
-  if (!nodeStatus.value?.token) return undefined;
-  return new Algodv2(
-    nodeStatus.value.token,
-    `http://${location.hostname}`,
-    nodeStatus.value.port
-  );
-});
+const algodClient = ref<Algodv2>();
 
 watch(
-  () => algodStatus.value,
-  (val) => {
-    if (props.name === "Algorand" && val?.["last-round"] >= 46512890)
-      store.isIncentiveReady = true;
+  () => nodeStatus.value,
+  (newVal, oldVal) => {
+    if (newVal && newVal.port !== oldVal?.port) {
+      algodClient.value = new Algodv2(
+        newVal.token,
+        `http://${location.hostname}`,
+        newVal.port
+      );
+    }
   }
 );
 
@@ -369,7 +368,7 @@ const peers = ref<Peer[]>();
 
 async function getNodeStatus() {
   try {
-    const resp = await FUNC.api.get(props.name);
+    const resp = await FuncApi.get(props.name);
     nodeStatus.value = resp.data;
     if (nodeStatus.value?.serviceStatus === "Running") {
       if (algodClient.value) {
@@ -409,8 +408,8 @@ async function getNodeStatus() {
     ) {
       restartAttempted = true;
       console.error("reti not running - attempting restart");
-      await FUNC.api.put("reti/stop");
-      await FUNC.api.put("reti/start");
+      await FuncApi.put("reti/stop");
+      await FuncApi.put("reti/start");
     }
   } catch (err: any) {
     console.error(err);
@@ -458,7 +457,7 @@ async function updateReti() {
   try {
     if (!retiUpdate.value) return;
     loading.value = true;
-    await FUNC.api.post("reti/update");
+    await FuncApi.post("reti/update");
     await getNodeStatus();
     store.setSnackbar("Reti Updated", "success");
   } catch (err: any) {
