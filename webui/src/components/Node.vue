@@ -194,35 +194,6 @@
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
     />
-    <v-container fluid v-if="peers">
-      <v-divider />
-      <v-card-title>Peers ({{ peers.length }})</v-card-title>
-      <v-card-text>
-        <div v-for="item in peers">
-          {{ item.address }}
-          <span>
-            <v-icon
-              v-if="item.network === 'p2p'"
-              class="ml-1"
-              size="small"
-              color="primary"
-              :icon="mdiLanConnect"
-            />
-            <v-tooltip activator="parent" location="right" text="P2P" />
-          </span>
-          <span>
-            <v-icon
-              v-if="!item.outgoing"
-              class="ml-1"
-              size="small"
-              color="success"
-              :icon="mdiArrowLeft"
-            />
-            <v-tooltip activator="parent" location="right" text="Inbound" />
-          </span>
-        </div>
-      </v-card-text>
-    </v-container>
     <v-container
       class="text-caption text-grey text-center"
       v-show="nodeStatus?.serviceStatus === 'Running'"
@@ -235,15 +206,9 @@
 
 <script setup lang="ts">
 import FUNC from "@/services/api";
-import { NodeStatus, Peer } from "@/types";
+import { NodeStatus } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import {
-  mdiArrowLeft,
-  mdiInformation,
-  mdiLanConnect,
-  mdiOpenInNew,
-  mdiRefresh,
-} from "@mdi/js";
+import { mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
 const FuncApi = FUNC.api;
@@ -364,8 +329,6 @@ async function autoRefresh() {
 
 let restartAttempted = false;
 
-const peers = ref<Peer[]>();
-
 async function getNodeStatus() {
   try {
     const resp = await FuncApi.get(props.name);
@@ -373,26 +336,10 @@ async function getNodeStatus() {
     if (nodeStatus.value?.serviceStatus === "Running") {
       if (algodClient.value) {
         algodStatus.value = await algodClient.value?.status().do();
-        if (nodeStatus.value.p2p) {
-          try {
-            const response = (
-              await axios({
-                url: `http://${location.hostname}:${nodeStatus.value.port}/v2/status/peers`,
-                headers: { "X-Algo-Api-Token": nodeStatus.value.token },
-              })
-            ).data as Peer[];
-            peers.value = response.sort((a, b) =>
-              a.address.localeCompare(b.address)
-            );
-          } catch {}
-        } else {
-          peers.value = undefined;
-        }
       }
       if (!refreshing) autoRefresh();
     } else {
       algodStatus.value = undefined;
-      peers.value = undefined;
     }
     if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
       const releases = await axios({

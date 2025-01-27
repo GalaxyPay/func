@@ -73,7 +73,7 @@ The app is a **Node Service Manager** - uninstalling it will **_not_** remove no
 
 ### Configure
 
-- Change your node's Port, DNS Bootstrap, and P2P settings
+- Change your node's Port, DNS Bootstrap, and BaseLoggerDebugLevel
 
 ### Enable/Disable Telemetry
 

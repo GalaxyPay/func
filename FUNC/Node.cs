@@ -18,7 +18,6 @@ namespace FUNC
             int port = 0;
             string token = string.Empty;
             try { token = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "algod.admin.token")); } catch { }
-            bool p2p = false;
             string? configText = null;
             try { configText = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "config.json")); } catch { }
             if (configText != null)
@@ -27,11 +26,6 @@ namespace FUNC
                 var endpointAddressToken = config.GetValue("EndpointAddress");
                 string endpointAddress = endpointAddressToken?.Value<string>() ?? ":0";
                 port = int.Parse(endpointAddress[(endpointAddress.IndexOf(":") + 1)..]);
-                var enableP2PToken = config.GetValue("EnableP2P");
-                var enableP2PHybridModeToken = config.GetValue("EnableP2PHybridMode");
-                bool enableP2P = enableP2PToken != null && enableP2PToken.Value<bool>();
-                bool enableP2PHybridMode = enableP2PHybridModeToken != null && enableP2PHybridModeToken.Value<bool>();
-                if (enableP2P || enableP2PHybridMode) p2p = true;
             }
 
             string sc = string.Empty;
@@ -56,7 +50,6 @@ namespace FUNC
                 ServiceStatus = serviceStatus,
                 Port = port,
                 Token = token,
-                P2p = p2p,
             };
 
             if (name == "algorand")
