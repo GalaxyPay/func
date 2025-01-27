@@ -67,7 +67,7 @@
             class="mt-4"
             :name="name"
             :node-status="nodeStatus"
-            @get-status="getNodeStatus()"
+            @get-status="getAllStatus()"
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
@@ -292,26 +292,12 @@ const status = computed(() =>
 
 const algodClient = ref<Algodv2>();
 
-watch(
-  () => nodeStatus.value,
-  (newVal, oldVal) => {
-    if (newVal && newVal.port !== oldVal?.port) {
-      algodClient.value = new Algodv2(
-        newVal.token,
-        `http://${location.hostname}`,
-        newVal.port
-      );
-    }
-  }
-);
-
 onBeforeMount(async () => {
-  await getNodeStatus();
+  await getAllStatus();
 });
 
-const isMounted = ref(true);
 onBeforeUnmount(() => {
-  isMounted.value = false;
+  refreshing = false;
 });
 
 let refreshing = false;
@@ -319,25 +305,51 @@ let refreshing = false;
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
-  while (nodeStatus.value?.serviceStatus === "Running") {
+  while (refreshing) {
+    await getAlgodStatus();
     await delay(1200);
-    if (!isMounted.value) return;
-    await getNodeStatus();
   }
-  refreshing = false;
+}
+
+async function getAllStatus() {
+  await getNodeStatus();
+  await getAlgodStatus();
+}
+
+async function getNodeStatus() {
+  try {
+    const oldStatus: NodeStatus | undefined = nodeStatus.value
+      ? JSON.parse(JSON.stringify(nodeStatus.value))
+      : undefined;
+    const resp = await FuncApi.get(props.name);
+    nodeStatus.value = resp.data;
+    if (nodeStatus.value?.serviceStatus !== "Running") {
+      refreshing = false;
+    }
+    if (
+      nodeStatus.value &&
+      (oldStatus?.port !== nodeStatus.value.port ||
+        oldStatus?.token !== nodeStatus.value.token)
+    ) {
+      algodClient.value = new Algodv2(
+        nodeStatus.value.token,
+        `http://${location.hostname}`,
+        nodeStatus.value.port
+      );
+      await delay(500);
+    }
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 let restartAttempted = false;
 
-async function getNodeStatus() {
+async function getAlgodStatus() {
   try {
-    const resp = await FuncApi.get(props.name);
-    nodeStatus.value = resp.data;
     if (nodeStatus.value?.serviceStatus === "Running") {
-      if (algodClient.value) {
-        algodStatus.value = await algodClient.value?.status().do();
-      }
-      if (!refreshing) autoRefresh();
+      algodStatus.value = await algodClient.value?.status().do();
     } else {
       algodStatus.value = undefined;
     }
@@ -357,6 +369,10 @@ async function getNodeStatus() {
       console.error("reti not running - attempting restart");
       await FuncApi.put("reti/stop");
       await FuncApi.put("reti/start");
+    }
+    if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
+      await delay(1200);
+      autoRefresh();
     }
   } catch (err: any) {
     console.error(err);
