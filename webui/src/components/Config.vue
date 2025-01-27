@@ -28,10 +28,15 @@
           v-model="config.DNSBootstrapID"
           rows="2"
         />
-        <v-checkbox-btn v-model="enableP2P" label="Enable P2P" />
+        <v-checkbox-btn
+          v-model="enableP2P"
+          label="Enable P2P"
+          :disabled="!enableP2P"
+        />
         <v-checkbox-btn
           v-model="enableP2PHybridMode"
           label="Enable P2P Hybrid Mode"
+          :disabled="!enableP2PHybridMode"
         />
       </v-container>
       <v-card-actions>

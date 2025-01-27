@@ -48,7 +48,6 @@
         />
         <template
           v-if="
-            store.isIncentiveReady &&
             nodeStatus.retiStatus &&
             (status === 'Running' ||
               ['Running', 'Stopped'].includes(

@@ -123,50 +123,56 @@
             </td>
           </tr>
           <tr style="background-color: #1acbf70d" class="text-caption">
-            <td :colspan="2">
+            <td :colspan="1">
               <div class="pa-1">
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteFirstValid)"
                   />
                   First Valid: {{ item.key.voteFirstValid.toLocaleString() }}
                 </div>
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteLastValid)"
                   />
                   Last Valid: {{ item.key.voteLastValid.toLocaleString() }}
                 </div>
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteKeyDilution)"
                   />
                   Key Dilution: {{ item.key.voteKeyDilution.toLocaleString() }}
                 </div>
               </div>
             </td>
-            <td :colspan="columns.length - 2" style="max-width: 0">
+            <td :colspan="columns.length - 1" style="max-width: 0">
               <div class="pa-1">
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.voteParticipationKey))"
                   />
                   Vote Key: {{ b64(item.key.voteParticipationKey) }}
                 </div>
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.selectionParticipationKey))"
                   />
                   Selection Key: {{ b64(item.key.selectionParticipationKey) }}
                 </div>
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.stateProofKey))"
                   />
                   State Proof Key: {{ b64(item.key.stateProofKey) }}
@@ -234,12 +240,7 @@
 <script lang="ts" setup>
 import { Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
-import {
-  mdiChevronDown,
-  mdiClipboardOutline,
-  mdiClose,
-  mdiPlus,
-} from "@mdi/js";
+import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
 import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
@@ -379,13 +380,21 @@ function isKeyActive(item: Participation) {
   const acctInfo = acctInfos.value.find((ai) => ai.address === item.address);
   if (!acctInfo) return false;
   return (
+    acctInfo.participation?.stateProofKey &&
+    item.key.selectionParticipationKey.toString() ==
+      acctInfo.participation.selectionParticipationKey.toString() &&
+    item.key.stateProofKey?.toString() ==
+      acctInfo.participation.stateProofKey.toString() &&
+    item.key.voteFirstValid == acctInfo.participation.voteFirstValid &&
+    item.key.voteKeyDilution == acctInfo.participation.voteKeyDilution &&
+    item.key.voteLastValid == acctInfo.participation.voteLastValid &&
     item.key.voteParticipationKey.toString() ==
-    acctInfo.participation?.voteParticipationKey.toString()
+      acctInfo.participation.voteParticipationKey.toString()
   );
 }
 
 function incentiveIneligible(addr: string) {
-  if (!store.isIncentiveReady || activeNetwork.value !== "mainnet")
+  if (activeNetwork.value !== "mainnet")
     return { val: false, reason: "Not Supported" };
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   if ((acctInfo?.amount || 0) < 3 * 10 ** 10)

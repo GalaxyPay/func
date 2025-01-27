@@ -67,7 +67,7 @@
             class="mt-4"
             :name="name"
             :node-status="nodeStatus"
-            @get-status="getNodeStatus()"
+            @get-status="getAllStatus()"
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
@@ -194,35 +194,6 @@
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
     />
-    <v-container fluid v-if="peers">
-      <v-divider />
-      <v-card-title>Peers ({{ peers.length }})</v-card-title>
-      <v-card-text>
-        <div v-for="item in peers">
-          {{ item.address }}
-          <span>
-            <v-icon
-              v-if="item.network === 'p2p'"
-              class="ml-1"
-              size="small"
-              color="primary"
-              :icon="mdiLanConnect"
-            />
-            <v-tooltip activator="parent" location="right" text="P2P" />
-          </span>
-          <span>
-            <v-icon
-              v-if="!item.outgoing"
-              class="ml-1"
-              size="small"
-              color="success"
-              :icon="mdiArrowLeft"
-            />
-            <v-tooltip activator="parent" location="right" text="Inbound" />
-          </span>
-        </div>
-      </v-card-text>
-    </v-container>
     <v-container
       class="text-caption text-grey text-center"
       v-show="nodeStatus?.serviceStatus === 'Running'"
@@ -235,17 +206,12 @@
 
 <script setup lang="ts">
 import FUNC from "@/services/api";
-import { NodeStatus, Peer } from "@/types";
+import { NodeStatus } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import {
-  mdiArrowLeft,
-  mdiInformation,
-  mdiLanConnect,
-  mdiOpenInNew,
-  mdiRefresh,
-} from "@mdi/js";
+import { mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
 import { Algodv2 } from "algosdk";
 
+const FuncApi = FUNC.api;
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
@@ -324,30 +290,14 @@ const status = computed(() =>
     : "Unknown"
 );
 
-const algodClient = computed(() => {
-  if (!nodeStatus.value?.token) return undefined;
-  return new Algodv2(
-    nodeStatus.value.token,
-    `http://${location.hostname}`,
-    nodeStatus.value.port
-  );
-});
-
-watch(
-  () => algodStatus.value,
-  (val) => {
-    if (props.name === "Algorand" && val?.["last-round"] >= 46512890)
-      store.isIncentiveReady = true;
-  }
-);
+const algodClient = ref<Algodv2>();
 
 onBeforeMount(async () => {
-  await getNodeStatus();
+  await getAllStatus();
 });
 
-const isMounted = ref(true);
 onBeforeUnmount(() => {
-  isMounted.value = false;
+  refreshing = false;
 });
 
 let refreshing = false;
@@ -355,45 +305,53 @@ let refreshing = false;
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
-  while (nodeStatus.value?.serviceStatus === "Running") {
+  while (refreshing) {
+    await getAlgodStatus();
     await delay(1200);
-    if (!isMounted.value) return;
-    await getNodeStatus();
   }
-  refreshing = false;
+}
+
+async function getAllStatus() {
+  await getNodeStatus();
+  await getAlgodStatus();
+}
+
+async function getNodeStatus() {
+  try {
+    const oldStatus: NodeStatus | undefined = nodeStatus.value
+      ? JSON.parse(JSON.stringify(nodeStatus.value))
+      : undefined;
+    const resp = await FuncApi.get(props.name);
+    nodeStatus.value = resp.data;
+    if (nodeStatus.value?.serviceStatus !== "Running") {
+      refreshing = false;
+    }
+    if (
+      nodeStatus.value &&
+      (oldStatus?.port !== nodeStatus.value.port ||
+        oldStatus?.token !== nodeStatus.value.token)
+    ) {
+      algodClient.value = new Algodv2(
+        nodeStatus.value.token,
+        `http://${location.hostname}`,
+        nodeStatus.value.port
+      );
+      await delay(500);
+    }
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
 }
 
 let restartAttempted = false;
 
-const peers = ref<Peer[]>();
-
-async function getNodeStatus() {
+async function getAlgodStatus() {
   try {
-    const resp = await FUNC.api.get(props.name);
-    nodeStatus.value = resp.data;
     if (nodeStatus.value?.serviceStatus === "Running") {
-      if (algodClient.value) {
-        algodStatus.value = await algodClient.value?.status().do();
-        if (nodeStatus.value.p2p) {
-          try {
-            const response = (
-              await axios({
-                url: `http://${location.hostname}:${nodeStatus.value.port}/v2/status/peers`,
-                headers: { "X-Algo-Api-Token": nodeStatus.value.token },
-              })
-            ).data as Peer[];
-            peers.value = response.sort((a, b) =>
-              a.address.localeCompare(b.address)
-            );
-          } catch {}
-        } else {
-          peers.value = undefined;
-        }
-      }
-      if (!refreshing) autoRefresh();
+      algodStatus.value = await algodClient.value?.status().do();
     } else {
       algodStatus.value = undefined;
-      peers.value = undefined;
     }
     if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
       const releases = await axios({
@@ -409,8 +367,12 @@ async function getNodeStatus() {
     ) {
       restartAttempted = true;
       console.error("reti not running - attempting restart");
-      await FUNC.api.put("reti/stop");
-      await FUNC.api.put("reti/start");
+      await FuncApi.put("reti/stop");
+      await FuncApi.put("reti/start");
+    }
+    if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
+      await delay(1200);
+      autoRefresh();
     }
   } catch (err: any) {
     console.error(err);
@@ -458,7 +420,7 @@ async function updateReti() {
   try {
     if (!retiUpdate.value) return;
     loading.value = true;
-    await FUNC.api.post("reti/update");
+    await FuncApi.post("reti/update");
     await getNodeStatus();
     store.setSnackbar("Reti Updated", "success");
   } catch (err: any) {
