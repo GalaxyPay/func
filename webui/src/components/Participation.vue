@@ -123,50 +123,56 @@
             </td>
           </tr>
           <tr style="background-color: #1acbf70d" class="text-caption">
-            <td :colspan="2">
+            <td :colspan="1">
               <div class="pa-1">
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteFirstValid)"
                   />
                   First Valid: {{ item.key.voteFirstValid.toLocaleString() }}
                 </div>
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteLastValid)"
                   />
                   Last Valid: {{ item.key.voteLastValid.toLocaleString() }}
                 </div>
                 <div class="pa-1">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(item.key.voteKeyDilution)"
                   />
                   Key Dilution: {{ item.key.voteKeyDilution.toLocaleString() }}
                 </div>
               </div>
             </td>
-            <td :colspan="columns.length - 2" style="max-width: 0">
+            <td :colspan="columns.length - 1" style="max-width: 0">
               <div class="pa-1">
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.voteParticipationKey))"
                   />
                   Vote Key: {{ b64(item.key.voteParticipationKey) }}
                 </div>
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.selectionParticipationKey))"
                   />
                   Selection Key: {{ b64(item.key.selectionParticipationKey) }}
                 </div>
                 <div class="pa-1 ellipsis">
                   <v-icon
-                    :icon="mdiClipboardOutline"
+                    :icon="mdiContentCopy"
+                    size="small"
                     @click="copyVal(b64(item.key.stateProofKey))"
                   />
                   State Proof Key: {{ b64(item.key.stateProofKey) }}
@@ -234,12 +240,7 @@
 <script lang="ts" setup>
 import { Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
-import {
-  mdiChevronDown,
-  mdiClipboardOutline,
-  mdiClose,
-  mdiPlus,
-} from "@mdi/js";
+import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
 import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
