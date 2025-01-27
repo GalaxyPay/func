@@ -380,8 +380,16 @@ function isKeyActive(item: Participation) {
   const acctInfo = acctInfos.value.find((ai) => ai.address === item.address);
   if (!acctInfo) return false;
   return (
+    acctInfo.participation?.stateProofKey &&
+    item.key.selectionParticipationKey.toString() ==
+      acctInfo.participation.selectionParticipationKey.toString() &&
+    item.key.stateProofKey?.toString() ==
+      acctInfo.participation.stateProofKey.toString() &&
+    item.key.voteFirstValid == acctInfo.participation.voteFirstValid &&
+    item.key.voteKeyDilution == acctInfo.participation.voteKeyDilution &&
+    item.key.voteLastValid == acctInfo.participation.voteLastValid &&
     item.key.voteParticipationKey.toString() ==
-    acctInfo.participation?.voteParticipationKey.toString()
+      acctInfo.participation.voteParticipationKey.toString()
   );
 }
 
