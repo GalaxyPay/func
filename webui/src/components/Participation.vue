@@ -385,7 +385,7 @@ function isKeyActive(item: Participation) {
 }
 
 function incentiveIneligible(addr: string) {
-  if (!store.isIncentiveReady || activeNetwork.value !== "mainnet")
+  if (activeNetwork.value !== "mainnet")
     return { val: false, reason: "Not Supported" };
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   if ((acctInfo?.amount || 0) < 3 * 10 ** 10)
