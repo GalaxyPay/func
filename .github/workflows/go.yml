@@ -266,5 +266,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v3.2.4
+          tag: v3.2.5
           artifacts: "Output/*"
