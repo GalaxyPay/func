@@ -3,6 +3,11 @@
     <NodeIcon color="currentColor" :width="30" class="ml-3 text-primary" />
     <div class="ml-2 text-subtitle-1 text-blu">
       FUNC
+      {{
+        store.showMachineName && store.machineName
+          ? `(${store.machineName})`
+          : ""
+      }}
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
@@ -18,8 +23,18 @@
       />
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
-    <v-btn color="primary" variant="tonal" class="mr-3">
-      {{ formatAddr(activeAccount?.address) || "Connect Wallet" }}
+    <v-btn
+      color="primary"
+      variant="tonal"
+      :icon="store.showMachineName && xs"
+      class="mr-3"
+    >
+      <template v-if="!store.showMachineName || !xs">
+        {{ formatAddr(activeAccount?.address) || "Connect Wallet" }}
+      </template>
+      <template v-else>
+        <v-icon :icon="mdiWallet" />
+      </template>
       <v-menu activator="parent" v-model="store.connectMenu" scrim>
         <v-list>
           <v-container :min-width="350">
@@ -131,13 +146,16 @@ import {
   mdiLightningBoltOutline,
   mdiMinusCircleOutline,
   mdiPlusCircleOutline,
+  mdiWallet,
 } from "@mdi/js";
 import { Wallet, WalletAccount, useWallet } from "@txnlab/use-wallet-vue";
 import { modelsv2 } from "algosdk";
+import { useDisplay } from "vuetify";
 
 const store = useAppStore();
 const { activeAccount, activeNetwork, activeWallet, algodClient, wallets } =
   useWallet();
+const { xs } = useDisplay();
 
 const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();

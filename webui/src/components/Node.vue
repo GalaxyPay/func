@@ -323,6 +323,7 @@ async function getNodeStatus() {
       : undefined;
     const resp = await FuncApi.get(props.name);
     nodeStatus.value = resp.data;
+    store.machineName = nodeStatus.value?.machineName;
     if (nodeStatus.value?.serviceStatus !== "Running") {
       refreshing = false;
     }

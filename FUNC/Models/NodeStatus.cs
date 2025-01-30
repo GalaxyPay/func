@@ -2,6 +2,7 @@
 {
     public class NodeStatus
     {
+        public required string MachineName { get; set; }
         public required string ServiceStatus { get; set; }
         public required int Port { get; set; }
         public required string Token { get; set; }
