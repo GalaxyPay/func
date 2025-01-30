@@ -15,6 +15,7 @@ namespace FUNC
 
         public static async Task<NodeStatus> Get(string name)
         {
+            string machineName = Environment.MachineName;
             int port = 0;
             string token = string.Empty;
             try { token = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "algod.admin.token")); } catch { }
@@ -47,6 +48,7 @@ namespace FUNC
 
             NodeStatus nodeStatus = new()
             {
+                MachineName = machineName,
                 ServiceStatus = serviceStatus,
                 Port = port,
                 Token = token,

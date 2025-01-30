@@ -57,6 +57,21 @@
         </v-row>
         <v-row align="center">
           <v-col>
+            <div>Show Machine Name</div>
+            <div class="text-caption text-grey">In App Bar</div>
+          </v-col>
+          <v-col>
+            <v-switch
+              v-model="store.showMachineName"
+              class="d-flex"
+              style="justify-content: right"
+              color="primary"
+              @click.prevent="setShowMachineName(!store.showMachineName)"
+            />
+          </v-col>
+        </v-row>
+        <v-row align="center">
+          <v-col>
             <div>Show Alternative Networks</div>
           </v-col>
           <v-col>
@@ -160,5 +175,10 @@ async function setShowNetworks(val: boolean) {
   store.showNetworks = val;
   localStorage.setItem("showNetworks", val.toString());
   if (!val) setActiveNetwork("mainnet" as NetworkId);
+}
+
+async function setShowMachineName(val: boolean) {
+  store.showMachineName = val;
+  localStorage.setItem("showMachineName", val.toString());
 }
 </script>
