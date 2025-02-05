@@ -1,5 +1,5 @@
 Package: func
-Version: 3.3.0
+Version: 3.3.1
 Section: base
 Priority: optional
 Architecture: amd64
