@@ -198,7 +198,7 @@ namespace FUNC.Controllers
             if (IsWindows())
             {
                 DirectoryInfo di = new(destDir);
-                foreach (FileInfo file in di.GetFiles()) file.Delete();
+                foreach (FileInfo file in di.GetFiles().Where(f => f.Name != ".env")) file.Delete();
                 ZipFile.ExtractToDirectory(filePath, destDir);
             }
             else
