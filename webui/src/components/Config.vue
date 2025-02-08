@@ -2,52 +2,60 @@
   <v-dialog v-model="show" max-width="800" persistent>
     <v-card :disabled="loading">
       <v-card-title> Configure Node </v-card-title>
-      <v-container v-if="config">
-        <v-text-field label="Port" v-model.number="port" type="number" />
-        <v-text-field
-          label="Token (Read-Only)"
-          readonly
-          :model-value="token"
-          :append-inner-icon="mdiContentCopy"
-          @click:append-inner="copyVal(token)"
-        />
-        <v-select
-          label="BaseLoggerDebugLevel"
-          v-model="baseLoggerDebugLevel"
-          variant="outlined"
-          density="comfortable"
-          :items="[...Array(6).keys()]"
-          hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
-          persistent-hint
-          class="pb-2"
-        />
-        <v-checkbox-btn v-model="showDNSBootstrapID" label="DNS Bootstrap ID" />
-        <v-textarea
-          :disabled="!showDNSBootstrapID"
-          label="DNS Bootstrap ID"
-          v-model="config.DNSBootstrapID"
-          rows="2"
-        />
-        <v-checkbox-btn
-          v-model="enableP2P"
-          label="Enable P2P"
-          :disabled="!enableP2P"
-        />
-        <v-checkbox-btn
-          v-model="enableP2PHybridMode"
-          label="Enable P2P Hybrid Mode"
-          :disabled="!enableP2PHybridMode"
-        />
-      </v-container>
-      <v-card-actions>
-        <v-btn text="Cancel" variant="tonal" @click="show = false" />
-        <v-btn
-          text="Save"
-          color="primary"
-          variant="tonal"
-          @click="saveConfig()"
-        />
-      </v-card-actions>
+      <v-form ref="form" @submit.prevent="saveConfig()">
+        <v-container v-if="config">
+          <v-text-field
+            label="Port"
+            v-model.number="port"
+            type="number"
+            hint="You can always connect to Algod over HTTPS on port 3537"
+            persistent-hint
+            :rules="[portRule]"
+            class="pb-2"
+          />
+          <v-text-field
+            label="Token (Read-Only)"
+            readonly
+            :model-value="token"
+            :append-inner-icon="mdiContentCopy"
+            @click:append-inner="copyVal(token)"
+          />
+          <v-select
+            label="BaseLoggerDebugLevel"
+            v-model="baseLoggerDebugLevel"
+            variant="outlined"
+            density="comfortable"
+            :items="[...Array(6).keys()]"
+            hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
+            persistent-hint
+            class="pb-2"
+          />
+          <v-checkbox-btn
+            v-model="showDNSBootstrapID"
+            label="DNS Bootstrap ID"
+          />
+          <v-textarea
+            :disabled="!showDNSBootstrapID"
+            label="DNS Bootstrap ID"
+            v-model="config.DNSBootstrapID"
+            rows="2"
+          />
+          <v-checkbox-btn
+            v-model="enableP2P"
+            label="Enable P2P"
+            :disabled="!enableP2P"
+          />
+          <v-checkbox-btn
+            v-model="enableP2PHybridMode"
+            label="Enable P2P Hybrid Mode"
+            :disabled="!enableP2PHybridMode"
+          />
+        </v-container>
+        <v-card-actions>
+          <v-btn text="Cancel" variant="tonal" @click="show = false" />
+          <v-btn text="Save" color="primary" variant="tonal" type="submit" />
+        </v-card-actions>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>
@@ -78,6 +86,10 @@ const show = computed({
 
 const store = useAppStore();
 const config = ref();
+const form = ref();
+const portRule = (v: string) => {
+  return !["3536", "3537"].includes(v) || "Invalid Port";
+};
 
 const port = computed({
   get() {
@@ -144,6 +156,8 @@ const showDNSBootstrapID = computed({
 const loading = ref(false);
 
 async function saveConfig() {
+  const { valid } = await form.value.validate();
+  if (!valid) return;
   try {
     loading.value = true;
     await FUNC.api.put(`${props.name}/config`, {

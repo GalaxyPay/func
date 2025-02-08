@@ -286,14 +286,12 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
-const baseUrl = computed(
-  () => `http://${location.hostname}:${props.port}/v2/participation`
-);
+const baseUrl = `${location.origin}/v2/participation`;
 
 const partStats = ref<any>({});
 
 async function getKeys() {
-  const response = await fetch(baseUrl.value, {
+  const response = await fetch(baseUrl, {
     headers: { "X-Algo-Api-Token": props.token },
   });
   if (response.ok) {
@@ -418,7 +416,7 @@ function keyStatus(item: Participation) {
 
 async function deleteKey(id: string) {
   if (confirm("Are you sure you want to delete this key?")) {
-    await fetch(`${baseUrl.value}/${id}`, {
+    await fetch(`${baseUrl}/${id}`, {
       method: "DELETE",
       headers: { "X-Algo-Api-Token": props.token },
     });
@@ -444,7 +442,7 @@ async function generateKey() {
     loading.value = true;
     emit("generatingKey", true);
     await fetch(
-      `${baseUrl.value}/generate/${addr.value}` +
+      `${baseUrl}/generate/${addr.value}` +
         `?first=${gen.value.first}&last=${gen.value.last}`,
       {
         method: "POST",

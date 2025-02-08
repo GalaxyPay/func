@@ -1,5 +1,6 @@
 using FUNC;
 using Microsoft.Net.Http.Headers;
+//using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,15 @@ builder.WebHost.ConfigureKestrel(options =>
         listenOptions.UseHttps(X509.Generate(subject: "FUNC"));
     });
 });
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    //.AddTransforms(transformBuilderContext =>
+    //{
+    //    transformBuilderContext.AddRequestTransform(transformContext =>
+    //    {
+    //        // TODO: change port on destination address based on node configuration value
+    //    });
+    //});
 
 var app = builder.Build();
 
@@ -28,5 +38,6 @@ app.Use(async (httpContext, next) =>
 app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.MapControllers();
 app.UseFileServer();
+app.MapReverseProxy();
 
 app.Run();

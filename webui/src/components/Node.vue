@@ -334,8 +334,8 @@ async function getNodeStatus() {
     ) {
       algodClient.value = new Algodv2(
         nodeStatus.value.token,
-        `http://${location.hostname}`,
-        nodeStatus.value.port
+        `${location.protocol}//${location.hostname}`,
+        location.port
       );
       await delay(500);
     }
