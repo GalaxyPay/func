@@ -1,6 +1,6 @@
 using FUNC;
 using Microsoft.Net.Http.Headers;
-//using Yarp.ReverseProxy.Transforms;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,14 +18,38 @@ builder.WebHost.ConfigureKestrel(options =>
     });
 });
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
-    //.AddTransforms(transformBuilderContext =>
-    //{
-    //    transformBuilderContext.AddRequestTransform(transformContext =>
-    //    {
-    //        // TODO: change port on destination address based on node configuration value
-    //    });
-    //});
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(transformBuilderContext =>
+    {
+        transformBuilderContext.AddRequestTransform(transformContext =>
+        {
+            // Get the original host
+            var ogPort = transformContext.HttpContext.Request.Host.Port;
+            var destPort = 8080;
+
+            // Check if it's a request to the legacy site
+            if (ogPort == 1234) {
+                destPort = Shared.VoiPort;
+                
+            } else if (ogPort == 5678) {
+                // Algo Port
+                destPort = Shared.AlgoPort;
+            }
+
+            var destinationPrefix = transformContext.DestinationPrefix;
+            if (destinationPrefix != null)
+            {
+                var originalUri = new Uri(destinationPrefix);
+                var newUri = new UriBuilder(originalUri)
+                {
+                    Port = destPort
+                }.Uri;
+                transformContext.DestinationPrefix = newUri.ToString();
+            }
+            
+            return ValueTask.CompletedTask;
+        });
+    });
 
 var app = builder.Build();
 
