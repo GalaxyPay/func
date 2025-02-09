@@ -27,6 +27,10 @@ namespace FUNC
                 var endpointAddressToken = config.GetValue("EndpointAddress");
                 string endpointAddress = endpointAddressToken?.Value<string>() ?? ":0";
                 port = int.Parse(endpointAddress[(endpointAddress.IndexOf(":") + 1)..]);
+                if (name == "algorand")
+                    Shared.AlgoPort = port;
+                else if (name == "voi")
+                    Shared.VoiPort = port;
             }
 
             string sc = string.Empty;

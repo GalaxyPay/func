@@ -152,13 +152,13 @@ If you want to participate in consensus, you'll need to generate a Participation
 
   - 3536 AND 3537 - FUNC UI and API
   - 8081 - Algorand algod
-  - 8082 - Voi algod
+  - 8082 AND 3538 - Voi algod
 
 - The `algod` ports are configurable through the UI, and you only need to open the ones for the networks you use
 
 - This should **ONLY** be done on a local network - **DO NOT** open these ports to the internet
 
-- If you want to be able to use WalletConnect wallets (e.g. Defly, Pera) or "copy to clipboard" buttons while accessing the site remotely, you'll need to use port 3537 which serves the site with a self-signed cert over HTTPS. You'll also need "Allow Insecure Content" for the site in your browser settings so that it can communicate to your node over HTTP.
+- If you want to be able to use WalletConnect wallets (e.g. Defly, Pera) or "copy to clipboard" buttons while accessing the site remotely, you'll need to use port 3537 which serves the site with a self-signed cert over HTTPS.
 
 ## Build (for Developers)
 
@@ -167,5 +167,7 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 - [LocalPublish.ps1](LocalPublish.ps1) (Windows)
 - [local-publish.sh](local-publish.sh) and [create-package-pkg.sh](create-package-pkg.sh) (Mac)
 - [local-publish.sh](local-publish.sh) and [create-package-deb.sh](create-package-deb.sh) (Linux)
+
+Note the `create-package` scripts take an argument of `amd64` or `arm64`.
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.

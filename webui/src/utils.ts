@@ -1,5 +1,6 @@
-import algosdk from "algosdk";
+import { networks } from "./data";
 import FUNC from "./services/api";
+import algosdk from "algosdk";
 
 export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,20 +30,10 @@ export async function execAtc(
 }
 
 async function getCatchpoint(name: string): Promise<string | undefined> {
-  const MAINNET_URL =
-    "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current";
-  const VOIMAIN_URL = "https://mainnet-api.voi.nodely.dev/v2/status";
-
-  switch (name) {
-    case "Algorand": {
-      const resp = await axios({ url: MAINNET_URL });
-      return resp.data["last-catchpoint"];
-    }
-    case "Voi": {
-      const resp = await axios({ url: VOIMAIN_URL });
-      return resp.data["last-catchpoint"];
-    }
-  }
+  const resp = await axios({
+    url: networks.find((n) => n.title === name)?.catchpointUrl,
+  });
+  return resp.data["last-catchpoint"];
 }
 
 export async function checkCatchup(algodStatus: any, name: string) {
