@@ -238,6 +238,7 @@
 </template>
 
 <script lang="ts" setup>
+import { networks } from "@/data";
 import { Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
 import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
@@ -286,8 +287,13 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
+const port =
+  location.protocol === "https:"
+    ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
+    : props.port;
+
 const baseUrl = computed(
-  () => `http://${location.hostname}:${props.port}/v2/participation`
+  () => `${location.protocol}//${location.hostname}:${port}/v2/participation`
 );
 
 const partStats = ref<any>({});

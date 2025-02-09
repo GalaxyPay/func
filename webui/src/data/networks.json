@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Algorand",
+    "id": "mainnet",
+    "catchpointUrl": "https://afmetrics.api.nodely.io/v1/delayed/catchup/label/current",
+    "yarpAlgodPort": 3537
+  },
+  {
+    "title": "Voi",
+    "id": "voimain",
+    "catchpointUrl": "https://mainnet-api.voi.nodely.dev/v2/status",
+    "yarpAlgodPort": 3538
+  }
+]

@@ -15,6 +15,7 @@
     "Ref": true,
     "VNode": true,
     "WritableComputedRef": true,
+    "axios": true,
     "computed": true,
     "createApp": true,
     "customRef": true,
@@ -59,6 +60,7 @@
     "toValue": true,
     "triggerRef": true,
     "unref": true,
+    "useAppStore": true,
     "useAttrs": true,
     "useCssModule": true,
     "useCssVars": true,
@@ -69,9 +71,6 @@
     "watch": true,
     "watchEffect": true,
     "watchPostEffect": true,
-    "watchSyncEffect": true,
-    "axios": true,
-    "default": true,
-    "useAppStore": true
+    "watchSyncEffect": true
   }
 }

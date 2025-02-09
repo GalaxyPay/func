@@ -205,6 +205,7 @@
 </template>
 
 <script setup lang="ts">
+import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
 import { checkCatchup, delay } from "@/utils";
@@ -327,7 +328,15 @@ async function getNodeStatus() {
     if (nodeStatus.value?.serviceStatus !== "Running") {
       refreshing = false;
     }
-    if (
+    if (location.protocol === "https:") {
+      if (nodeStatus.value && oldStatus?.token !== nodeStatus.value.token) {
+        algodClient.value = new Algodv2(
+          nodeStatus.value.token,
+          `https://${location.hostname}`,
+          networks.find((n) => n.title === props.name)?.yarpAlgodPort
+        );
+      }
+    } else if (
       nodeStatus.value &&
       (oldStatus?.port !== nodeStatus.value.port ||
         oldStatus?.token !== nodeStatus.value.token)
@@ -377,7 +386,8 @@ async function getAlgodStatus() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    if (err.status !== 502)
+      store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
