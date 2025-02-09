@@ -12,9 +12,14 @@ builder.Services.AddSystemd();
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3536);
+    var cert = X509.Generate(subject: "FUNC");
     options.ListenAnyIP(3537, listenOptions =>
     {
-        listenOptions.UseHttps(X509.Generate(subject: "FUNC"));
+        listenOptions.UseHttps(cert);
+    });
+    options.ListenAnyIP(3538, listenOptions =>
+    {
+        listenOptions.UseHttps(cert);
     });
 });
 builder.Services.AddReverseProxy()
@@ -23,30 +28,10 @@ builder.Services.AddReverseProxy()
     {
         transformBuilderContext.AddRequestTransform(transformContext =>
         {
-            // Get the original host
             var ogPort = transformContext.HttpContext.Request.Host.Port;
-            var destPort = 8080;
-
-            // Check if it's a request to the legacy site
-            if (ogPort == 1234) {
-                destPort = Shared.VoiPort;
-                
-            } else if (ogPort == 5678) {
-                // Algo Port
-                destPort = Shared.AlgoPort;
-            }
-
-            var destinationPrefix = transformContext.DestinationPrefix;
-            if (destinationPrefix != null)
-            {
-                var originalUri = new Uri(destinationPrefix);
-                var newUri = new UriBuilder(originalUri)
-                {
-                    Port = destPort
-                }.Uri;
-                transformContext.DestinationPrefix = newUri.ToString();
-            }
-            
+            var destPort = ogPort == 3538 ? Shared.VoiPort : Shared.AlgoPort;
+            var newUri = new UriBuilder(transformContext.DestinationPrefix) { Port = destPort }.Uri;
+            transformContext.DestinationPrefix = newUri.ToString();
             return ValueTask.CompletedTask;
         });
     });

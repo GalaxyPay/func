@@ -8,8 +8,6 @@
             label="Port"
             v-model.number="port"
             type="number"
-            hint="You can always connect to Algod over HTTPS on port 3537"
-            persistent-hint
             :rules="[portRule]"
             class="pb-2"
           />
@@ -61,6 +59,7 @@
 </template>
 
 <script lang="ts" setup>
+import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { delay } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
@@ -87,8 +86,12 @@ const show = computed({
 const store = useAppStore();
 const config = ref();
 const form = ref();
+
+const invalidPorts = networks
+  .map((n) => n.yarpAlgodPort.toString())
+  .concat("3536");
 const portRule = (v: string) => {
-  return !["3536", "3537"].includes(v) || "Invalid Port";
+  return !invalidPorts.includes(v) || "Invalid Port";
 };
 
 const port = computed({

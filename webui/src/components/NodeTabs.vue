@@ -28,15 +28,11 @@
 </template>
 
 <script setup lang="ts">
+import { networks } from "@/data";
 import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
 
 const store = useAppStore();
 const { activeNetwork, setActiveNetwork } = useWallet();
-
-const networks = [
-  { title: "Algorand", id: "mainnet" },
-  { title: "Voi", id: "voimain" },
-];
 
 const tab = computed(() => {
   return networks.find((n) => n.id === activeNetwork.value)?.title;

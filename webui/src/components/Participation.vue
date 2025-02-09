@@ -238,6 +238,7 @@
 </template>
 
 <script lang="ts" setup>
+import { networks } from "@/data";
 import { Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
 import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
@@ -286,12 +287,19 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
-const baseUrl = `${location.origin}/v2/participation`;
+const port =
+  location.protocol === "https:"
+    ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
+    : props.port;
+
+const baseUrl = computed(
+  () => `${location.protocol}//${location.hostname}:${port}/v2/participation`
+);
 
 const partStats = ref<any>({});
 
 async function getKeys() {
-  const response = await fetch(baseUrl, {
+  const response = await fetch(baseUrl.value, {
     headers: { "X-Algo-Api-Token": props.token },
   });
   if (response.ok) {
@@ -416,7 +424,7 @@ function keyStatus(item: Participation) {
 
 async function deleteKey(id: string) {
   if (confirm("Are you sure you want to delete this key?")) {
-    await fetch(`${baseUrl}/${id}`, {
+    await fetch(`${baseUrl.value}/${id}`, {
       method: "DELETE",
       headers: { "X-Algo-Api-Token": props.token },
     });
@@ -442,7 +450,7 @@ async function generateKey() {
     loading.value = true;
     emit("generatingKey", true);
     await fetch(
-      `${baseUrl}/generate/${addr.value}` +
+      `${baseUrl.value}/generate/${addr.value}` +
         `?first=${gen.value.first}&last=${gen.value.last}`,
       {
         method: "POST",
