@@ -329,7 +329,7 @@ async function getNodeStatus() {
       refreshing = false;
     }
     if (location.protocol === "https:") {
-      if (nodeStatus.value && !algodClient.value) {
+      if (nodeStatus.value && oldStatus?.token !== nodeStatus.value.token) {
         algodClient.value = new Algodv2(
           nodeStatus.value.token,
           `https://${location.hostname}`,
@@ -386,7 +386,8 @@ async function getAlgodStatus() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    if (err.status !== 502)
+      store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
