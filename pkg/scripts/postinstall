@@ -3,5 +3,9 @@ mkdir -p /usr/local/share/func
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
 launchctl bootstrap system /Library/LaunchDaemons/func.api.plist
 sleep 2
-open http://localhost:3536
+
+# Open the default browser to the func web interface
+# If no default found, open Safari.
+DEFAULT_BROWSER=$(defaults read com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers | grep -B 3 'LSHandlerURLScheme = http' | grep 'LSHandlerRoleAll' | tail -n 1 | awk -F'"' '{print $2}')
+open -b "${DEFAULT_BROWSER:-com.apple.Safari}" "http://localhost:3536"
 exit 0
