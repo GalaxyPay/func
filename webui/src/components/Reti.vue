@@ -109,7 +109,7 @@ const mnemonicAcct = computed(() => {
 
 const mnemonicHint = computed(
   () =>
-    mnemonicAcct.value?.addr ||
+    mnemonicAcct.value?.addr.toString() ||
     "This is a hot wallet that performs validator functions such as key registrations and rewards payouts"
 );
 

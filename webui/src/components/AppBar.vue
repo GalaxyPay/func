@@ -148,13 +148,18 @@ import {
   mdiPlusCircleOutline,
   mdiWallet,
 } from "@mdi/js";
-import { Wallet, WalletAccount, useWallet } from "@txnlab/use-wallet-vue";
+import {
+  Wallet,
+  WalletAccount,
+  useNetwork,
+  useWallet,
+} from "@txnlab/use-wallet-vue";
 import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
-const { activeAccount, activeNetwork, activeWallet, algodClient, wallets } =
-  useWallet();
+const { activeAccount, activeWallet, algodClient, wallets } = useWallet();
+const { activeNetwork } = useNetwork();
 const { xs } = useDisplay();
 
 const appVersion = __APP_VERSION__;
@@ -203,10 +208,9 @@ watch(
   () => store.refresh,
   async () => {
     if (activeAccount.value) {
-      const info = await algodClient.value
+      account.value = await algodClient.value
         .accountInformation(activeAccount.value.address)
         .do();
-      account.value = modelsv2.Account.from_obj_for_encoding(info);
     } else {
       account.value = undefined;
     }

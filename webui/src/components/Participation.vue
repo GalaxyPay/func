@@ -87,7 +87,7 @@
           </span>
         </template>
         <template #[`item.expire`]="{ item }">
-          {{ expireDt(Number(item.key.voteLastValid)) }}
+          {{ expireDt(item.key.voteLastValid) }}
         </template>
         <template #expanded-row="{ columns, item }">
           <tr style="background-color: #1acbf712">
@@ -239,10 +239,10 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { Participation } from "@/types";
+import { PartDetails, Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
 import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
-import { useWallet } from "@txnlab/use-wallet-vue";
+import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
 const props = defineProps({
@@ -256,15 +256,16 @@ const props = defineProps({
 const emit = defineEmits(["partDetails", "generatingKey"]);
 
 const store = useAppStore();
-const { activeAccount, activeNetwork, transactionSigner } = useWallet();
+const { activeAccount, transactionSigner } = useWallet();
+const { activeNetwork } = useNetwork();
 
 const loading = ref();
 const keys = ref<Participation[]>();
 const showGenerate = ref(false);
 const form = ref();
 const addr = ref<string>();
-const gen = ref<{ first?: number; last?: number }>({});
-const lastRound = ref();
+const gen = ref<{ first?: bigint; last?: bigint }>({});
+const lastRound = ref<bigint>();
 const acctInfos = ref<modelsv2.Account[]>([]);
 
 const validAddress = (v: string) =>
@@ -292,38 +293,59 @@ const port =
     ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
     : props.port;
 
-const baseUrl = computed(
-  () => `${location.protocol}//${location.hostname}:${port}/v2/participation`
-);
+const partClient = axios.create({
+  baseURL: `${location.protocol}//${location.hostname}:${port}/v2/participation`,
+  headers: { "X-Algo-Api-Token": props.token },
+});
+
+const statsClient = axios.create({
+  baseURL:
+    props.name === "Algorand"
+      ? "https://lab-mainnet-gql.4160.nodely.dev"
+      : props.name === "Voi"
+      ? "https://api.voirewards.com/proposers"
+      : undefined,
+});
 
 const partStats = ref<any>({});
 
-async function getKeys() {
-  const response = await fetch(baseUrl.value, {
-    headers: { "X-Algo-Api-Token": props.token },
-  });
-  if (response.ok) {
-    const data = await response.json();
-    keys.value = data
-      ?.map((p: Participation) => ({
+async function getKeys(): Promise<Participation[]> {
+  const { data } = await partClient.get("");
+  return (
+    data
+      // TODO: there's got to be a better way algosdk!
+      ?.map((p: any) => ({
         ...p,
-        key: modelsv2.AccountParticipation.from_obj_for_encoding(p.key),
+        key: new modelsv2.AccountParticipation({
+          voteParticipationKey: p.key["vote-participation-key"],
+          selectionParticipationKey: p.key["selection-participation-key"],
+          stateProofKey: p.key["state-proof-key"],
+          voteFirstValid: p.key["vote-first-valid"],
+          voteLastValid: p.key["vote-last-valid"],
+          voteKeyDilution: p.key["vote-key-dilution"],
+        }),
       }))
       .sort(
         (a: Participation, b: Participation) =>
           Number(b.key.voteLastValid) - Number(a.key.voteLastValid)
-      );
-    // get account details
+      )
+  );
+}
+
+async function refreshData() {
+  try {
+    const tempKeys = await getKeys();
+
     acctInfos.value = [];
-    const addrs = [...new Set(keys.value?.map((k) => k.address))];
+    const addrs = [...new Set(tempKeys?.map((k) => k.address))];
     await Promise.all(
       addrs.map(async (addr) => {
         const account = await props.algodClient.accountInformation(addr).do();
-        acctInfos.value.push(modelsv2.Account.from_obj_for_encoding(account));
+        acctInfos.value.push(account);
       })
     );
 
-    const activeKeys = keys.value?.filter((k) => isKeyActive(k));
+    const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
     let proposals: number | undefined;
     let votes: number | undefined;
     if (activeKeys?.length) {
@@ -340,12 +362,12 @@ async function getKeys() {
         partStats.value = {};
         await Promise.all(
           activeKeys?.map(async (k) => {
-            const stats = await axios({
-              url: `https://api.voirewards.com/proposers/index_main_3.php?action=walletDetails&wallet=${k.address}`,
-            });
+            const { data } = await statsClient.get(
+              `index_main_3.php?action=walletDetails&wallet=${k.address}`
+            );
             partStats.value[k.address] = {
-              proposals: stats.data.total_blocks,
-              votes: stats.data.vote_count,
+              proposals: data.total_blocks,
+              votes: data.vote_count,
             };
           })
         );
@@ -359,27 +381,30 @@ async function getKeys() {
     const activeStake = acctInfos.value
       .filter((a) => activeKeys?.some((k) => k.address === a.address))
       .reduce((a, c) => a + Number(c.amount), 0);
-    const partDetails = {
+    const partDetails: PartDetails = {
       activeKeys: activeKeys?.length || 0,
       activeStake,
       proposals,
       votes,
     };
     emit("partDetails", partDetails);
-  } else {
-    keys.value = undefined;
+    keys.value = tempKeys;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
 
 onMounted(() => {
-  getKeys();
+  refreshData();
   calcAvgBlockTime();
 });
 
 function loadDefaults() {
+  if (!lastRound.value) throw Error("Invalid Round");
   addr.value = activeAccount.value?.address;
   gen.value.first = lastRound.value;
-  gen.value.last = lastRound.value + 3 * 10 ** 6;
+  gen.value.last = lastRound.value + 3n * 10n ** 6n;
 }
 
 function isKeyActive(item: Participation) {
@@ -423,12 +448,15 @@ function keyStatus(item: Participation) {
 }
 
 async function deleteKey(id: string) {
-  if (confirm("Are you sure you want to delete this key?")) {
-    await fetch(`${baseUrl.value}/${id}`, {
-      method: "DELETE",
-      headers: { "X-Algo-Api-Token": props.token },
-    });
-    await getKeys();
+  if (
+    confirm(
+      `Are you sure you want to delete this key?
+
+If the key was previously registered, you should wait 320 rounds after unregistering it before deleting the key.`
+    )
+  ) {
+    await partClient.delete(id);
+    await refreshData();
   }
 }
 
@@ -440,7 +468,7 @@ async function showGenerateDialog() {
 
 async function getLastRound() {
   const status = await props.algodClient.status().do();
-  lastRound.value = status["last-round"];
+  lastRound.value = status.lastRound;
 }
 
 async function generateKey() {
@@ -449,22 +477,19 @@ async function generateKey() {
   try {
     loading.value = true;
     emit("generatingKey", true);
-    await fetch(
-      `${baseUrl.value}/generate/${addr.value}` +
-        `?first=${gen.value.first}&last=${gen.value.last}`,
-      {
-        method: "POST",
-        headers: { "X-Algo-Api-Token": props.token },
-      }
-    ).then(async (response) => {
-      if (response.ok) {
+    await partClient
+      .post(
+        `generate/${addr.value}?first=${gen.value.first}&last=${gen.value.last}`
+      )
+      .then(async () => {
         let generating = true;
         while (generating) {
-          await delay(2000);
-          await getKeys();
+          await delay(920);
+          const keys = await getKeys();
           if (
-            keys.value?.some(
+            keys?.some(
               (k) =>
+                k.address === addr.value &&
                 k.key.voteFirstValid == gen.value.first &&
                 k.key.voteLastValid == gen.value.last
             )
@@ -472,10 +497,8 @@ async function generateKey() {
             generating = false;
         }
         store.setSnackbar("New key generated", "success");
-      } else {
-        throw new Error(response.statusText);
-      }
-    });
+        await refreshData();
+      });
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
@@ -491,10 +514,10 @@ async function registerKey(item: Participation) {
     const ii = incentiveIneligible(item.address);
     if (ii.val && !ii.reason) {
       suggestedParams.flatFee = true;
-      suggestedParams.fee = 2 * 10 ** 6;
+      suggestedParams.fee = 2n * 10n ** 6n;
     }
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
-      from: item.address,
+      sender: item.address,
       suggestedParams,
       voteFirst: Number(item.key.voteFirstValid),
       voteLast: Number(item.key.voteLastValid),
@@ -521,7 +544,7 @@ async function offline() {
         .do();
       const atc = new algosdk.AtomicTransactionComposer();
       const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
-        from: activeAccount.value!.address,
+        sender: activeAccount.value!.address,
         suggestedParams,
         nonParticipation: false,
       });
@@ -535,18 +558,24 @@ async function offline() {
   }
 }
 
-const avgBlockTime = ref();
+const avgBlockTime = ref<number>();
 
 async function calcAvgBlockTime() {
   await getLastRound();
+  if (!lastRound.value) return;
   const currentRound = await props.algodClient.block(lastRound.value).do();
-  const oldRound = await props.algodClient.block(lastRound.value - 100).do();
+  const oldRound = await props.algodClient.block(lastRound.value - 100n).do();
   avgBlockTime.value =
-    Math.floor(currentRound.block.ts - oldRound.block.ts) * 10;
+    Math.floor(
+      Number(
+        currentRound.block.header.timestamp - oldRound.block.header.timestamp
+      )
+    ) * 10;
 }
 
-function expireDt(lastValid: number) {
-  const expireMs = (lastValid - lastRound.value) * avgBlockTime.value;
+function expireDt(lastValid: bigint) {
+  if (!lastRound.value || !avgBlockTime.value) return undefined;
+  const expireMs = Number(lastValid - lastRound.value) * avgBlockTime.value;
   return new Date(Date.now() + expireMs).toLocaleString();
 }
 
@@ -559,7 +588,7 @@ function resetAll() {
 
 watch(
   () => store.refresh,
-  async () => await getKeys()
+  async () => await refreshData()
 );
 
 function copyVal(val: string | number | bigint | undefined) {
@@ -585,10 +614,9 @@ async function getAlgoStats(addrs: string[]) {
       votes
     }`;
   try {
-    const { data } = await axios({
-      url: "https://lab-mainnet-gql.4160.nodely.dev/graphql",
-      method: "post",
-      data: { query, operationName: "bulkAccounts" },
+    const { data } = await statsClient.post("graphql", {
+      query,
+      operationName: "bulkAccounts",
     });
     const stats: any = {};
     Object.keys(data.data).forEach((key) => {

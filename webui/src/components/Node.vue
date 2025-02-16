@@ -75,7 +75,7 @@
             <div class="text-h4" style="white-space: nowrap">
               {{
                 algodStatus
-                  ? algodStatus["last-round"].toLocaleString() || "-"
+                  ? algodStatus.lastRound.toLocaleString() || "-"
                   : "-"
               }}
             </div>
@@ -185,7 +185,7 @@
       </v-container>
     </v-container>
     <Participation
-      v-if="algodClient && algodStatus?.['last-round'] > 100"
+      v-if="algodClient && (algodStatus?.lastRound || 0) > 100"
       :name="name"
       :port="nodeStatus.port"
       :token="nodeStatus.token"
@@ -207,19 +207,19 @@
 <script setup lang="ts">
 import { networks } from "@/data";
 import FUNC from "@/services/api";
-import { NodeStatus } from "@/types";
+import { NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay } from "@/utils";
 import { mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
-import { Algodv2 } from "algosdk";
+import { Algodv2, modelsv2 } from "algosdk";
 
 const FuncApi = FUNC.api;
 const store = useAppStore();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
-const algodStatus = ref();
+const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const retiLatest = ref<string>();
-const partDetails = ref();
+const partDetails = ref<PartDetails>();
 const generatingKey = ref<boolean>(false);
 
 const retiRunning = computed(
@@ -233,7 +233,7 @@ const retiUpdate = computed(() => {
   return trimL.slice(0, trimL.indexOf(" ")) !== retiLatest.value;
 });
 
-const isSyncing = computed(() => !!algodStatus.value?.["catchup-time"]);
+const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
 
 const createdColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Unknown"
@@ -248,7 +248,7 @@ const runningColor = computed(() =>
 );
 
 const syncedColor = computed(() =>
-  algodStatus.value?.["last-round"] == 0 && !isSyncing.value
+  algodStatus.value?.lastRound == 0n && !isSyncing.value
     ? "red"
     : isSyncing.value && !generatingKey.value
     ? "warning"
@@ -308,7 +308,7 @@ async function autoRefresh() {
   refreshing = true;
   while (refreshing) {
     await getAlgodStatus();
-    await delay(1200);
+    await delay(920);
   }
 }
 
@@ -381,7 +381,7 @@ async function getAlgodStatus() {
       await FuncApi.put("reti/start");
     }
     if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
-      await delay(1200);
+      await delay(920);
       autoRefresh();
     }
   } catch (err: any) {
@@ -397,31 +397,31 @@ const catchupProgress = computed(() => {
     {
       name: "Accounts",
       processed:
-        (algodStatus.value["catchpoint-processed-accounts"] /
-          algodStatus.value["catchpoint-total-accounts"]) *
+        ((algodStatus.value.catchpointProcessedAccounts || 0) /
+          (algodStatus.value.catchpointTotalAccounts || 0)) *
         100,
       verified:
-        (algodStatus.value["catchpoint-verified-accounts"] /
-          algodStatus.value["catchpoint-total-accounts"]) *
+        ((algodStatus.value.catchpointVerifiedAccounts || 0) /
+          (algodStatus.value.catchpointTotalAccounts || 0)) *
         100,
     },
     {
       name: "KVs",
       processed:
-        (algodStatus.value["catchpoint-processed-kvs"] /
-          algodStatus.value["catchpoint-total-kvs"]) *
+        ((algodStatus.value.catchpointProcessedKvs || 0) /
+          (algodStatus.value.catchpointTotalKvs || 0)) *
         100,
       verified:
-        (algodStatus.value["catchpoint-verified-kvs"] /
-          algodStatus.value["catchpoint-total-kvs"]) *
+        ((algodStatus.value.catchpointVerifiedKvs || 0) /
+          (algodStatus.value.catchpointTotalKvs || 0)) *
         100,
     },
     {
       name: "Blocks",
       processed: 100,
       verified:
-        (algodStatus.value["catchpoint-acquired-blocks"] /
-          algodStatus.value["catchpoint-total-blocks"]) *
+        ((algodStatus.value.catchpointAcquiredBlocks || 0) /
+          (algodStatus.value.catchpointTotalBlocks || 0)) *
         100,
     },
   ];

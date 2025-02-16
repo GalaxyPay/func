@@ -92,13 +92,13 @@
 <script lang="ts" setup>
 import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
-import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
+import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
 const emit = defineEmits(["close"]);
 
 const store = useAppStore();
-const { activeNetwork, setActiveNetwork } = useWallet();
+const { activeNetwork, setActiveNetwork } = useNetwork();
 
 const show = computed({
   get() {
@@ -124,12 +124,14 @@ onBeforeMount(async () => {
   }
 });
 
+const githubClient = axios.create({
+  baseURL: "https://api.github.com/repos/GalaxyPay/func/releases",
+});
+
 async function getVersion() {
   try {
-    const func = await axios({
-      url: "https://api.github.com/repos/GalaxyPay/func/releases/latest",
-    });
-    funcLatest.value = func.data?.name.slice(1);
+    const { data } = await githubClient.get("latest");
+    funcLatest.value = data?.name.slice(1);
     store.funcUpdateAvailable = funcLatest.value !== appVersion;
     const goalVersion = await FUNC.api.get("goal/version");
     store.goalVersion = goalVersion.data;
