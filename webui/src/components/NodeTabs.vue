@@ -29,18 +29,18 @@
 
 <script setup lang="ts">
 import { networks } from "@/data";
-import { NetworkId, useWallet } from "@txnlab/use-wallet-vue";
+import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
 const store = useAppStore();
-const { activeNetwork, setActiveNetwork } = useWallet();
+const { activeNetwork, setActiveNetwork } = useNetwork();
 
 const tab = computed(() => {
   return networks.find((n) => n.id === activeNetwork.value)?.title;
 });
 
-function setNetwork(val: any) {
+async function setNetwork(val: any) {
   const nid = networks.find((n) => n.title === val)?.id as NetworkId;
-  setActiveNetwork(nid);
+  await setActiveNetwork(nid);
   store.refresh++;
 }
 </script>

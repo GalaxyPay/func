@@ -1,6 +1,6 @@
 import { networks } from "./data";
 import FUNC from "./services/api";
-import algosdk from "algosdk";
+import algosdk, { modelsv2 } from "algosdk";
 
 export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -36,13 +36,16 @@ async function getCatchpoint(name: string): Promise<string | undefined> {
   return resp.data["last-catchpoint"];
 }
 
-export async function checkCatchup(algodStatus: any, name: string) {
-  if (algodStatus?.["catchup-time"]) {
+export async function checkCatchup(
+  algodStatus: modelsv2.NodeStatusResponse | undefined,
+  name: string
+) {
+  if (algodStatus?.catchupTime) {
     const catchpoint = await getCatchpoint(name);
     if (!catchpoint) throw Error("Invald Catchpoint");
     const [round, label] = catchpoint.split("#");
-    const isCatchingUp = algodStatus?.["catchpoint"] === catchpoint;
-    const needsCatchUp = Number(round) - algodStatus?.["last-round"] > 20000;
+    const isCatchingUp = algodStatus?.catchpoint === catchpoint;
+    const needsCatchUp = BigInt(round) - algodStatus?.lastRound > 20000n;
     if (!isCatchingUp && needsCatchUp) {
       await FUNC.api.post(`${name}/catchup`, { round, label });
     }

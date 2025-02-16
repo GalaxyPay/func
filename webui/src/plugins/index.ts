@@ -7,6 +7,7 @@
 // Plugins
 import vuetify from "./vuetify";
 import {
+  NetworkConfigBuilder,
   NetworkId,
   WalletId,
   WalletManagerPlugin,
@@ -15,6 +16,15 @@ import pinia from "../stores";
 
 // Types
 import type { App } from "vue";
+
+const networks = new NetworkConfigBuilder()
+  .addNetwork("voimain", {
+    algod: {
+      baseServer: "https://mainnet-api.voi.nodely.dev",
+      token: "",
+    },
+  })
+  .build();
 
 export function registerPlugins(app: App) {
   app
@@ -30,6 +40,7 @@ export function registerPlugins(app: App) {
         WalletId.PERA,
         WalletId.KIBISIS,
       ],
-      network: NetworkId.MAINNET,
+      defaultNetwork: NetworkId.MAINNET,
+      networks,
     });
 }
