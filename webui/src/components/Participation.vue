@@ -238,7 +238,7 @@
 </template>
 
 <script lang="ts" setup>
-import { networks } from "@/data";
+import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
 import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
@@ -310,26 +310,15 @@ const statsClient = axios.create({
 const partStats = ref<any>({});
 
 async function getKeys(): Promise<Participation[]> {
-  const { data } = await partClient.get("");
-  return (
-    data
-      // TODO: there's got to be a better way algosdk!
-      ?.map((p: any) => ({
-        ...p,
-        key: new modelsv2.AccountParticipation({
-          voteParticipationKey: p.key["vote-participation-key"],
-          selectionParticipationKey: p.key["selection-participation-key"],
-          stateProofKey: p.key["state-proof-key"],
-          voteFirstValid: p.key["vote-first-valid"],
-          voteLastValid: p.key["vote-last-valid"],
-          voteKeyDilution: p.key["vote-key-dilution"],
-        }),
-      }))
-      .sort(
-        (a: Participation, b: Participation) =>
-          Number(b.key.voteLastValid) - Number(a.key.voteLastValid)
-      )
-  );
+  const { data }: { data: Participation[] } = await partClient.get("");
+  return data
+    ?.map((p) => ({
+      ...p,
+      key: modelsv2.AccountParticipation.fromEncodingData(
+        new Map(Object.entries(p.key))
+      ),
+    }))
+    .sort((a, b) => Number(b.key.voteLastValid) - Number(a.key.voteLastValid));
 }
 
 async function refreshData() {
@@ -425,7 +414,7 @@ function isKeyActive(item: Participation) {
 }
 
 function incentiveIneligible(addr: string) {
-  if (activeNetwork.value !== "mainnet")
+  if (activeNetwork.value !== DEFAULT_NETWORK)
     return { val: false, reason: "Not Supported" };
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   if ((acctInfo?.amount || 0) < 3 * 10 ** 10)

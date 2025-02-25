@@ -16,6 +16,7 @@ import pinia from "../stores";
 
 // Types
 import type { App } from "vue";
+import { DEFAULT_NETWORK } from "@/data";
 
 const networks = new NetworkConfigBuilder()
   .addNetwork("voimain", {
@@ -40,7 +41,7 @@ export function registerPlugins(app: App) {
         WalletId.PERA,
         WalletId.KIBISIS,
       ],
-      defaultNetwork: NetworkId.MAINNET,
+      defaultNetwork: DEFAULT_NETWORK as NetworkId,
       networks,
     });
 }
