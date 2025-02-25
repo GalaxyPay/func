@@ -90,6 +90,7 @@
 </template>
 
 <script lang="ts" setup>
+import { DEFAULT_NETWORK } from "@/data";
 import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
@@ -117,7 +118,7 @@ const url = ref();
 let init = false;
 
 onBeforeMount(async () => {
-  if (activeNetwork.value !== "mainnet") setShowNetworks(true);
+  if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
   await getVersion();
   if (store.funcUpdateAvailable) {
     url.value = (await FUNC.api.get("func/latest")).data;
@@ -176,7 +177,7 @@ async function updateNode(release: string) {
 async function setShowNetworks(val: boolean) {
   store.showNetworks = val;
   localStorage.setItem("showNetworks", val.toString());
-  if (!val) setActiveNetwork("mainnet" as NetworkId);
+  if (!val) setActiveNetwork(DEFAULT_NETWORK as NetworkId);
 }
 
 async function setShowMachineName(val: boolean) {

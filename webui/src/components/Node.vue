@@ -113,13 +113,7 @@
             </div>
             <div>Online Stake</div>
           </v-col>
-          <v-col
-            cols="12"
-            sm="6"
-            md="3"
-            class="text-center"
-            align-self="center"
-          >
+          <v-col cols="12" sm="6" md="3" class="text-center">
             <div class="text-h4">
               {{
                 partDetails?.votes == null
