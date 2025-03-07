@@ -32,33 +32,26 @@
                 :color="keyStatus(item).color"
                 class="mr-2"
               />
-              <v-icon
-                v-show="
-                  activeAccount?.address === item.address || !isKeyActive(item)
-                "
-                :icon="mdiChevronDown"
-                size="large"
-              />
+              <v-icon :icon="mdiChevronDown" size="large" />
             </span>
             <v-tooltip
               activator="parent"
               location="top"
               :text="keyStatus(item).text"
             />
-            <v-menu
-              activator="parent"
-              :disabled="
-                activeAccount?.address !== item.address && isKeyActive(item)
-              "
-              bottom
-              scrim
-            >
+            <v-menu activator="parent" bottom scrim>
               <v-list density="compact">
+                <div
+                  class="mx-4 text-caption text-grey"
+                  v-show="!isConnected(item)"
+                >
+                  Connect wallet for more options
+                </div>
                 <v-list-item
                   :title="(isKeyActive(item) ? 'Re-' : '') + 'Register'"
                   @click="registerKey(item)"
                   v-show="
-                    activeAccount?.address === item.address &&
+                    isConnected(item) &&
                     (!isKeyActive(item) ||
                       (incentiveIneligible(item.address).val &&
                         !incentiveIneligible(item.address).reason))
@@ -67,14 +60,17 @@
                 <v-list-item
                   title="Go Offline"
                   @click="offline()"
-                  v-show="
-                    activeAccount?.address === item.address && isKeyActive(item)
-                  "
+                  v-show="isConnected(item) && isKeyActive(item)"
                 />
                 <v-list-item
                   title="Delete Key"
                   @click="deleteKey(item.id)"
                   v-show="!isKeyActive(item)"
+                />
+                <v-list-item
+                  title="View Rewards"
+                  :append-icon="mdiOpenInNew"
+                  @click="viewRewards(item)"
                 />
               </v-list>
             </v-menu>
@@ -241,7 +237,13 @@
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
 import { b64, delay, execAtc, formatAddr } from "@/utils";
-import { mdiChevronDown, mdiClose, mdiContentCopy, mdiPlus } from "@mdi/js";
+import {
+  mdiChevronDown,
+  mdiClose,
+  mdiContentCopy,
+  mdiOpenInNew,
+  mdiPlus,
+} from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 
@@ -394,6 +396,15 @@ function loadDefaults() {
   addr.value = activeAccount.value?.address;
   gen.value.first = lastRound.value;
   gen.value.last = lastRound.value + 3n * 10n ** 6n;
+}
+
+function viewRewards(item: Participation) {
+  const url = `https://algonoderewards.com/${item.address}`;
+  window.open(url, "_blank");
+}
+
+function isConnected(item: Participation) {
+  return activeAccount.value?.address === item.address;
 }
 
 function isKeyActive(item: Participation) {
