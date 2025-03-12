@@ -399,8 +399,13 @@ function loadDefaults() {
 }
 
 function viewRewards(item: Participation) {
-  const url = `https://algonoderewards.com/${item.address}`;
-  window.open(url, "_blank");
+  const url =
+    props.name === "Algorand"
+      ? `https://algonoderewards.com/${item.address}`
+      : props.name === "Voi"
+      ? `https://voirewards.com/wallet/${item.address}#epochs`
+      : undefined;
+  if (url) window.open(url, "_blank");
 }
 
 function isConnected(item: Participation) {
