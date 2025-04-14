@@ -352,7 +352,7 @@ let restartAttempted = false;
 
 async function getAlgodStatus() {
   try {
-    if (nodeStatus.value?.serviceStatus === "Running") {
+    if (nodeStatus.value?.serviceStatus === "Running" && !store.downloading) {
       algodStatus.value = await algodClient.value?.status().do();
     } else {
       algodStatus.value = undefined;
@@ -380,7 +380,7 @@ async function getAlgodStatus() {
     }
   } catch (err: any) {
     console.error(err);
-    if (err.status !== 502)
+    if (err.status !== 502 && !store.downloading)
       store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
