@@ -95,17 +95,11 @@ namespace FUNC.Controllers
 
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                    bool isArm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
 
-                    if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
-                    {
-                        url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-arm64")
+                    url = latestInfo.Assets.FirstOrDefault(a =>
+                        a.Name.Contains($"node_stable_linux-{(isArm ? "arm" : "amd")}64")
                         && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                    }
-                    else
-                    {
-                        url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_linux-amd64")
-                           && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                    }
                 }
                 else if (IsMacOS())
                 {
@@ -117,8 +111,8 @@ namespace FUNC.Controllers
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                     var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
 
-                    url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin")
-                       && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin-universal")
+                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
                 }
 
                 string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");
