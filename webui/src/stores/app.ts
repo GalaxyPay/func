@@ -19,8 +19,12 @@ export const useAppStore = defineStore("app", {
     downloading: false,
     stoppingReti: false,
     goalVersion: undefined as GoalVersion | undefined,
-    showNetworks: localStorage.getItem("showNetworks") === "true",
-    showMachineName: localStorage.getItem("showMachineName") === "true",
+    showNetworks: (localStorage.getItem("showNetworks") === "true") as
+      | boolean
+      | null,
+    showMachineName: (localStorage.getItem("showMachineName") === "true") as
+      | boolean
+      | null,
     machineName: undefined as string | undefined,
   }),
   actions: {

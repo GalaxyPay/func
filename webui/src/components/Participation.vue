@@ -266,7 +266,7 @@ const keys = ref<Participation[]>();
 const showGenerate = ref(false);
 const form = ref();
 const addr = ref<string>();
-const gen = ref<{ first?: bigint; last?: bigint }>({});
+const gen = ref<{ first?: bigint | string; last?: bigint | string }>({});
 const lastRound = ref<bigint>();
 const acctInfos = ref<modelsv2.Account[]>([]);
 
