@@ -1,6 +1,6 @@
 rm -r Output
 
-PKG=Output/func_3.4.1_linux-$1
+PKG=Output/func_3.4.2_linux-$1
 
 mkdir -p $PKG/lib/systemd/system
 mkdir -p $PKG/opt/func
