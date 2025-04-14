@@ -26,7 +26,7 @@
     <v-btn
       color="primary"
       variant="tonal"
-      :icon="store.showMachineName && xs"
+      :icon="!!store.showMachineName && xs"
       class="mr-3"
     >
       <template v-if="!store.showMachineName || !xs">
