@@ -124,7 +124,7 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 1. Wait for your node to sync.
 2. Connect your wallet.
-3. Click the + icon in the Participation Keys section.
+3. Click the "Generate Key..." button in the Participation Keys section.
 4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
 5. Once the key is generated, click on the Status dot to Register the key.
 6. Your account should now be Online, and your Participating in Consensus light should be green.

@@ -4,8 +4,8 @@
     <v-card-title class="d-flex">
       Participation Keys <v-spacer />
       <v-btn
-        :icon="mdiPlus"
-        variant="plain"
+        text="Generate Key..."
+        variant="tonal"
         color="primary"
         :disabled="status !== 'Running'"
         @click="showGenerateDialog"
