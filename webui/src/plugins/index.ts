@@ -32,15 +32,7 @@ export function registerPlugins(app: App) {
     .use(vuetify)
     .use(pinia)
     .use(WalletManagerPlugin, {
-      wallets: [
-        {
-          id: WalletId.LUTE,
-          options: { siteName: "FUNC" },
-        },
-        WalletId.DEFLY,
-        WalletId.PERA,
-        WalletId.KIBISIS,
-      ],
+      wallets: [WalletId.LUTE, WalletId.DEFLY, WalletId.PERA, WalletId.KIBISIS],
       defaultNetwork: DEFAULT_NETWORK as NetworkId,
       networks,
     });
