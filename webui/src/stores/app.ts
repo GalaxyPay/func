@@ -26,6 +26,10 @@ export const useAppStore = defineStore("app", {
       | boolean
       | null,
     machineName: undefined as string | undefined,
+    resetDates: JSON.parse(localStorage.getItem("resetDates") || "[]") as {
+      name: string;
+      date: string;
+    }[],
   }),
   actions: {
     async setSnackbar(text: string, color = "info", timeout = 4000) {
