@@ -103,8 +103,18 @@
                   location="bottom"
                 />
               </span>
+              <div>
+                <v-btn
+                  size="x-small"
+                  :text="resetDate ? `Since ${resetDate}` : 'All-Time'"
+                  color="grey"
+                  variant="tonal"
+                  :disabled="!algodStatus"
+                  @click="showResetDialog()"
+                />
+              </div>
             </div>
-            <div class="mt-13 text-h4" style="white-space: nowrap">
+            <div class="mt-7 text-h4" style="white-space: nowrap">
               {{
                 partDetails
                   ? (partDetails.activeStake / 10 ** 6).toLocaleString()
@@ -127,7 +137,7 @@
                 <v-icon :icon="mdiInformation" class="pb-2" />
                 <v-tooltip
                   activator="parent"
-                  text="via Votes"
+                  text="all-time via Votes"
                   location="bottom"
                 />
               </span>
@@ -195,6 +205,37 @@
       This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
     </v-container>
+    <v-dialog v-model="showReset" max-width="350" persistent>
+      <v-card>
+        <v-card-title class="d-flex">
+          Blocks
+          <v-spacer />
+          <v-icon :icon="mdiClose" @click="showReset = false" />
+        </v-card-title>
+        <v-card-text>
+          Only count blocks created after:
+          <v-text-field
+            v-model="date"
+            label="Date"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="pt-3"
+            clearable
+            persistent-clear
+            hint="YYYY-MM-DD"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            text="Save"
+            color="primary"
+            variant="tonal"
+            @click="setResetDate()"
+          />
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -203,7 +244,7 @@ import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import { mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
+import { mdiClose, mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
 import { Algodv2, modelsv2 } from "algosdk";
 
 const FuncApi = FUNC.api;
@@ -214,7 +255,8 @@ const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const retiLatest = ref<string>();
 const partDetails = ref<PartDetails>();
-const generatingKey = ref<boolean>(false);
+const generatingKey = ref(false);
+const showReset = ref(false);
 
 const retiRunning = computed(
   () => nodeStatus.value?.retiStatus?.exeStatus === "Running"
@@ -437,7 +479,7 @@ async function updateReti() {
 
 watch(
   () => status.value,
-  async (val) => {
+  async (val, oldVal) => {
     if (val === "Syncing") {
       try {
         await checkCatchup(algodStatus.value, props.name);
@@ -446,6 +488,7 @@ watch(
         store.setSnackbar(err?.response?.data || err.message, "error");
       }
     }
+    if (oldVal === "Syncing") reloadPartDetails();
   }
 );
 
@@ -453,5 +496,37 @@ function reloadPartDetails() {
   if (!partDetails.value) return;
   partDetails.value = undefined;
   store.refresh++;
+  showReset.value = false;
+}
+
+const date = ref();
+const resetDate = computed(
+  () => store.resetDates.find((rr) => rr.name === props.name)?.date
+);
+
+function showResetDialog() {
+  showReset.value = true;
+  date.value = resetDate.value ?? new Date().toLocaleDateString();
+}
+
+function setResetDate() {
+  const idx = store.resetDates.findIndex((rr) => rr.name === props.name);
+  if (idx < 0) {
+    if (date.value) {
+      store.resetDates.push({
+        name: props.name,
+        date: date.value,
+      });
+    }
+  } else {
+    if (date.value) {
+      store.resetDates[idx].date = date.value;
+    } else {
+      store.resetDates.splice(idx, 1);
+    }
+  }
+  localStorage.setItem("resetDates", JSON.stringify(store.resetDates));
+  showReset.value = false;
+  reloadPartDetails();
 }
 </script>

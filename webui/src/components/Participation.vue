@@ -184,7 +184,7 @@
         <v-card-title class="d-flex">
           Generate Participation Key
           <v-spacer />
-          <v-icon color="currentColor" :icon="mdiClose" @click="resetAll()" />
+          <v-icon :icon="mdiClose" @click="resetAll()" />
         </v-card-title>
         <v-form ref="form" @submit.prevent="generateKey()">
           <v-container>
@@ -242,7 +242,6 @@ import {
   mdiClose,
   mdiContentCopy,
   mdiOpenInNew,
-  mdiPlus,
 } from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
@@ -340,29 +339,9 @@ async function refreshData() {
     let proposals: number | undefined;
     let votes: number | undefined;
     if (activeKeys?.length) {
-      if (props.name === "Algorand") {
-        proposals = 0;
-        votes = 0;
-        partStats.value = {};
-        const stats = await getAlgoStats(activeKeys.map((k) => k.address));
-        partStats.value = stats;
-      }
-      if (props.name === "Voi") {
-        proposals = 0;
-        votes = 0;
-        partStats.value = {};
-        await Promise.all(
-          activeKeys?.map(async (k) => {
-            const { data } = await statsClient.get(
-              `index_main_3.php?action=walletDetails&wallet=${k.address}`
-            );
-            partStats.value[k.address] = {
-              proposals: data.total_blocks,
-              votes: data.vote_count,
-            };
-          })
-        );
-      }
+      proposals = 0;
+      votes = 0;
+      partStats.value = await getStats(activeKeys.map((k) => k.address));
       for (const value of Object.values(partStats.value) as any[]) {
         proposals += value?.proposals || 0;
         votes += value?.votes || 0;
@@ -602,31 +581,83 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
-async function getAlgoStats(addrs: string[]) {
-  let query = "    query bulkAccounts {";
-  addrs.forEach((a) => {
-    query += `
-      addr_${a}: votingAddrStat(
-        addrBin: "${a}"
-      ) { ...addrData	}`;
-  });
-  query += `
-    }
-    fragment addrData on VotingAddrStat {
-      lastProposalRound
-      lastVoteRound
-      proposals
-      votes
-    }`;
+async function getStats(addrs: string[]) {
   try {
-    const { data } = await statsClient.post("graphql", {
-      query,
-      operationName: "bulkAccounts",
-    });
+    const resetDate = store.resetDates.find(
+      (rr) => rr.name === props.name
+    )?.date;
     const stats: any = {};
-    Object.keys(data.data).forEach((key) => {
-      stats[key.substring(5)] = data.data[key];
-    });
+    switch (props.name) {
+      case "Algorand": {
+        let query = "    query bulkAccounts {";
+        addrs.forEach((a) => {
+          query += `
+          addr_${a}: votingAddrStat(
+            addrBin: "${a}"
+          ) { ...addrData	}`;
+        });
+        query += `
+        }
+        fragment addrData on VotingAddrStat {
+          proposals
+          votes
+        }`;
+        const { data } = await statsClient.post("graphql", {
+          query,
+          operationName: "bulkAccounts",
+        });
+        Object.keys(data.data).forEach((key) => {
+          stats[key.substring(5)] = data.data[key];
+        });
+        if (resetDate) {
+          const nodley = "https://mainnet-idx.4160.nodely.dev";
+          const indexer = new algosdk.Indexer("", nodley, "");
+          const afterTime = new Date(resetDate).toISOString();
+          console.log(afterTime);
+          const { blocks } = await indexer
+            .searchForBlockHeaders()
+            .afterTime(afterTime)
+            .proposers(addrs)
+            .do();
+          addrs.forEach(
+            (addr) =>
+              (stats[addr].proposals = blocks.filter(
+                (b) => b.proposer?.toString() === addr
+              ).length)
+          );
+        }
+        break;
+      }
+      case "Voi": {
+        await Promise.all(
+          addrs.map(async (addr) => {
+            const { data } = await statsClient.get(
+              `index_main_3.php?action=walletDetails&wallet=${addr}`
+            );
+            stats[addr] = {
+              proposals: data.total_blocks,
+              votes: data.vote_count,
+            };
+          })
+        );
+        if (resetDate) {
+          const start = new Date(resetDate).toISOString().split("T")[0];
+          console.log(start);
+          await Promise.all(
+            addrs.map(async (addr) => {
+              const { data } = await statsClient.get(
+                `index_main_3.php?action=proposals&wallet=${addr}&start=${start}`
+              );
+              console.log(Object.values(data).flat().length);
+              stats[addr].proposals = Object.values(data).flat().length;
+            })
+          );
+        }
+        break;
+      }
+      default:
+        throw Error("Unsupported Network");
+    }
     return stats;
   } catch (err: any) {
     console.error(err);
