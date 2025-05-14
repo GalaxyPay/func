@@ -43,6 +43,8 @@ After downloading the `.deb` file to your machine, run
 sudo dpkg -i <path to .deb file>
 ```
 
+Alternatively, some distros (like modern Ubuntu) allow for installation by simply double-cliking the `.deb` file.
+
 Then visit the locally hosted webpage at <http://localhost:3536> (for remote access see notes below)
 
 ## Uninstall
