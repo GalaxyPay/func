@@ -367,7 +367,3 @@ Output/
 
 # MacOS
 .DS_Store
-
-# Vue auto-generated
-webui/src/auto-imports.d.ts
-webui/src/components.d.ts
