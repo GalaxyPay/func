@@ -20,3 +20,8 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Vue auto-generated
+src/auto-imports.d.ts
+src/components.d.ts
+.eslintrc-auto-import.json

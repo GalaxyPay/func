@@ -118,32 +118,22 @@ import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
 import { delay } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
-import { modelsv2 } from "algosdk";
 import { PropType } from "vue";
 
 const store = useAppStore();
 const props = defineProps({
   name: { type: String, required: true },
   nodeStatus: { type: Object as PropType<NodeStatus>, required: true },
+  status: { type: String, required: true },
 });
 const emit = defineEmits(["getStatus"]);
 const loading = ref(false);
 const showReti = ref(false);
-const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const showConfig = ref(false);
 const showDataDir = ref(false);
 
-const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
 const telemetryEnabled = computed(() =>
   props.nodeStatus?.telemetryStatus?.includes("enabled")
-);
-
-const status = computed(() =>
-  isSyncing.value
-    ? "Syncing"
-    : props.nodeStatus
-    ? props.nodeStatus.serviceStatus
-    : "Unknown"
 );
 
 async function createNode() {

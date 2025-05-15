@@ -67,6 +67,7 @@
             class="mt-4"
             :name="name"
             :node-status="nodeStatus"
+            :status="status"
             @get-status="getAllStatus()"
           />
         </v-col>
