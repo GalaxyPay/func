@@ -216,7 +216,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
         with:
           path: ./FUNC.iss
-          options: /DMyAppVersion=$VERSION
+          options: /DMyAppVersion=${{env.VERSION}}
 
       - name: Upload win Artifact
         uses: actions/upload-artifact@v4
@@ -240,19 +240,19 @@ jobs:
       - name: Publish FUNC
         run: |
           cd FUNC
-          dotnet publish -o ..\publish
+          dotnet publish -o ..\publish -r win-arm64
           cd ..
 
       - name: Publish NodeService
         run: |
           cd NodeService
-          dotnet publish -o ..\publish\Services
+          dotnet publish -o ..\publish\Services -r win-arm64
           cd ..
 
       - name: Publish RetiService
         run: |
           cd RetiService
-          dotnet publish -o ..\publish\Services
+          dotnet publish -o ..\publish\Services -r win-arm64
           cd ..
 
       - name: Download webui Artifact
@@ -265,9 +265,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
         with:
           path: ./FUNC.iss
-          options: |
-            /DMyAppVersion=$VERSION
-            /DMyArchitecture=arm64
+          options: /DMyAppVersion=${{env.VERSION}} /DMyArchitecture=arm64
 
       - name: Upload win-arm Artifact
         uses: actions/upload-artifact@v4
