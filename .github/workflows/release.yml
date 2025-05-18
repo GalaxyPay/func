@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
 
+env:
+  VERSION: "3.5.1"
+
 jobs:
   webui:
     runs-on: ubuntu-latest
@@ -13,7 +16,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
           run_install: false
 
       - name: Install Node.js
@@ -62,7 +65,7 @@ jobs:
           path: "publish/wwwroot"
 
       - name: Create Package
-        run: ./create-package-pkg.sh amd64
+        run: ./create-package-pkg.sh $VERSION amd64
 
       - name: Upload darwin-amd64 Artifact
         uses: actions/upload-artifact@v4
@@ -96,7 +99,7 @@ jobs:
           path: "publish/wwwroot"
 
       - name: Create Package
-        run: ./create-package-pkg.sh arm64
+        run: ./create-package-pkg.sh $VERSION arm64
 
       - name: Upload darwin-arm64 Artifact
         uses: actions/upload-artifact@v4
@@ -130,7 +133,7 @@ jobs:
           path: "publish/wwwroot"
 
       - name: Create Package
-        run: ./create-package-deb.sh amd64
+        run: ./create-package-deb.sh $VERSION amd64
 
       - name: Upload linux-amd64 Artifact
         uses: actions/upload-artifact@v4
@@ -164,7 +167,7 @@ jobs:
           path: "publish/wwwroot"
 
       - name: Create Package
-        run: ./create-package-deb.sh arm64
+        run: ./create-package-deb.sh $VERSION arm64
 
       - name: Upload linux-arm64 Artifact
         uses: actions/upload-artifact@v4
@@ -213,11 +216,63 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
         with:
           path: ./FUNC.iss
+          options: /DMyAppVersion=$VERSION
 
       - name: Upload win Artifact
         uses: actions/upload-artifact@v4
         with:
           name: win-setup
+          path: "Output"
+          retention-days: 1
+
+  windows-arm-setup:
+    runs-on: windows-11-arm
+    needs: webui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish FUNC
+        run: |
+          cd FUNC
+          dotnet publish -o ..\publish
+          cd ..
+
+      - name: Publish NodeService
+        run: |
+          cd NodeService
+          dotnet publish -o ..\publish\Services
+          cd ..
+
+      - name: Publish RetiService
+        run: |
+          cd RetiService
+          dotnet publish -o ..\publish\Services
+          cd ..
+
+      - name: Download webui Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webui
+          path: "publish/wwwroot"
+
+      - name: Create Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
+        with:
+          path: ./FUNC.iss
+          options: |
+            /DMyAppVersion=$VERSION
+            /DMyArchitecture=arm64
+
+      - name: Upload win-arm Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-arm-setup
           path: "Output"
           retention-days: 1
 
@@ -230,6 +285,7 @@ jobs:
         linux-amd64-package,
         linux-arm64-package,
         windows-setup,
+        windows-arm-setup,
       ]
     steps:
       - name: Download darwin-amd64 Artifact
@@ -262,9 +318,15 @@ jobs:
           name: win-setup
           path: "Output"
 
+      - name: Download win-arm Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: win-arm-setup
+          path: "Output"
+
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v3.5.1
+          tag: v$VERSION
           artifacts: "Output/*"

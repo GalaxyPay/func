@@ -1,7 +1,0 @@
-Package: func
-Version: 3.5.1
-Section: base
-Priority: optional
-Architecture: amd64
-Maintainer: Andy Funk <acfunk@gmail.com>
-Description: Algorand Node Manager

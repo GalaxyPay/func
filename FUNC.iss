@@ -2,10 +2,18 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "FUNC"
-#define MyAppVersion "3.5.1"
 #define MyAppPublisher "Galaxy Pay, LLC"
 #define MyAppPublisherURL "https://galaxy-pay.com"
 #define MyPublishPath "publish"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0"
+#endif
+#ifndef MyArchitecture
+  #define MyArchitecture "x64compatible and not arm64"
+  #define FilenameSuffix ""
+#else
+  #define FilenameSuffix "_"+MyArchitecture
+#endif
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -13,18 +21,14 @@
 AppId={{5A7F3586-4D20-473C-8D0D-851B2B6E20DE}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppPublisherURL}
-;AppSupportURL={#MyAppURL}
-;AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableDirPage=yes
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-; Uncomment the following line to run in non administrative install mode (install for current user only.)
-;PrivilegesRequired=lowest
-OutputBaseFilename=func_{#MyAppVersion}_windows
+OutputBaseFilename=func_{#MyAppVersion}_windows{#FilenameSuffix}
+ArchitecturesAllowed={#MyArchitecture}
 SetupIconFile={#MyPublishPath}\node.ico
 Compression=lzma
 SolidCompression=yes
@@ -35,7 +39,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 Source: "{#MyPublishPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
 Name: "{group}\FUNC"; Filename: "http://localhost:3536/"; IconFilename: "{app}\node.ico"
