@@ -170,6 +170,10 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 - [local-publish.sh](local-publish.sh) and [create-package-pkg.sh](create-package-pkg.sh) (Mac)
 - [local-publish.sh](local-publish.sh) and [create-package-deb.sh](create-package-deb.sh) (Linux)
 
-Note the `create-package` scripts take an argument of `amd64` or `arm64`.
+Note the `create-package` scripts take an argument of version and architecure (`amd64` or `arm64`). For example:
+
+```sh
+./create-package-deb.sh 3.5.1 amd64
+```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
