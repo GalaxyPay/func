@@ -326,5 +326,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          tag: v$VERSION
+          tag: v${{env.VERSION}}
           artifacts: "Output/*"
