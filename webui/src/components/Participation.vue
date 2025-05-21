@@ -613,7 +613,6 @@ async function getStats(addrs: string[]) {
           const nodley = "https://mainnet-idx.4160.nodely.dev";
           const indexer = new algosdk.Indexer("", nodley, "");
           const afterTime = new Date(resetDate).toISOString();
-          console.log(afterTime);
           const { blocks } = await indexer
             .searchForBlockHeaders()
             .afterTime(afterTime)
@@ -642,13 +641,11 @@ async function getStats(addrs: string[]) {
         );
         if (resetDate) {
           const start = new Date(resetDate).toISOString().split("T")[0];
-          console.log(start);
           await Promise.all(
             addrs.map(async (addr) => {
               const { data } = await statsClient.get(
                 `index_main_3.php?action=proposals&wallet=${addr}&start=${start}`
               );
-              console.log(Object.values(data).flat().length);
               stats[addr].proposals = Object.values(data).flat().length;
             })
           );
