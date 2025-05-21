@@ -176,7 +176,7 @@ jobs:
           path: "Output/*.deb"
           retention-days: 1
 
-  windows-setup:
+  windows-amd64-setup:
     runs-on: windows-latest
     needs: webui
     steps:
@@ -221,11 +221,11 @@ jobs:
       - name: Upload win Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: win-setup
+          name: windows-amd64-setup
           path: "Output"
           retention-days: 1
 
-  windows-arm-setup:
+  windows-arm64-setup:
     runs-on: windows-11-arm
     needs: webui
     steps:
@@ -270,7 +270,7 @@ jobs:
       - name: Upload win-arm Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: win-arm-setup
+          name: windows-arm64-setup
           path: "Output"
           retention-days: 1
 
@@ -282,8 +282,8 @@ jobs:
         darwin-arm64-package,
         linux-amd64-package,
         linux-arm64-package,
-        windows-setup,
-        windows-arm-setup,
+        windows-amd64-setup,
+        windows-arm64-setup,
       ]
     steps:
       - name: Download darwin-amd64 Artifact
@@ -313,13 +313,13 @@ jobs:
       - name: Download win Artifact
         uses: actions/download-artifact@v4
         with:
-          name: win-setup
+          name: windows-amd64-setup
           path: "Output"
 
       - name: Download win-arm Artifact
         uses: actions/download-artifact@v4
         with:
-          name: win-arm-setup
+          name: windows-arm64-setup
           path: "Output"
 
       - name: Create Release
