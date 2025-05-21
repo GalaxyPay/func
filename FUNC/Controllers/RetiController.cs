@@ -181,7 +181,7 @@ namespace FUNC.Controllers
 
             Directory.CreateDirectory(Path.Combine(Utils.appDataDir, "reti"));
 
-            var pattern = (IsWindows() ? "windows-amd64.zip"
+            var pattern = (IsWindows() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "windows-arm64.zip" : "windows-amd64.zip")
             : IsLinux() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "linux-arm64.tar.gz" : "linux-amd64.tar.gz")
             : IsMacOS() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "darwin-arm64.tar.gz" : "darwin-amd64.tar.gz")
             : null) ?? throw new Exception("Binary Not Found");
