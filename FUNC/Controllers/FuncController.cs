@@ -22,7 +22,7 @@ namespace FUNC.Controllers
                 var client = new GitHubClient(new ProductHeaderValue(repositoryName));
                 var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
 
-                string? pattern = IsWindows() ? "windows"
+                string? pattern = IsWindows() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "windows-arm64" : "windows-amd64")
                 : IsLinux() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-amd64")
                 : IsMacOS() ? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "darwin-arm64" : "darwin-amd64")
                 : null;

@@ -10,9 +10,9 @@
 #endif
 #ifndef MyArchitecture
   #define MyArchitecture "x64compatible and not arm64"
-  #define FilenameSuffix ""
+  #define FilenameSuffix "-amd64"
 #else
-  #define FilenameSuffix "_"+MyArchitecture
+  #define FilenameSuffix "-"+MyArchitecture
 #endif
 
 [Setup]
