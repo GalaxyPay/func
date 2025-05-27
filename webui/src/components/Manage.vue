@@ -93,7 +93,7 @@
       :token="nodeStatus.token"
       @close="
         showConfig = false;
-        emit('getStatus');
+        store.refreshStatus++;
       "
     />
     <DataDir
@@ -101,7 +101,7 @@
       :name="name"
       @close="
         showDataDir = false;
-        emit('getStatus');
+        store.refreshStatus++;
       "
     />
     <Reti
@@ -126,7 +126,6 @@ const props = defineProps({
   nodeStatus: { type: Object as PropType<NodeStatus>, required: true },
   status: { type: String, required: true },
 });
-const emit = defineEmits(["getStatus"]);
 const loading = ref(false);
 const showReti = ref(false);
 const showConfig = ref(false);
@@ -230,7 +229,7 @@ async function toggleTelemetry() {
 }
 
 async function finish(message: string) {
-  emit("getStatus");
+  store.refreshStatus++;
   loading.value = false;
   store.setSnackbar(message, "success");
 }

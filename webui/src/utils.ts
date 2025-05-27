@@ -26,7 +26,7 @@ export async function execAtc(
   store.setSnackbar("Processing...", "info", -1);
   await atc.execute(algodClient, 4);
   store.setSnackbar(success, "success");
-  store.refresh++;
+  store.refreshPart++;
 }
 
 async function getCatchpoint(name: string): Promise<string | undefined> {

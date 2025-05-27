@@ -68,7 +68,6 @@
             :name="name"
             :node-status="nodeStatus"
             :status="status"
-            @get-status="getAllStatus()"
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
@@ -349,6 +348,11 @@ async function autoRefresh() {
   }
 }
 
+watch(
+  () => store.refreshStatus,
+  async () => await getAllStatus()
+);
+
 async function getAllStatus() {
   await getNodeStatus();
   await getAlgodStatus();
@@ -392,6 +396,7 @@ async function getNodeStatus() {
 }
 
 let restartAttempted = false;
+let retry = false;
 
 async function getAlgodStatus() {
   try {
@@ -400,6 +405,7 @@ async function getAlgodStatus() {
     } else {
       algodStatus.value = undefined;
     }
+    retry = false;
     if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
       const releases = await axios({
         url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
@@ -422,6 +428,11 @@ async function getAlgodStatus() {
       autoRefresh();
     }
   } catch (err: any) {
+    if (!retry) {
+      retry = true;
+      await getAllStatus();
+      return;
+    }
     console.error(err);
     if (err.status !== 502 && !store.downloading)
       store.setSnackbar(err?.response?.data || err.message, "error");
@@ -496,7 +507,7 @@ watch(
 function reloadPartDetails() {
   if (!partDetails.value) return;
   partDetails.value = undefined;
-  store.refresh++;
+  store.refreshPart++;
   showReset.value = false;
 }
 

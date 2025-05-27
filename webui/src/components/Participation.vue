@@ -322,7 +322,7 @@ async function getKeys(): Promise<Participation[]> {
     .sort((a, b) => Number(b.key.voteLastValid) - Number(a.key.voteLastValid));
 }
 
-async function refreshData() {
+async function refreshPartData() {
   try {
     const tempKeys = await getKeys();
 
@@ -366,7 +366,7 @@ async function refreshData() {
 }
 
 onMounted(() => {
-  refreshData();
+  refreshPartData();
   calcAvgBlockTime();
 });
 
@@ -440,7 +440,7 @@ If the key was previously registered, you should wait 320 rounds after unregiste
     )
   ) {
     await partClient.delete(id);
-    await refreshData();
+    await refreshPartData();
   }
 }
 
@@ -481,7 +481,7 @@ async function generateKey() {
             generating = false;
         }
         store.setSnackbar("New key generated", "success");
-        await refreshData();
+        await refreshPartData();
       });
   } catch (err: any) {
     console.error(err);
@@ -571,8 +571,8 @@ function resetAll() {
 }
 
 watch(
-  () => store.refresh,
-  async () => await refreshData()
+  () => store.refreshPart,
+  async () => await refreshPartData()
 );
 
 function copyVal(val: string | number | bigint | undefined) {

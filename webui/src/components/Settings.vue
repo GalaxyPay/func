@@ -167,6 +167,7 @@ async function updateNode(release: string) {
     store.downloading = true;
     await FUNC.api.post("goal/update", { name: release });
     await getVersion();
+    store.refreshStatus++;
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");

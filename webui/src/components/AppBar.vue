@@ -167,7 +167,7 @@ const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
 
 onBeforeMount(() => {
-  store.refresh++;
+  store.refreshPart++;
 });
 async function walletAction(wallet: Wallet) {
   try {
@@ -176,7 +176,7 @@ async function walletAction(wallet: Wallet) {
       : wallet.isConnected
       ? wallet.setActive()
       : await wallet.connect();
-    store.refresh++;
+    store.refreshPart++;
     store.connectMenu = false;
   } catch (err: any) {
     console.error(err);
@@ -194,7 +194,7 @@ const items = computed(() => {
 
 async function switchAccount(wallet: Wallet, acct: WalletAccount) {
   wallet.setActiveAccount(acct.address);
-  store.refresh++;
+  store.refreshPart++;
   store.connectMenu = false;
 }
 
@@ -205,7 +205,7 @@ function copyToClipboard() {
 }
 
 watch(
-  () => store.refresh,
+  () => store.refreshPart,
   async () => {
     if (activeAccount.value) {
       account.value = await algodClient.value
