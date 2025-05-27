@@ -41,6 +41,6 @@ const tab = computed(() => {
 async function setNetwork(val: any) {
   const nid = networks.find((n) => n.title === val)?.id as NetworkId;
   await setActiveNetwork(nid);
-  store.refresh++;
+  store.refreshPart++;
 }
 </script>
