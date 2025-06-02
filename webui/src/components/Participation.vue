@@ -18,9 +18,13 @@
         density="comfortable"
         items-per-page="-1"
         hover
+        :loading="loading"
       >
         <template #no-data>
           <i>No participation keys on this node</i>
+        </template>
+        <template #loading>
+          <i>Loading stats...</i>
         </template>
         <template #bottom />
         <template #[`item.status`]="{ item }">
@@ -180,7 +184,7 @@
       </v-data-table>
     </v-container>
     <v-dialog v-model="showGenerate" max-width="600" persistent>
-      <v-card :disabled="loading">
+      <v-card :disabled="generating">
         <v-card-title class="d-flex">
           Generate Participation Key
           <v-spacer />
@@ -224,7 +228,7 @@
               type="submit"
               color="primary"
               variant="tonal"
-              :loading="loading"
+              :loading="generating"
             />
           </v-card-actions>
         </v-form>
@@ -261,6 +265,7 @@ const { activeAccount, transactionSigner } = useWallet();
 const { activeNetwork } = useNetwork();
 
 const loading = ref();
+const generating = ref();
 const keys = ref<Participation[]>();
 const showGenerate = ref(false);
 const form = ref();
@@ -325,7 +330,6 @@ async function getKeys(): Promise<Participation[]> {
 async function refreshPartData() {
   try {
     const tempKeys = await getKeys();
-
     acctInfos.value = [];
     const addrs = [...new Set(tempKeys?.map((k) => k.address))];
     await Promise.all(
@@ -334,28 +338,27 @@ async function refreshPartData() {
         acctInfos.value.push(account);
       })
     );
-
     const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
-    let proposals: number | undefined;
-    let votes: number | undefined;
+    let proposals = 0;
+    let votes = 0;
     if (activeKeys?.length) {
-      proposals = 0;
-      votes = 0;
-      partStats.value = await getStats(activeKeys.map((k) => k.address));
+      loading.value = true;
+      partStats.value =
+        (await getStats(activeKeys.map((k) => k.address))) || {};
       for (const value of Object.values(partStats.value) as any[]) {
         proposals += value?.proposals || 0;
         votes += value?.votes || 0;
       }
     }
-
+    loading.value = false;
     const activeStake = acctInfos.value
       .filter((a) => activeKeys?.some((k) => k.address === a.address))
       .reduce((a, c) => a + Number(c.amount), 0);
     const partDetails: PartDetails = {
       activeKeys: activeKeys?.length || 0,
       activeStake,
-      proposals,
-      votes,
+      proposals: Object.keys(partStats.value).length ? proposals : undefined,
+      votes: Object.keys(partStats.value).length ? votes : undefined,
     };
     emit("partDetails", partDetails);
     keys.value = tempKeys;
@@ -459,7 +462,7 @@ async function generateKey() {
   const { valid } = await form.value.validate();
   if (!valid) return;
   try {
-    loading.value = true;
+    generating.value = true;
     emit("generatingKey", true);
     await partClient
       .post(
@@ -567,7 +570,7 @@ function resetAll() {
   emit("generatingKey", false);
   form.value.reset();
   showGenerate.value = false;
-  loading.value = false;
+  generating.value = false;
 }
 
 watch(
