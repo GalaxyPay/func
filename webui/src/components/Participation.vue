@@ -616,11 +616,23 @@ async function getStats(addrs: string[]) {
           const nodley = "https://mainnet-idx.4160.nodely.dev";
           const indexer = new algosdk.Indexer("", nodley, "");
           const afterTime = new Date(resetDate).toISOString();
-          const { blocks } = await indexer
+          let resp = await indexer
             .searchForBlockHeaders()
             .afterTime(afterTime)
+            .limit(1000)
             .proposers(addrs)
             .do();
+          const blocks = resp.blocks;
+          while (resp.blocks.length && resp.nextToken) {
+            resp = await indexer
+              .searchForBlockHeaders()
+              .afterTime(afterTime)
+              .limit(1000)
+              .proposers(addrs)
+              .nextToken(resp.nextToken)
+              .do();
+            blocks.push(...resp.blocks);
+          }
           addrs.forEach(
             (addr) =>
               (stats[addr].proposals = blocks.filter(
