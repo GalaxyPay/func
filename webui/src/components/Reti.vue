@@ -41,7 +41,7 @@
                 label="Manager Mnemonic"
                 :hint="mnemonicHint"
                 persistent-hint
-                :rules="[required, validMnemonic]"
+                :rules="[required, length25, validMnemonic]"
               />
             </v-col>
           </v-row>
@@ -74,6 +74,8 @@ const emit = defineEmits(["close"]);
 
 const store = useAppStore();
 const required = (v: any) => !!v || "Required";
+const length25 = (v: string) =>
+  v.split(" ").length === 25 || "Must be 25 words";
 const validMnemonic = () => !!mnemonicAcct.value?.addr || "Invalid Mnemonic";
 const form = ref();
 const validatorId = ref();
