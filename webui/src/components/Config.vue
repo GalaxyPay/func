@@ -38,18 +38,18 @@
             v-model="config.DNSBootstrapID"
             rows="2"
           />
-          <v-checkbox-btn
-            v-model="enableP2P"
-            label="Enable P2P"
-            :disabled="!enableP2P"
-          />
-          <v-checkbox-btn
-            v-model="enableP2PHybridMode"
-            label="Enable P2P Hybrid Mode"
-            :disabled="!enableP2PHybridMode"
-          />
+          <v-radio-group
+            v-model="p2p"
+            label="P2P Setting"
+            density="comfortable"
+          >
+            <v-radio label="WS (Relays) Only" value="ws" />
+            <v-radio label="P2P Only" value="p2p" />
+            <v-radio label="Hybrid (P2P+WS)" value="hybrid" />
+          </v-radio-group>
         </v-container>
         <v-card-actions>
+          <v-spacer />
           <v-btn text="Cancel" variant="tonal" @click="show = false" />
           <v-btn text="Save" color="primary" variant="tonal" type="submit" />
         </v-card-actions>
@@ -115,30 +115,29 @@ const baseLoggerDebugLevel = computed<number>({
   },
 });
 
-const enableP2P = computed({
+const p2p = computed<"ws" | "p2p" | "hybrid">({
   get() {
-    return config.value.EnableP2P;
+    if (config.value.EnableP2PHybridMode) return "hybrid";
+    if (config.value.EnableP2P) return "p2p";
+    return "ws";
   },
   set(val) {
-    if (val) {
-      config.value.EnableP2P = true;
-      enableP2PHybridMode.value = false;
-    } else {
-      delete config.value.EnableP2P;
-    }
-  },
-});
-
-const enableP2PHybridMode = computed({
-  get() {
-    return config.value.EnableP2PHybridMode;
-  },
-  set(val) {
-    if (val) {
-      config.value.EnableP2PHybridMode = true;
-      enableP2P.value = false;
-    } else {
-      delete config.value.EnableP2PHybridMode;
+    switch (val) {
+      case "ws": {
+        delete config.value.EnableP2P;
+        delete config.value.EnableP2PHybridMode;
+        break;
+      }
+      case "p2p": {
+        config.value.EnableP2P = true;
+        delete config.value.EnableP2PHybridMode;
+        break;
+      }
+      case "hybrid": {
+        config.value.EnableP2PHybridMode = true;
+        delete config.value.EnableP2P;
+        break;
+      }
     }
   },
 });
