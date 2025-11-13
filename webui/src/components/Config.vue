@@ -43,7 +43,7 @@
             label="P2P Setting"
             density="comfortable"
           >
-            <v-radio label="WS (Relays) Only" value="ws" />
+            <v-radio label="WS Only" value="ws" />
             <v-radio label="P2P Only" value="p2p" />
             <v-radio label="Hybrid (P2P+WS)" value="hybrid" />
           </v-radio-group>
@@ -85,6 +85,7 @@ const show = computed({
 
 const store = useAppStore();
 const config = ref();
+const debugConfig = ref();
 const form = ref();
 
 const invalidPorts = networks
@@ -94,7 +95,7 @@ const portRule = (v: string) => {
   return !invalidPorts.includes(v) || "Invalid Port";
 };
 
-const port = computed({
+const port = computed<number>({
   get() {
     if (!config.value?.EndpointAddress) return 0;
     return config.value.EndpointAddress.substring(
@@ -115,27 +116,37 @@ const baseLoggerDebugLevel = computed<number>({
   },
 });
 
+const p2pEnabled = computed(
+  () => config.value?.EnableP2P ?? debugConfig.value?.EnableP2P
+);
+const hybridEnabled = computed(
+  () =>
+    config.value?.EnableP2PHybridMode ?? debugConfig.value?.EnableP2PHybridMode
+);
+
 const p2p = computed<"ws" | "p2p" | "hybrid">({
   get() {
-    if (config.value.EnableP2PHybridMode) return "hybrid";
-    if (config.value.EnableP2P) return "p2p";
+    if (hybridEnabled.value) return "hybrid";
+    if (p2pEnabled.value) return "p2p";
     return "ws";
   },
   set(val) {
+    if (!e2eIsSet) delete config.value.EnableP2P;
+    if (!hybridIsSet) delete config.value.EnableP2PHybridMode;
     switch (val) {
       case "ws": {
-        delete config.value.EnableP2P;
-        delete config.value.EnableP2PHybridMode;
+        if (p2pEnabled.value) config.value.EnableP2P = false;
+        if (hybridEnabled.value) config.value.EnableP2PHybridMode = false;
         break;
       }
       case "p2p": {
-        config.value.EnableP2P = true;
-        delete config.value.EnableP2PHybridMode;
+        if (!p2pEnabled.value) config.value.EnableP2P = true;
+        if (hybridEnabled.value) config.value.EnableP2PHybridMode = false;
         break;
       }
       case "hybrid": {
-        config.value.EnableP2PHybridMode = true;
-        delete config.value.EnableP2P;
+        if (!hybridEnabled.value) config.value.EnableP2PHybridMode = true;
+        if (p2pEnabled.value) config.value.EnableP2P = false;
         break;
       }
     }
@@ -184,11 +195,26 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
+let e2eIsSet: boolean;
+let hybridIsSet: boolean;
+
 watch(show, async (val) => {
   if (val) {
     try {
       const resp = await FUNC.api.get(`${props.name}/config`);
       config.value = resp.data;
+      e2eIsSet = config.value.EnableP2P != null;
+      hybridIsSet = config.value.EnableP2PHybridMode != null;
+      const debugPort =
+        location.protocol === "https:"
+          ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
+          : port.value;
+      const debugClient = axios.create({
+        baseURL: `${location.protocol}//${location.hostname}:${debugPort}/debug`,
+        headers: { "X-Algo-Api-Token": props.token },
+      });
+      const { data } = await debugClient.get("/settings/config");
+      debugConfig.value = data;
     } catch (err: any) {
       console.error(err);
       store.setSnackbar(err?.response?.data || err.message, "error");
