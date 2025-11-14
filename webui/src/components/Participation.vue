@@ -2,9 +2,21 @@
   <v-container fluid>
     <v-divider />
     <v-card-title class="d-flex">
-      Participation Keys <v-spacer />
+      Participation Keys
+      <span>
+        <v-progress-circular
+          v-show="loading"
+          indeterminate
+          :size="20"
+          :width="2"
+          class="ml-2"
+        />
+        <v-tooltip activator="parent" text="Loading Stats..." />
+      </span>
+      <v-spacer />
       <v-btn
-        text="Generate Key..."
+        :text="!xs && 'Generate Key...'"
+        :icon="xs && mdiPlus"
         variant="tonal"
         color="primary"
         :disabled="status !== 'Running'"
@@ -18,13 +30,9 @@
         density="comfortable"
         items-per-page="-1"
         hover
-        :loading="loading"
       >
         <template #no-data>
           <i>No participation keys on this node</i>
-        </template>
-        <template #loading>
-          <i>Loading stats...</i>
         </template>
         <template #bottom />
         <template #[`item.status`]="{ item }">
@@ -246,9 +254,11 @@ import {
   mdiClose,
   mdiContentCopy,
   mdiOpenInNew,
+  mdiPlus,
 } from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -263,6 +273,7 @@ const emit = defineEmits(["partDetails", "generatingKey"]);
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
 const { activeNetwork } = useNetwork();
+const { xs } = useDisplay();
 
 const loading = ref();
 const generating = ref();
@@ -338,6 +349,7 @@ async function refreshPartData() {
         acctInfos.value.push(account);
       })
     );
+    keys.value = tempKeys;
     const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
     let proposals = 0;
     let votes = 0;
@@ -361,7 +373,6 @@ async function refreshPartData() {
       votes: Object.keys(partStats.value).length ? votes : undefined,
     };
     emit("partDetails", partDetails);
-    keys.value = tempKeys;
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
