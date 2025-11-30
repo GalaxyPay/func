@@ -43,9 +43,9 @@
             label="P2P Setting"
             density="comfortable"
           >
-            <v-radio label="WS Only" value="ws" />
-            <v-radio label="P2P Only" value="p2p" />
-            <v-radio label="Hybrid (P2P+WS)" value="hybrid" />
+            <v-radio label="Off" value="ws" />
+            <v-radio label="On" value="p2p" />
+            <v-radio label="Hybrid" value="hybrid" />
           </v-radio-group>
         </v-container>
         <v-card-actions>
