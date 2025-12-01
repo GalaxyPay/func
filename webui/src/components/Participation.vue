@@ -534,26 +534,22 @@ async function registerKey(item: Participation) {
 }
 
 async function offline() {
-  if (confirm("Are you sure you want to take this account offline?")) {
-    try {
-      store.overlay = true;
-      const suggestedParams = await props.algodClient
-        .getTransactionParams()
-        .do();
-      const atc = new algosdk.AtomicTransactionComposer();
-      const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
-        sender: activeAccount.value!.address,
-        suggestedParams,
-        nonParticipation: false,
-      });
-      atc.addTransaction({ txn, signer: transactionSigner });
-      await execAtc(atc, props.algodClient, "Account Offline");
-    } catch (err: any) {
-      console.error(err);
-      store.setSnackbar(err?.response?.data || err.message, "error");
-    }
-    store.overlay = false;
+  try {
+    store.overlay = true;
+    const suggestedParams = await props.algodClient.getTransactionParams().do();
+    const atc = new algosdk.AtomicTransactionComposer();
+    const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
+      sender: activeAccount.value!.address,
+      suggestedParams,
+      nonParticipation: false,
+    });
+    atc.addTransaction({ txn, signer: transactionSigner });
+    await execAtc(atc, props.algodClient, "Account Offline");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
   }
+  store.overlay = false;
 }
 
 const avgBlockTime = ref<number>();
