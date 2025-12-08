@@ -97,7 +97,7 @@ sudo rm -rf /usr/share/func
 
 ### Configure
 
-- Change your node's Port, DNS Bootstrap, and BaseLoggerDebugLevel
+- Change your node's Port, DNS Bootstrap, BaseLoggerDebugLevel, and P2P Setting
 
 ### Enable/Disable Telemetry
 

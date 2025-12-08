@@ -38,18 +38,24 @@
             v-model="config.DNSBootstrapID"
             rows="2"
           />
-          <v-checkbox-btn
-            v-model="enableP2P"
-            label="Enable P2P"
-            :disabled="!enableP2P"
-          />
-          <v-checkbox-btn
-            v-model="enableP2PHybridMode"
-            label="Enable P2P Hybrid Mode"
-            :disabled="!enableP2PHybridMode"
-          />
+          <v-radio-group v-model="p2p" density="comfortable">
+            <template #label>
+              P2P Setting (
+              <a
+                href="https://dev.algorand.co/nodes/management/p2p-config"
+                target="_blank"
+              >
+                Learn more before enabling
+              </a>
+              )
+            </template>
+            <v-radio label="Off" value="ws" />
+            <v-radio label="On" value="p2p" />
+            <v-radio label="Hybrid" value="hybrid" />
+          </v-radio-group>
         </v-container>
         <v-card-actions>
+          <v-spacer />
           <v-btn text="Cancel" variant="tonal" @click="show = false" />
           <v-btn text="Save" color="primary" variant="tonal" type="submit" />
         </v-card-actions>
@@ -85,6 +91,7 @@ const show = computed({
 
 const store = useAppStore();
 const config = ref();
+const debugConfig = ref();
 const form = ref();
 
 const invalidPorts = networks
@@ -94,7 +101,7 @@ const portRule = (v: string) => {
   return !invalidPorts.includes(v) || "Invalid Port";
 };
 
-const port = computed({
+const port = computed<number>({
   get() {
     if (!config.value?.EndpointAddress) return 0;
     return config.value.EndpointAddress.substring(
@@ -115,30 +122,39 @@ const baseLoggerDebugLevel = computed<number>({
   },
 });
 
-const enableP2P = computed({
-  get() {
-    return config.value.EnableP2P;
-  },
-  set(val) {
-    if (val) {
-      config.value.EnableP2P = true;
-      enableP2PHybridMode.value = false;
-    } else {
-      delete config.value.EnableP2P;
-    }
-  },
-});
+const p2pEnabled = computed(
+  () => config.value?.EnableP2P ?? debugConfig.value?.EnableP2P
+);
+const hybridEnabled = computed(
+  () =>
+    config.value?.EnableP2PHybridMode ?? debugConfig.value?.EnableP2PHybridMode
+);
 
-const enableP2PHybridMode = computed({
+const p2p = computed<"ws" | "p2p" | "hybrid">({
   get() {
-    return config.value.EnableP2PHybridMode;
+    if (hybridEnabled.value) return "hybrid";
+    if (p2pEnabled.value) return "p2p";
+    return "ws";
   },
   set(val) {
-    if (val) {
-      config.value.EnableP2PHybridMode = true;
-      enableP2P.value = false;
-    } else {
-      delete config.value.EnableP2PHybridMode;
+    if (!e2eIsSet) delete config.value.EnableP2P;
+    if (!hybridIsSet) delete config.value.EnableP2PHybridMode;
+    switch (val) {
+      case "ws": {
+        if (p2pEnabled.value) config.value.EnableP2P = false;
+        if (hybridEnabled.value) config.value.EnableP2PHybridMode = false;
+        break;
+      }
+      case "p2p": {
+        if (!p2pEnabled.value) config.value.EnableP2P = true;
+        if (hybridEnabled.value) config.value.EnableP2PHybridMode = false;
+        break;
+      }
+      case "hybrid": {
+        if (!hybridEnabled.value) config.value.EnableP2PHybridMode = true;
+        if (p2pEnabled.value) config.value.EnableP2P = false;
+        break;
+      }
     }
   },
 });
@@ -185,11 +201,26 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
+let e2eIsSet: boolean;
+let hybridIsSet: boolean;
+
 watch(show, async (val) => {
   if (val) {
     try {
       const resp = await FUNC.api.get(`${props.name}/config`);
       config.value = resp.data;
+      e2eIsSet = config.value.EnableP2P != null;
+      hybridIsSet = config.value.EnableP2PHybridMode != null;
+      const debugPort =
+        location.protocol === "https:"
+          ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
+          : port.value;
+      const debugClient = axios.create({
+        baseURL: `${location.protocol}//${location.hostname}:${debugPort}/debug`,
+        headers: { "X-Algo-Api-Token": props.token },
+      });
+      const { data } = await debugClient.get("/settings/config");
+      debugConfig.value = data;
     } catch (err: any) {
       console.error(err);
       store.setSnackbar(err?.response?.data || err.message, "error");
