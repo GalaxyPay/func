@@ -45,8 +45,9 @@
                 href="https://dev.algorand.co/nodes/management/p2p-config"
                 target="_blank"
               >
-                Learn more before enabling </a
-              >)
+                Learn more before enabling
+              </a>
+              )
             </template>
             <v-radio label="Off" value="ws" />
             <v-radio label="On" value="p2p" />
