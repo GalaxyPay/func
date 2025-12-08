@@ -38,11 +38,16 @@
             v-model="config.DNSBootstrapID"
             rows="2"
           />
-          <v-radio-group
-            v-model="p2p"
-            label="P2P Setting"
-            density="comfortable"
-          >
+          <v-radio-group v-model="p2p" density="comfortable">
+            <template #label>
+              P2P Setting (
+              <a
+                href="https://dev.algorand.co/nodes/management/p2p-config"
+                target="_blank"
+              >
+                Learn more before enabling </a
+              >)
+            </template>
             <v-radio label="Off" value="ws" />
             <v-radio label="On" value="p2p" />
             <v-radio label="Hybrid" value="hybrid" />
