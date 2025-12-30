@@ -132,8 +132,16 @@ const githubClient = axios.create({
 async function getVersion() {
   try {
     const { data } = await githubClient.get("latest");
-    funcLatest.value = data?.name.slice(1);
-    store.funcUpdateAvailable = funcLatest.value !== appVersion;
+    if (data?.name) {
+      funcLatest.value = data.name.slice(1);
+      store.funcUpdateAvailable = funcLatest.value !== appVersion;
+    }
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+
+  try {
     const goalVersion = await FUNC.api.get("goal/version");
     store.goalVersion = goalVersion.data;
     if (store.goalVersion?.installed) store.ready = true;
@@ -143,11 +151,11 @@ async function getVersion() {
         updateNodeLatest(true);
       }
     }
-
     store.nodeUpdateAvailable =
       !!store.goalVersion?.latest &&
       store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
+    store.ready = true;
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
   }

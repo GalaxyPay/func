@@ -24,7 +24,7 @@ export async function execAtc(
   store.setSnackbar("Awaiting Signatures...", "info", -1);
   await atc.gatherSignatures();
   store.setSnackbar("Processing...", "info", -1);
-  await atc.execute(algodClient, 4);
+  await atc.execute(algodClient, 10);
   store.setSnackbar(success, "success");
   store.refreshPart++;
 }

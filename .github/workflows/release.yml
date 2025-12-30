@@ -4,7 +4,7 @@ on:
     branches: [main]
 
 env:
-  VERSION: "3.5.7"
+  VERSION: "3.5.8"
 
 jobs:
   webui:
