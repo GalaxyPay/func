@@ -1,33 +1,32 @@
 {
   "name": "func-webui",
-  "version": "3.5.9",
+  "version": "3.6.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blockshake/defly-connect": "^1.2.1",
     "@mdi/js": "^7.4.47",
-    "@perawallet/connect": "^1.5.1",
+    "@perawallet/connect": "^1.5.2",
     "@txnlab/use-wallet-vue": "^4.6.0",
     "algosdk": "3.5.2",
-    "axios": "^1.13.5",
+    "axios": "^1.16.0",
     "lute-connect": "^1.7.0",
     "pinia": "^3.0.4",
-    "vue": "^3.5.29",
-    "vuetify": "^3.12.1"
+    "vue": "^3.5.34",
+    "vuetify": "^3.12.5"
   },
   "devDependencies": {
-    "@types/node": "^25.3.1",
-    "@vitejs/plugin-vue": "^6.0.4",
+    "@types/node": "^25.6.1",
+    "@vitejs/plugin-vue": "^6.0.6",
     "typescript": "^5.9.3",
     "unplugin-auto-import": "^21.0.0",
-    "unplugin-vue-components": "^31.0.0",
-    "vite": "^7.3.1",
-    "vite-plugin-node-polyfills": "^0.25.0",
+    "unplugin-vue-components": "^31.1.0",
+    "vite": "^7.3.3",
+    "vite-plugin-node-polyfills": "^0.26.0",
     "vite-plugin-vuetify": "^2.1.3",
-    "vue-tsc": "^3.2.5"
+    "vue-tsc": "^3.2.8"
   },
   "pnpm": {
     "overrides": {
