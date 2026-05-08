@@ -23,9 +23,12 @@ const store = useAppStore();
 const releases = ref();
 
 onMounted(async () => {
-  const url = "https://api.github.com/repos/algorand/go-algorand/releases";
+  const repo = store.isWindows
+    ? "GalaxyPay/go-algo-win"
+    : "algorand/go-algorand";
+  const url = `https://api.github.com/repos/${repo}/releases`;
   releases.value = (await axios({ url })).data
     .map((r: any) => r.name)
-    .filter((n: string) => !n.includes("Net"));
+    .filter((n: string) => !n.toLowerCase().includes("net"));
 });
 </script>

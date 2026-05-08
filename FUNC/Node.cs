@@ -53,6 +53,7 @@ namespace FUNC
             NodeStatus nodeStatus = new()
             {
                 MachineName = machineName,
+                IsWindows = IsWindows(),
                 ServiceStatus = serviceStatus,
                 Port = port,
                 Token = token,

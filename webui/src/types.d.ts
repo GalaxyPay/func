@@ -2,6 +2,7 @@ import { modelsv2 } from "algosdk";
 
 export interface NodeStatus {
   machineName: string;
+  isWindows: boolean;
   serviceStatus: string;
   port: number;
   token: string;
