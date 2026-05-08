@@ -3,7 +3,7 @@
     <v-icon :icon="mdiChevronDown" />
     <v-menu activator="parent" bottom scrim>
       <v-list density="compact">
-        <v-list-subheader title="Choose a Release" />
+        <v-list-subheader title="Choose a Version" />
         <v-list-item
           v-for="release in releases"
           :title="release"
@@ -19,14 +19,13 @@ import { mdiChevronDown } from "@mdi/js";
 
 const emit = defineEmits(["release"]);
 
-const GOALGOWIN = "https://api.github.com/repos/GalaxyPay/go-algo-win";
-
 const store = useAppStore();
 const releases = ref();
 
 onMounted(async () => {
-  releases.value = (await axios({ url: `${GOALGOWIN}/releases` })).data.map(
-    (t: any) => t.name
-  );
+  const url = "https://api.github.com/repos/algorand/go-algorand/releases";
+  releases.value = (await axios({ url })).data
+    .map((r: any) => r.name)
+    .filter((n: string) => !n.includes("Net"));
 });
 </script>

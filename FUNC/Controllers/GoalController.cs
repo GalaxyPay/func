@@ -84,35 +84,36 @@ namespace FUNC.Controllers
                     {
                         release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
                     }
-                    url = release?.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
+                    url = release.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
                 }
-                else if (IsLinux())
+                else
                 {
-                    if (model.Name != "latest") return BadRequest("Custom versions not supported on Linux");
-
                     string workspaceName = "algorand";
                     string repositoryName = "go-algorand";
-
                     var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-                    var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                    bool isArm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
 
-                    url = latestInfo.Assets.FirstOrDefault(a =>
-                        a.Name.Contains($"node_stable_linux-{(isArm ? "arm" : "amd")}64")
-                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                }
-                else if (IsMacOS())
-                {
-                    if (model.Name != "latest") return BadRequest("Custom versions not supported on MacOS");
+                    Octokit.Release? release = null;
+                    if (model.Name == "latest")
+                    {
+                        release = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                    }
+                    else
+                    {
+                        release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
+                    }
 
-                    string workspaceName = "algorand";
-                    string repositoryName = "go-algorand";
-
-                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-                    var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-
-                    url = latestInfo.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin-universal")
-                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    if (IsLinux())
+                    {
+                        bool isArm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
+                        url = release.Assets.FirstOrDefault(a =>
+                            a.Name.Contains($"node_stable_linux-{(isArm ? "arm" : "amd")}64")
+                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    }
+                    else if (IsMacOS())
+                    {
+                        url = release.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin-universal")
+                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                    }
                 }
 
                 string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");

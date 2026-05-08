@@ -53,6 +53,7 @@
                 :text="`Update to ${store.goalVersion?.latest}`"
               />
             </v-btn>
+            <Releases class="ml-2" @release="updateNode" />
           </v-col>
         </v-row>
         <v-row align="center">
