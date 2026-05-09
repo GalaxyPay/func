@@ -40,11 +40,17 @@
             </div>
           </v-col>
           <v-col class="text-right">
+            <Releases
+              class="ml-2"
+              @release="updateNode"
+              v-if="store.showNodeVersions"
+            />
             <v-btn
               :color="store.nodeUpdateAvailable ? 'warning' : ''"
               variant="tonal"
               :disabled="!store.nodeUpdateAvailable || store.downloading"
               @click="updateNodeLatest()"
+              v-else
             >
               Update
               <v-tooltip
@@ -53,6 +59,23 @@
                 :text="`Update to ${store.goalVersion?.latest}`"
               />
             </v-btn>
+          </v-col>
+        </v-row>
+        <v-row align="center">
+          <v-col>
+            <div>Manual Node Version Selection</div>
+            <div class="text-caption text-grey">
+              Also suppresses new version alerts
+            </div>
+          </v-col>
+          <v-col>
+            <v-switch
+              v-model="store.showNodeVersions"
+              class="d-flex"
+              style="justify-content: right"
+              color="primary"
+              @click.prevent="setShowNodeVersions(!store.showNodeVersions)"
+            />
           </v-col>
         </v-row>
         <v-row align="center">
@@ -167,10 +190,15 @@ async function updateNodeLatest(bypass = false) {
     !confirm("Are you sure you want to update your node to the latest version?")
   )
     return;
-  await updateNode("latest");
+  await updateNode("latest", true);
 }
 
-async function updateNode(release: string) {
+async function updateNode(release: string, bypass = false) {
+  if (
+    !bypass &&
+    !confirm(`Are you sure you want to update your node to ${release}?`)
+  )
+    return;
   try {
     store.downloading = true;
     await FUNC.api.post("goal/update", { name: release });
@@ -192,5 +220,10 @@ async function setShowNetworks(val: boolean) {
 async function setShowMachineName(val: boolean) {
   store.showMachineName = val;
   localStorage.setItem("showMachineName", val.toString());
+}
+
+async function setShowNodeVersions(val: boolean) {
+  store.showNodeVersions = val;
+  localStorage.setItem("showNodeVersions", val.toString());
 }
 </script>

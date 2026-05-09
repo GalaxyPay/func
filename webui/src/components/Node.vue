@@ -172,8 +172,8 @@
             prog.verified > 0
               ? "(Verifying)"
               : prog.processed > 0 && prog.processed < 100
-              ? "(Processing)"
-              : ""
+                ? "(Processing)"
+                : ""
           }}
           <v-progress-linear
             v-show="prog.processed != 100"
@@ -275,8 +275,8 @@ const createdColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Unknown"
     ? "grey"
     : nodeStatus.value?.serviceStatus !== "Not Found"
-    ? "success"
-    : "red"
+      ? "success"
+      : "red"
 );
 
 const runningColor = computed(() =>
@@ -287,8 +287,8 @@ const syncedColor = computed(() =>
   algodStatus.value?.lastRound == 0n && !isSyncing.value
     ? "red"
     : isSyncing.value && !generatingKey.value
-    ? "warning"
-    : runningColor.value
+      ? "warning"
+      : runningColor.value
 );
 
 const participatingColor = computed(() =>
@@ -297,8 +297,8 @@ const participatingColor = computed(() =>
   (partDetails.value && !partDetails.value.activeKeys)
     ? "red"
     : generatingKey.value || !partDetails.value
-    ? "grey"
-    : "success"
+      ? "grey"
+      : "success"
 );
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
@@ -323,8 +323,8 @@ const status = computed(() =>
   isSyncing.value
     ? "Syncing"
     : nodeStatus.value
-    ? nodeStatus.value.serviceStatus
-    : "Unknown"
+      ? nodeStatus.value.serviceStatus
+      : "Unknown"
 );
 
 const algodClient = ref<Algodv2>();
@@ -366,6 +366,7 @@ async function getNodeStatus() {
     const resp = await FuncApi.get(props.name);
     nodeStatus.value = resp.data;
     store.machineName = nodeStatus.value?.machineName;
+    store.isWindows = nodeStatus.value?.isWindows;
     if (nodeStatus.value?.serviceStatus !== "Running") {
       refreshing = false;
     }
