@@ -65,7 +65,7 @@
           <v-col>
             <div>Manual Node Version Selection</div>
             <div class="text-caption text-grey">
-              Also supresses new version alerts
+              Also suppresses new version alerts
             </div>
           </v-col>
           <v-col>
