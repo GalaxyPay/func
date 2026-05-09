@@ -1,7 +1,7 @@
 <template>
   <v-app-bar app :order="0">
     <NodeIcon color="currentColor" :width="30" class="ml-3 text-primary" />
-    <div class="ml-2 text-subtitle-1 text-blu">
+    <div class="ml-2">
       FUNC
       {{
         store.showMachineName && store.machineName
@@ -15,7 +15,8 @@
       <v-icon
         :icon="mdiCog"
         :color="
-          (store.nodeUpdateAvailable || store.funcUpdateAvailable) &&
+          ((store.nodeUpdateAvailable && !store.showNodeVersions) ||
+            store.funcUpdateAvailable) &&
           !store.downloading
             ? 'warning'
             : ''
@@ -88,7 +89,10 @@
                 <v-select
                   v-if="wallet.isActive"
                   :items="items"
-                  :model-value="{...activeAccount!, title: formatAddr(activeAccount!.address)}"
+                  :model-value="{
+                    ...activeAccount!,
+                    title: formatAddr(activeAccount!.address),
+                  }"
                   return-object
                   class="pl-2"
                   density="compact"
@@ -123,8 +127,8 @@
                       wallet.isActive
                         ? "Disconnect"
                         : wallet.isConnected
-                        ? "Make Active"
-                        : "Connect"
+                          ? "Make Active"
+                          : "Connect"
                     }}
                   </div>
                 </v-btn>
@@ -134,6 +138,9 @@
         </v-list>
       </v-menu>
     </v-btn>
+    <a href="https://func.algo.xyz" target="_blank">
+      <v-icon :icon="mdiHelpCircleOutline" color="white" class="mr-3" />
+    </a>
     <Settings :visible="showSettings" @close="showSettings = false" />
   </v-app-bar>
 </template>
@@ -143,6 +150,7 @@ import { formatAddr } from "@/utils";
 import {
   mdiCog,
   mdiContentCopy,
+  mdiHelpCircleOutline,
   mdiLightningBoltOutline,
   mdiMinusCircleOutline,
   mdiPlusCircleOutline,
@@ -174,8 +182,8 @@ async function walletAction(wallet: Wallet) {
     wallet.isActive
       ? await wallet.disconnect()
       : wallet.isConnected
-      ? wallet.setActive()
-      : await wallet.connect();
+        ? wallet.setActive()
+        : await wallet.connect();
     store.refreshPart++;
     store.connectMenu = false;
   } catch (err: any) {

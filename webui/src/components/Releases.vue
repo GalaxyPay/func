@@ -1,6 +1,9 @@
 <template>
   <v-btn variant="tonal" :disabled="store.downloading">
-    <v-icon :icon="mdiChevronDown" />
+    Select
+    <template #append>
+      <v-icon :icon="mdiChevronDown" />
+    </template>
     <v-menu activator="parent" bottom scrim>
       <v-list density="compact">
         <v-list-subheader title="Choose a Version" />

@@ -26,6 +26,9 @@ export const useAppStore = defineStore("app", {
     showMachineName: (localStorage.getItem("showMachineName") === "true") as
       | boolean
       | null,
+    showNodeVersions: (localStorage.getItem("showNodeVersions") === "true") as
+      | boolean
+      | null,
     machineName: undefined as string | undefined,
     isWindows: undefined as boolean | undefined,
     resetDates: JSON.parse(localStorage.getItem("resetDates") || "[]") as {
