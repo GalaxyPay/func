@@ -27,8 +27,9 @@ onMounted(async () => {
     ? "GalaxyPay/go-algo-win"
     : "algorand/go-algorand";
   const url = `https://api.github.com/repos/${repo}/releases`;
-  releases.value = (await axios({ url })).data
-    .map((r: any) => r.name)
-    .filter((n: string) => !n.toLowerCase().includes("net"));
+  const { data } = await axios({ url });
+  releases.value = data
+    .map((r: any) => r.tag_name)
+    .filter((n: string) => n.toLowerCase().includes("stable"));
 });
 </script>
