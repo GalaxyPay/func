@@ -38,5 +38,4 @@ export interface PartDetails {
   activeKeys: number;
   activeStake: number;
   proposals: number | undefined;
-  votes: number | undefined;
 }

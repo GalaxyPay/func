@@ -3,7 +3,7 @@
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
     <v-container class="pl-5" fluid>
       <v-row>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="4">
           <div class="py-1">
             <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
             Service Created
@@ -71,7 +71,7 @@
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
-          <v-col cols="6" md="3" class="text-center">
+          <v-col cols="12" sm="4" class="text-center">
             <div class="text-h4" style="white-space: nowrap">
               {{
                 algodStatus
@@ -80,12 +80,14 @@
               }}
             </div>
             <div>Current Block</div>
-            <div class="mt-13 text-h4">
-              {{ partDetails ? partDetails.activeKeys : "-" }}
-            </div>
-            <div>Online Accounts</div>
+            <template v-if="!xs">
+              <div class="mt-13 text-h4">
+                {{ partDetails ? partDetails.activeKeys : "-" }}
+              </div>
+              <div>Online Accounts</div>
+            </template>
           </v-col>
-          <v-col cols="6" md="3" class="text-center">
+          <v-col cols="12" sm="4" class="text-center">
             <div class="text-h4">
               {{
                 partDetails?.proposals == null
@@ -122,33 +124,6 @@
               }}
             </div>
             <div>Online Stake</div>
-          </v-col>
-          <v-col cols="12" sm="6" md="3" class="text-center">
-            <div class="text-h4">
-              {{
-                partDetails?.votes == null
-                  ? "-"
-                  : partDetails.votes.toLocaleString()
-              }}
-            </div>
-            <div>
-              Blocks Certified
-              <span>
-                <v-icon :icon="mdiInformation" class="pb-2" />
-                <v-tooltip
-                  activator="parent"
-                  text="all-time via Votes"
-                  location="bottom"
-                />
-              </span>
-            </div>
-            <div
-              :class="partDetails ? 'pointer' : 'text-grey'"
-              @click="reloadPartDetails()"
-            >
-              <v-icon class="mt-14 mb-1" :icon="mdiRefresh" size="x-large" />
-              <div class="text-decoration-underline">Refresh Data</div>
-            </div>
           </v-col>
         </template>
       </v-row>
@@ -195,6 +170,7 @@
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
+      :current-round="algodStatus?.lastRound"
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
     />
@@ -244,11 +220,13 @@ import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay } from "@/utils";
-import { mdiClose, mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
+import { mdiClose, mdiInformation, mdiOpenInNew } from "@mdi/js";
 import { Algodv2, modelsv2 } from "algosdk";
+import { useDisplay } from "vuetify";
 
 const FuncApi = FUNC.api;
 const store = useAppStore();
+const { xs } = useDisplay();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
@@ -343,8 +321,27 @@ async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (refreshing) {
-    await getAlgodStatus();
-    await delay(920);
+    try {
+      if (nodeStatus.value?.serviceStatus !== "Running" || store.downloading) {
+        algodStatus.value = undefined;
+        await delay(1000);
+        continue;
+      }
+      const round = algodStatus.value?.lastRound ?? 0n;
+      algodStatus.value = await algodClient.value?.statusAfterBlock(round).do();
+      retry = false;
+      await checkReti();
+    } catch (err: any) {
+      if (!retry) {
+        retry = true;
+        await getAllStatus();
+      } else {
+        console.error(err);
+        if (err.status !== 502 && !store.downloading)
+          store.setSnackbar(err?.response?.data || err.message, "error");
+        await delay(1000);
+      }
+    }
   }
 }
 
@@ -407,25 +404,8 @@ async function getAlgodStatus() {
       algodStatus.value = undefined;
     }
     retry = false;
-    if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
-      const releases = await axios({
-        url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
-      });
-      retiLatest.value = releases.data.name;
-    }
-    if (
-      nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
-      nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
-      !store.stoppingReti &&
-      !restartAttempted
-    ) {
-      restartAttempted = true;
-      console.error("reti not running - attempting restart");
-      await FuncApi.put("reti/stop");
-      await FuncApi.put("reti/start");
-    }
+    await checkReti();
     if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
-      await delay(920);
       autoRefresh();
     }
   } catch (err: any) {
@@ -437,6 +417,26 @@ async function getAlgodStatus() {
     console.error(err);
     if (err.status !== 502 && !store.downloading)
       store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+}
+
+async function checkReti() {
+  if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
+    const releases = await axios({
+      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
+    });
+    retiLatest.value = releases.data.name;
+  }
+  if (
+    nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
+    nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
+    !store.stoppingReti &&
+    !restartAttempted
+  ) {
+    restartAttempted = true;
+    console.error("reti not running - attempting restart");
+    await FuncApi.put("reti/stop");
+    await FuncApi.put("reti/start");
   }
 }
 
