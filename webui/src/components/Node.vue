@@ -340,10 +340,22 @@ async function autoRefresh() {
         await delay(500);
         continue;
       }
-      const round = algodStatus.value?.lastRound ?? 0n;
-      algodStatus.value = await algodClient.value?.statusAfterBlock(round).do();
-      retry = false;
-      await checkReti();
+      if (isSyncing.value || algodStatus.value?.catchpoint) {
+        // While catching up lastRound either stays at 0 (fast catchup) or
+        // advances in bursts, so statusAfterBlock would stall and the catchup
+        // progress never updates. Poll instead so sync progress stays live.
+        algodStatus.value = await algodClient.value?.status().do();
+        retry = false;
+        await checkReti();
+        await delay(500);
+      } else {
+        const round = algodStatus.value?.lastRound ?? 0n;
+        algodStatus.value = await algodClient.value
+          ?.statusAfterBlock(round)
+          .do();
+        retry = false;
+        await checkReti();
+      }
     } catch (err: any) {
       if (!retry) {
         retry = true;
