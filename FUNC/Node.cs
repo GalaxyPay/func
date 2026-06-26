@@ -7,8 +7,9 @@ namespace FUNC
 {
     public class Node
     {
-        // Dedicated least-privilege account the node service runs as on Linux.
+        // Dedicated least-privilege account the node service runs as (non-root/non-SYSTEM).
         private const string LinuxNodeUser = "func-node";
+        private const string MacNodeUser = "_func-node";
 
         private static async Task ExtractTemplate(string name)
         {
@@ -21,22 +22,23 @@ namespace FUNC
         // that account. Call after any operation that creates or relocates the dir.
         private static async Task ApplyDirOwnership(string name)
         {
+            string dataDir = Path.Combine(Utils.NodeDataParent(name), name);
+            if (!Directory.Exists(dataDir)) return;
             if (IsLinux())
             {
-                string dataDir = Path.Combine(Utils.NodeDataParent(name), name);
-                if (!Directory.Exists(dataDir)) return;
                 await Utils.ExecCmd($"id -u {LinuxNodeUser} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin {LinuxNodeUser}");
                 await Utils.ExecCmd($"chown -R {LinuxNodeUser}:{LinuxNodeUser} '{dataDir}'");
             }
-        }
-
-        // Re-apply data-dir ownership for existing nodes at startup so in-place upgrades
-        // (where the dir was previously created as root) hand off to the node account.
-        public static async Task ApplyDirOwnershipOnStartup()
-        {
-            foreach (string name in new[] { "algorand", "voi" })
+            else if (IsMacOS())
             {
-                await ApplyDirOwnership(name);
+                // The _func-node account is created by the pkg postinstall; skip if absent.
+                await Utils.ExecCmd($"id -u {MacNodeUser} >/dev/null 2>&1 && chown -R {MacNodeUser} '{dataDir}'");
+            }
+            else if (IsWindows())
+            {
+                // Grant the per-service virtual account modify rights on its data dir.
+                string account = $"NT SERVICE\\{Utils.Cap(name)} Node";
+                await Utils.ExecCmd($"icacls \"{dataDir}\" /grant \"{account}:(OI)(CI)M\" /T");
             }
         }
 
@@ -160,7 +162,10 @@ namespace FUNC
             {
                 string nodeDataDir = Path.Combine(Utils.NodeDataParent(name), name);
                 string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \\\"{nodeDataDir}\\\"";
-                await Utils.ExecCmd($"sc create \"{Utils.Cap(name)} Node\" binPath= \"{binPath}\" start= auto");
+                string serviceName = $"{Utils.Cap(name)} Node";
+                // Run under the auto-managed per-service virtual account instead of LocalSystem.
+                await Utils.ExecCmd($"sc create \"{serviceName}\" binPath= \"{binPath}\" obj= \"NT SERVICE\\{serviceName}\" start= auto");
+                await ApplyDirOwnership(name);
             }
             else if (IsLinux())
             {

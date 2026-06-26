@@ -1,4 +1,18 @@
 #!/bin/sh
+# Dedicated least-privilege account the node service runs as (the node does not need root).
+if ! dscl /Local/Default -read /Users/_func-node >/dev/null 2>&1; then
+  NEW_UID=200
+  while dscl /Local/Default -list /Users UniqueID | awk '{print $2}' | grep -q "^${NEW_UID}$"; do
+    NEW_UID=$((NEW_UID + 1))
+  done
+  dscl /Local/Default -create /Users/_func-node
+  dscl /Local/Default -create /Users/_func-node RealName "FUNC Node"
+  dscl /Local/Default -create /Users/_func-node UserShell /usr/bin/false
+  dscl /Local/Default -create /Users/_func-node UniqueID "$NEW_UID"
+  dscl /Local/Default -create /Users/_func-node PrimaryGroupID 1
+  dscl /Local/Default -create /Users/_func-node NFSHomeDirectory /var/empty
+  dscl /Local/Default -create /Users/_func-node IsHidden 1
+fi
 mkdir -p /usr/local/share/func
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
 launchctl bootstrap system /Library/LaunchDaemons/func.api.plist

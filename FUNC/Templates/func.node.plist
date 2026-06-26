@@ -4,6 +4,8 @@
     <dict>
         <key>Label</key>
         <string>func.__NAME__</string>
+        <key>UserName</key>
+        <string>_func-node</string>
         <key>Program</key>
         <string>/usr/local/share/func/bin/algod</string>
         <key>EnvironmentVariables</key>

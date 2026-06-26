@@ -38,8 +38,6 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
-await Node.ApplyDirOwnershipOnStartup();
-
 // Configure the HTTP request pipeline.
 app.Use(async (httpContext, next) =>
 {
