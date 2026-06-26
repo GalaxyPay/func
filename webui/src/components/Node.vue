@@ -97,18 +97,10 @@
             </div>
             <div>
               Blocks Created
-              <span>
-                <v-icon :icon="mdiInformation" class="pb-2" />
-                <v-tooltip
-                  activator="parent"
-                  text="via Proposals"
-                  location="bottom"
-                />
-              </span>
               <div>
                 <v-btn
                   size="x-small"
-                  :text="resetDate ? `Since ${resetDate}` : 'All-Time'"
+                  :text="resetLabel"
                   color="grey"
                   variant="tonal"
                   :disabled="!algodStatus"
@@ -173,6 +165,12 @@
       :current-round="algodStatus?.lastRound"
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
+      @block-timestamps="(val) => (blockTimestamps = val)"
+    />
+    <BlocksCalendar
+      v-if="name === 'Algorand' && nodeStatus.serviceStatus === 'Running'"
+      :name="name"
+      :timestamps="blockTimestamps"
     />
     <v-container
       class="text-caption text-grey text-center"
@@ -189,8 +187,22 @@
           <v-icon :icon="mdiClose" @click="showReset = false" />
         </v-card-title>
         <v-card-text>
-          Only count blocks created after:
+          Count blocks created:
+          <v-radio-group
+            class="pa-1"
+            v-model="mode"
+            color="primary"
+            density="comfortable"
+            hide-details
+          >
+            <v-radio value="all" label="All-Time" />
+            <v-radio value="year" label="This Year" />
+            <v-radio value="month" label="This Month" />
+            <v-radio value="today" label="Today" />
+            <v-radio value="custom" label="Custom Date" />
+          </v-radio-group>
           <v-text-field
+            :disabled="mode !== 'custom'"
             v-model="date"
             label="Date"
             variant="outlined"
@@ -219,8 +231,8 @@
 import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { NodeStatus, PartDetails } from "@/types";
-import { checkCatchup, delay } from "@/utils";
-import { mdiClose, mdiInformation, mdiOpenInNew } from "@mdi/js";
+import { checkCatchup, delay, effectiveResetDate } from "@/utils";
+import { mdiClose, mdiOpenInNew } from "@mdi/js";
 import { Algodv2, modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -235,6 +247,7 @@ const retiLatest = ref<string>();
 const partDetails = ref<PartDetails>();
 const generatingKey = ref(false);
 const showReset = ref(false);
+const blockTimestamps = ref<number[]>([]);
 
 const retiRunning = computed(
   () => nodeStatus.value?.retiStatus?.exeStatus === "Running"
@@ -324,7 +337,7 @@ async function autoRefresh() {
     try {
       if (nodeStatus.value?.serviceStatus !== "Running" || store.downloading) {
         algodStatus.value = undefined;
-        await delay(1000);
+        await delay(500);
         continue;
       }
       const round = algodStatus.value?.lastRound ?? 0n;
@@ -339,7 +352,7 @@ async function autoRefresh() {
         console.error(err);
         if (err.status !== 502 && !store.downloading)
           store.setSnackbar(err?.response?.data || err.message, "error");
-        await delay(1000);
+        await delay(500);
       }
     }
   }
@@ -513,30 +526,60 @@ function reloadPartDetails() {
 }
 
 const date = ref();
-const resetDate = computed(
-  () => store.resetDates.find((rr) => rr.name === props.name)?.date
+const mode = ref<"all" | "year" | "month" | "today" | "custom">("all");
+const resetEntry = computed(() =>
+  store.resetDates.find((rr) => rr.name === props.name)
 );
 
+const resetLabel = computed(() => {
+  const e = resetEntry.value;
+  if (!e?.date) return "All-Time";
+  switch (e.mode) {
+    case "year":
+      return "This Year";
+    case "month":
+      return "This Month";
+    case "today":
+      return "Today";
+    default:
+      return `Since ${e.date}`;
+  }
+});
+
 function showResetDialog() {
+  const e = resetEntry.value;
+  mode.value = !e?.date ? "all" : (e.mode ?? "custom");
+  date.value = e?.date ?? new Date().toLocaleDateString();
   showReset.value = true;
-  date.value = resetDate.value ?? new Date().toLocaleDateString();
 }
 
 function setResetDate() {
+  let newDate: string | undefined;
+  switch (mode.value) {
+    case "all":
+      newDate = undefined;
+      break;
+    case "custom":
+      newDate = date.value || undefined;
+      break;
+    default:
+      // year / month / today — store a snapshot of the boundary; it is
+      // recomputed live on read via effectiveResetDate so the filter
+      // refreshes with each block.
+      newDate = effectiveResetDate({ date: "snapshot", mode: mode.value });
+      break;
+  }
   const idx = store.resetDates.findIndex((rr) => rr.name === props.name);
-  if (idx < 0) {
-    if (date.value) {
-      store.resetDates.push({
-        name: props.name,
-        date: date.value,
-      });
-    }
+  if (!newDate) {
+    if (idx >= 0) store.resetDates.splice(idx, 1);
   } else {
-    if (date.value) {
-      store.resetDates[idx].date = date.value;
-    } else {
-      store.resetDates.splice(idx, 1);
-    }
+    const entry = {
+      name: props.name,
+      date: newDate,
+      mode: mode.value === "custom" ? "custom" : mode.value,
+    } as (typeof store.resetDates)[number];
+    if (idx >= 0) store.resetDates[idx] = entry;
+    else store.resetDates.push(entry);
   }
   localStorage.setItem("resetDates", JSON.stringify(store.resetDates));
   showReset.value = false;

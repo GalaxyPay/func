@@ -242,7 +242,7 @@
 <script lang="ts" setup>
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
-import { b64, delay, execAtc, formatAddr } from "@/utils";
+import { b64, delay, effectiveResetDate, execAtc, formatAddr } from "@/utils";
 import {
   mdiChevronDown,
   mdiClose,
@@ -267,7 +267,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["partDetails", "generatingKey"]);
+const emit = defineEmits(["partDetails", "generatingKey", "blockTimestamps"]);
 
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
@@ -322,6 +322,11 @@ const statsClient = axios.create({
 
 const partStats = ref<any>({});
 
+// Block timestamps (seconds) emitted to the calendar: the cached history from
+// the last stats refresh plus any blocks observed live this session.
+let cachedTimestamps: number[] = [];
+let liveTimestamps: number[] = [];
+
 type ProposalsCache = {
   [network: string]: { [address: string]: { hwm: number; ts: number[] } };
 };
@@ -336,6 +341,19 @@ function loadProposalsCache(): ProposalsCache {
 
 function saveProposalsCache(cache: ProposalsCache) {
   localStorage.setItem("partProposalsCache", JSON.stringify(cache));
+}
+
+function emitBlockTimestamps(addrs: string[]) {
+  const cache = loadProposalsCache();
+  const netCache = cache[props.name] || {};
+  const ts: number[] = [];
+  for (const addr of addrs) {
+    const entry = netCache[addr];
+    if (entry?.ts) ts.push(...entry.ts);
+  }
+  cachedTimestamps = ts;
+  liveTimestamps = [];
+  emit("blockTimestamps", [...cachedTimestamps]);
 }
 
 async function getKeys(): Promise<Participation[]> {
@@ -373,6 +391,7 @@ async function refreshPartData() {
       }
     }
     loading.value = false;
+    emitBlockTimestamps(activeKeys?.map((k) => k.address) || []);
     const activeStake = acctInfos.value
       .filter((a) => activeKeys?.some((k) => k.address === a.address))
       .reduce((a, c) => a + Number(c.amount), 0);
@@ -410,6 +429,8 @@ async function checkNewBlock(round: bigint) {
       emittedPart.value.proposals = (emittedPart.value.proposals || 0) + 1;
       emit("partDetails", emittedPart.value);
     }
+    liveTimestamps.push(Number(resp.block.header.timestamp));
+    emit("blockTimestamps", [...cachedTimestamps, ...liveTimestamps]);
   } catch (err: any) {
     console.error(err);
   }
@@ -588,7 +609,7 @@ async function generateKey() {
       .then(async () => {
         let generating = true;
         while (generating) {
-          await delay(1000);
+          await delay(500);
           const keys = await getKeys();
           if (
             keys?.some(
@@ -699,9 +720,9 @@ function copyVal(val: string | number | bigint | undefined) {
 
 async function getStats(addrs: string[]) {
   try {
-    const resetDate = store.resetDates.find(
-      (rr) => rr.name === props.name
-    )?.date;
+    const resetDate = effectiveResetDate(
+      store.resetDates.find((rr) => rr.name === props.name)
+    );
     const stats: any = {};
     switch (props.name) {
       case "Algorand": {

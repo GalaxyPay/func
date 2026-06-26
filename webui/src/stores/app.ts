@@ -34,6 +34,7 @@ export const useAppStore = defineStore("app", {
     resetDates: JSON.parse(localStorage.getItem("resetDates") || "[]") as {
       name: string;
       date: string;
+      mode?: "year" | "month" | "today" | "custom";
     }[],
   }),
   actions: {
