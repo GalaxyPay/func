@@ -329,34 +329,50 @@ onBeforeUnmount(() => {
 });
 
 let refreshing = false;
+let pendingStatus: Promise<modelsv2.NodeStatusResponse> | null = null;
+let pendingRound = -1n;
 
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (refreshing) {
     try {
-      if (nodeStatus.value?.serviceStatus !== "Running" || store.downloading) {
+      if (
+        nodeStatus.value?.serviceStatus !== "Running" ||
+        store.downloading ||
+        !algodClient.value
+      ) {
         algodStatus.value = undefined;
         await delay(500);
         continue;
       }
-      if (isSyncing.value || algodStatus.value?.catchpoint) {
-        // While catching up lastRound either stays at 0 (fast catchup) or
-        // advances in bursts, so statusAfterBlock would stall and the catchup
-        // progress never updates. Poll instead so sync progress stays live.
-        algodStatus.value = await algodClient.value?.status().do();
-        retry = false;
-        await checkReti();
-        await delay(500);
-      } else {
-        const round = algodStatus.value?.lastRound ?? 0n;
-        algodStatus.value = await algodClient.value
-          ?.statusAfterBlock(round)
-          .do();
-        retry = false;
-        await checkReti();
+      const round = algodStatus.value?.lastRound ?? 0n;
+      // Reuse the in-flight statusAfterBlock for the same round so a stalled
+      // wait doesn't pile up long-poll connections (browsers cap ~6 per host).
+      if (!pendingStatus || pendingRound !== round) {
+        pendingRound = round;
+        pendingStatus = algodClient.value.statusAfterBlock(round).do();
       }
+      // Blocks average ~2.8s. If statusAfterBlock waits noticeably longer the
+      // node is likely catching up — where lastRound advances in bursts or
+      // stays at 0 during fast catchup, and catchupTime is not always
+      // reported — so poll directly to keep the counter and catchup progress
+      // live without relying on catchupTime.
+      const next = await Promise.race([
+        pendingStatus,
+        delay(4000).then(() => null),
+      ]);
+      if (next) {
+        pendingStatus = null;
+        algodStatus.value = next;
+      } else {
+        algodStatus.value = await algodClient.value.status().do();
+      }
+      retry = false;
+      await checkReti();
     } catch (err: any) {
+      // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
+      pendingStatus = null;
       if (!retry) {
         retry = true;
         await getAllStatus();
