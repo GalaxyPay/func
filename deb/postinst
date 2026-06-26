@@ -1,3 +1,4 @@
+id -u func-node >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin func-node
 systemctl daemon-reload
 systemctl start func
 systemctl restart func
