@@ -182,12 +182,11 @@
     <v-dialog v-model="showReset" max-width="350" persistent>
       <v-card>
         <v-card-title class="d-flex">
-          Blocks
+          Count Blocks
           <v-spacer />
           <v-icon :icon="mdiClose" @click="showReset = false" />
         </v-card-title>
         <v-card-text>
-          Count blocks created:
           <v-radio-group
             class="pa-1"
             v-model="mode"
@@ -199,7 +198,7 @@
             <v-radio value="year" label="This Year" />
             <v-radio value="month" label="This Month" />
             <v-radio value="today" label="Today" />
-            <v-radio value="custom" label="Custom Date" />
+            <v-radio value="custom" label="Since..." />
           </v-radio-group>
           <v-text-field
             :disabled="mode !== 'custom'"
