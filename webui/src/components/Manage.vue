@@ -116,7 +116,6 @@
 <script setup lang="ts">
 import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
-import { delay } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
 
@@ -126,6 +125,7 @@ const props = defineProps({
   nodeStatus: { type: Object as PropType<NodeStatus>, required: true },
   status: { type: String, required: true },
 });
+const emit = defineEmits(["awaitRunning", "cancelAwait"]);
 const loading = ref(false);
 const showReti = ref(false);
 const showConfig = ref(false);
@@ -151,8 +151,11 @@ async function startNode() {
   try {
     loading.value = true;
     await FUNC.api.put(`${props.name}/start`);
-    await delay(500);
-    await finish("Node Started");
+    loading.value = false;
+    // The node may not bind immediately (e.g. while a previous instance
+    // releases the port), so hand off to the parent to poll until it's
+    // actually serving rather than claiming success right away.
+    emit("awaitRunning");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
@@ -163,6 +166,7 @@ async function stopNode() {
   try {
     loading.value = true;
     await FUNC.api.put(`${props.name}/stop`);
+    emit("cancelAwait");
     await finish("Node Stopped");
   } catch (err: any) {
     console.error(err);
@@ -174,6 +178,7 @@ async function deleteNode() {
   try {
     loading.value = true;
     await FUNC.api.delete(props.name);
+    emit("cancelAwait");
     await finish("Service Removed");
   } catch (err: any) {
     console.error(err);

@@ -68,6 +68,8 @@
             :name="name"
             :node-status="nodeStatus"
             :status="status"
+            @await-running="waitForRunning"
+            @cancel-await="cancelWait"
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
@@ -325,9 +327,59 @@ onBeforeMount(async () => {
 
 onBeforeUnmount(() => {
   refreshing = false;
+  awaitingStart = false;
 });
 
 let refreshing = false;
+let awaitingStart = false;
+
+function cancelWait() {
+  awaitingStart = false;
+}
+
+// After a Create/Start the service may not bind immediately (notably while a
+// previous instance releases the network port), and on macOS/Linux the service
+// manager keeps retrying. Poll until algod actually answers, keeping the user
+// informed and refreshing the dashboard once it's truly serving.
+async function waitForRunning() {
+  if (awaitingStart) return;
+  awaitingStart = true;
+  store.setSnackbar(
+    "Node starting — this can take a minute. The dashboard will update automatically.",
+    "info",
+    -1
+  );
+  const startTime = Date.now();
+  try {
+    while (awaitingStart) {
+      await getNodeStatus();
+      if (nodeStatus.value?.serviceStatus === "Not Found") {
+        store.setSnackbar("Node service not found.", "error");
+        return;
+      }
+      try {
+        await algodClient.value?.status().do();
+        // algod is answering, so the node is genuinely up. Refresh service +
+        // algod status together so the steady-state autoRefresh kicks in.
+        await getAllStatus();
+        store.setSnackbar("Node Running", "success");
+        return;
+      } catch {
+        // Not serving yet — keep waiting.
+      }
+      if (Date.now() - startTime > 300000) {
+        store.setSnackbar(
+          "Node did not start within 5 minutes. Check the service status and try again.",
+          "error"
+        );
+        return;
+      }
+      await delay(3000);
+    }
+  } finally {
+    awaitingStart = false;
+  }
+}
 let pendingStatus: Promise<modelsv2.NodeStatusResponse> | null = null;
 let pendingRound = -1n;
 
