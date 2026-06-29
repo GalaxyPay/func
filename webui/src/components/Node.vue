@@ -3,7 +3,7 @@
     <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
     <v-container class="pl-5" fluid>
       <v-row>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="4">
           <div class="py-1">
             <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
             Service Created
@@ -71,7 +71,7 @@
           />
         </v-col>
         <template v-if="nodeStatus.serviceStatus === 'Running'">
-          <v-col cols="6" md="3" class="text-center">
+          <v-col cols="12" sm="4" class="text-center">
             <div class="text-h4" style="white-space: nowrap">
               {{
                 algodStatus
@@ -80,12 +80,14 @@
               }}
             </div>
             <div>Current Block</div>
-            <div class="mt-13 text-h4">
-              {{ partDetails ? partDetails.activeKeys : "-" }}
-            </div>
-            <div>Online Accounts</div>
+            <template v-if="!xs">
+              <div class="mt-13 text-h4">
+                {{ partDetails ? partDetails.activeKeys : "-" }}
+              </div>
+              <div>Online Accounts</div>
+            </template>
           </v-col>
-          <v-col cols="6" md="3" class="text-center">
+          <v-col cols="12" sm="4" class="text-center">
             <div class="text-h4">
               {{
                 partDetails?.proposals == null
@@ -95,18 +97,10 @@
             </div>
             <div>
               Blocks Created
-              <span>
-                <v-icon :icon="mdiInformation" class="pb-2" />
-                <v-tooltip
-                  activator="parent"
-                  text="via Proposals"
-                  location="bottom"
-                />
-              </span>
               <div>
                 <v-btn
                   size="x-small"
-                  :text="resetDate ? `Since ${resetDate}` : 'All-Time'"
+                  :text="resetLabel"
                   color="grey"
                   variant="tonal"
                   :disabled="!algodStatus"
@@ -122,33 +116,6 @@
               }}
             </div>
             <div>Online Stake</div>
-          </v-col>
-          <v-col cols="12" sm="6" md="3" class="text-center">
-            <div class="text-h4">
-              {{
-                partDetails?.votes == null
-                  ? "-"
-                  : partDetails.votes.toLocaleString()
-              }}
-            </div>
-            <div>
-              Blocks Certified
-              <span>
-                <v-icon :icon="mdiInformation" class="pb-2" />
-                <v-tooltip
-                  activator="parent"
-                  text="all-time via Votes"
-                  location="bottom"
-                />
-              </span>
-            </div>
-            <div
-              :class="partDetails ? 'pointer' : 'text-grey'"
-              @click="reloadPartDetails()"
-            >
-              <v-icon class="mt-14 mb-1" :icon="mdiRefresh" size="x-large" />
-              <div class="text-decoration-underline">Refresh Data</div>
-            </div>
           </v-col>
         </template>
       </v-row>
@@ -195,8 +162,15 @@
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
+      :current-round="algodStatus?.lastRound"
       @part-details="(val) => (partDetails = val)"
       @generating-key="(val) => (generatingKey = val)"
+      @block-timestamps="(val) => (blockTimestamps = val)"
+    />
+    <BlocksCalendar
+      v-if="name === 'Algorand' && nodeStatus.serviceStatus === 'Running'"
+      :name="name"
+      :timestamps="blockTimestamps"
     />
     <v-container
       class="text-caption text-grey text-center"
@@ -208,13 +182,26 @@
     <v-dialog v-model="showReset" max-width="350" persistent>
       <v-card>
         <v-card-title class="d-flex">
-          Blocks
+          Count Blocks
           <v-spacer />
           <v-icon :icon="mdiClose" @click="showReset = false" />
         </v-card-title>
         <v-card-text>
-          Only count blocks created after:
+          <v-radio-group
+            class="pa-1"
+            v-model="mode"
+            color="primary"
+            density="comfortable"
+            hide-details
+          >
+            <v-radio value="all" label="All-Time" />
+            <v-radio value="year" label="This Year" />
+            <v-radio value="month" label="This Month" />
+            <v-radio value="today" label="Today" />
+            <v-radio value="custom" label="Since..." />
+          </v-radio-group>
           <v-text-field
+            :disabled="mode !== 'custom'"
             v-model="date"
             label="Date"
             variant="outlined"
@@ -243,12 +230,14 @@
 import { networks } from "@/data";
 import FUNC from "@/services/api";
 import { NodeStatus, PartDetails } from "@/types";
-import { checkCatchup, delay } from "@/utils";
-import { mdiClose, mdiInformation, mdiOpenInNew, mdiRefresh } from "@mdi/js";
+import { checkCatchup, delay, effectiveResetDate } from "@/utils";
+import { mdiClose, mdiOpenInNew } from "@mdi/js";
 import { Algodv2, modelsv2 } from "algosdk";
+import { useDisplay } from "vuetify";
 
 const FuncApi = FUNC.api;
 const store = useAppStore();
+const { xs } = useDisplay();
 const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
@@ -257,6 +246,7 @@ const retiLatest = ref<string>();
 const partDetails = ref<PartDetails>();
 const generatingKey = ref(false);
 const showReset = ref(false);
+const blockTimestamps = ref<number[]>([]);
 
 const retiRunning = computed(
   () => nodeStatus.value?.retiStatus?.exeStatus === "Running"
@@ -338,13 +328,60 @@ onBeforeUnmount(() => {
 });
 
 let refreshing = false;
+let pendingStatus: Promise<modelsv2.NodeStatusResponse> | null = null;
+let pendingRound = -1n;
 
 async function autoRefresh() {
   if (refreshing) return;
   refreshing = true;
   while (refreshing) {
-    await getAlgodStatus();
-    await delay(920);
+    try {
+      if (
+        nodeStatus.value?.serviceStatus !== "Running" ||
+        store.downloading ||
+        !algodClient.value
+      ) {
+        algodStatus.value = undefined;
+        await delay(500);
+        continue;
+      }
+      const round = algodStatus.value?.lastRound ?? 0n;
+      // Reuse the in-flight statusAfterBlock for the same round so a stalled
+      // wait doesn't pile up long-poll connections (browsers cap ~6 per host).
+      if (!pendingStatus || pendingRound !== round) {
+        pendingRound = round;
+        pendingStatus = algodClient.value.statusAfterBlock(round).do();
+      }
+      // Blocks average ~2.8s. If statusAfterBlock waits noticeably longer the
+      // node is likely catching up — where lastRound advances in bursts or
+      // stays at 0 during fast catchup, and catchupTime is not always
+      // reported — so poll directly to keep the counter and catchup progress
+      // live without relying on catchupTime.
+      const next = await Promise.race([
+        pendingStatus,
+        delay(4000).then(() => null),
+      ]);
+      if (next) {
+        pendingStatus = null;
+        algodStatus.value = next;
+      } else {
+        algodStatus.value = await algodClient.value.status().do();
+      }
+      retry = false;
+      await checkReti();
+    } catch (err: any) {
+      // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
+      pendingStatus = null;
+      if (!retry) {
+        retry = true;
+        await getAllStatus();
+      } else {
+        console.error(err);
+        if (err.status !== 502 && !store.downloading)
+          store.setSnackbar(err?.response?.data || err.message, "error");
+        await delay(500);
+      }
+    }
   }
 }
 
@@ -407,25 +444,8 @@ async function getAlgodStatus() {
       algodStatus.value = undefined;
     }
     retry = false;
-    if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
-      const releases = await axios({
-        url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
-      });
-      retiLatest.value = releases.data.name;
-    }
-    if (
-      nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
-      nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
-      !store.stoppingReti &&
-      !restartAttempted
-    ) {
-      restartAttempted = true;
-      console.error("reti not running - attempting restart");
-      await FuncApi.put("reti/stop");
-      await FuncApi.put("reti/start");
-    }
+    await checkReti();
     if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
-      await delay(920);
       autoRefresh();
     }
   } catch (err: any) {
@@ -437,6 +457,26 @@ async function getAlgodStatus() {
     console.error(err);
     if (err.status !== 502 && !store.downloading)
       store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+}
+
+async function checkReti() {
+  if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
+    const releases = await axios({
+      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
+    });
+    retiLatest.value = releases.data.name;
+  }
+  if (
+    nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
+    nodeStatus.value.retiStatus.exeStatus === "Stopped" &&
+    !store.stoppingReti &&
+    !restartAttempted
+  ) {
+    restartAttempted = true;
+    console.error("reti not running - attempting restart");
+    await FuncApi.put("reti/stop");
+    await FuncApi.put("reti/start");
   }
 }
 
@@ -513,30 +553,60 @@ function reloadPartDetails() {
 }
 
 const date = ref();
-const resetDate = computed(
-  () => store.resetDates.find((rr) => rr.name === props.name)?.date
+const mode = ref<"all" | "year" | "month" | "today" | "custom">("all");
+const resetEntry = computed(() =>
+  store.resetDates.find((rr) => rr.name === props.name)
 );
 
+const resetLabel = computed(() => {
+  const e = resetEntry.value;
+  if (!e?.date) return "All-Time";
+  switch (e.mode) {
+    case "year":
+      return "This Year";
+    case "month":
+      return "This Month";
+    case "today":
+      return "Today";
+    default:
+      return `Since ${e.date}`;
+  }
+});
+
 function showResetDialog() {
+  const e = resetEntry.value;
+  mode.value = !e?.date ? "all" : (e.mode ?? "custom");
+  date.value = e?.date ?? new Date().toLocaleDateString();
   showReset.value = true;
-  date.value = resetDate.value ?? new Date().toLocaleDateString();
 }
 
 function setResetDate() {
+  let newDate: string | undefined;
+  switch (mode.value) {
+    case "all":
+      newDate = undefined;
+      break;
+    case "custom":
+      newDate = date.value || undefined;
+      break;
+    default:
+      // year / month / today — store a snapshot of the boundary; it is
+      // recomputed live on read via effectiveResetDate so the filter
+      // refreshes with each block.
+      newDate = effectiveResetDate({ date: "snapshot", mode: mode.value });
+      break;
+  }
   const idx = store.resetDates.findIndex((rr) => rr.name === props.name);
-  if (idx < 0) {
-    if (date.value) {
-      store.resetDates.push({
-        name: props.name,
-        date: date.value,
-      });
-    }
+  if (!newDate) {
+    if (idx >= 0) store.resetDates.splice(idx, 1);
   } else {
-    if (date.value) {
-      store.resetDates[idx].date = date.value;
-    } else {
-      store.resetDates.splice(idx, 1);
-    }
+    const entry = {
+      name: props.name,
+      date: newDate,
+      mode: mode.value === "custom" ? "custom" : mode.value,
+    } as (typeof store.resetDates)[number];
+    if (idx >= 0) store.resetDates[idx] = entry;
+    else store.resetDates.push(entry);
   }
   localStorage.setItem("resetDates", JSON.stringify(store.resetDates));
   showReset.value = false;

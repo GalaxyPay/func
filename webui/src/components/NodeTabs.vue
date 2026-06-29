@@ -2,7 +2,7 @@
   <v-container
     v-show="store.ready && !store.downloading"
     fluid
-    :max-width="1200"
+    :max-width="1000"
   >
     <v-card>
       <v-tabs

@@ -4,10 +4,14 @@ After=network.target
 AssertPathExists=__PARENTDIR__/__NAME__
 
 [Service]
+User=func-node
+Group=func-node
 ExecStart=/usr/share/func/bin/algod -d __PARENTDIR__/__NAME__
 Restart=always
 RestartSec=5s
 ProtectSystem=false
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

@@ -62,6 +62,8 @@ sudo launchctl bootout system/func.api
 sudo rm /Library/LaunchDaemons/func.api.plist
 sudo rm -rf /opt/func
 sudo rm -rf /usr/local/share/func
+sudo dscl /Local/Default -delete /Users/_func-node
+sudo dscl /Local/Default -delete /Users/_func-reti
 ```
 
 ### Linux (Uninstall)
@@ -71,6 +73,8 @@ sudo systemctl stop func
 sudo rm /lib/systemd/system/func.service
 sudo rm -rf /opt/func
 sudo rm -rf /usr/share/func
+sudo userdel func-node
+sudo userdel func-reti
 ```
 
 ## Manage Node Menu Options
@@ -151,7 +155,6 @@ If you want to participate in consensus, you'll need to generate a Participation
 ### Remote Access (Advanced)
 
 - If you want to access the site from another computer on your network, you will need to open the following ports:
-
   - 3536 AND 3537 - FUNC UI and API
   - 8081 - Algorand algod
   - 8082 AND 3538 - Voi algod

@@ -14,6 +14,41 @@ namespace FUNC.Controllers
     {
         private readonly ILogger<RetiController> _logger = logger;
 
+        // Dedicated least-privilege account the Reti service runs as (non-root/non-SYSTEM).
+        private const string LinuxRetiUser = "func-reti";
+        private const string MacRetiUser = "_func-reti";
+
+        // FUNC runs elevated and creates the reti dir (binary + .env) as root. The service
+        // runs as an unprivileged account, so hand ownership of the dir to that account.
+        private static async Task ApplyDirOwnership()
+        {
+            string retiDir = Path.Combine(Utils.appDataDir, "reti");
+            if (!Directory.Exists(retiDir)) return;
+            // .env holds validator config and a secret mnemonic, so restrict it to its owner.
+            string envPath = Path.Combine(retiDir, ".env");
+            bool hasEnv = System.IO.File.Exists(envPath);
+            if (IsLinux())
+            {
+                await Utils.ExecCmd($"id -u {LinuxRetiUser} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin {LinuxRetiUser}");
+                await Utils.ExecCmd($"chown -R {LinuxRetiUser}:{LinuxRetiUser} '{retiDir}'");
+                if (hasEnv) await Utils.ExecCmd($"chmod 600 '{envPath}'");
+            }
+            else if (IsMacOS())
+            {
+                // The _func-reti account is created by the pkg postinstall; skip if absent.
+                await Utils.ExecCmd($"id -u {MacRetiUser} >/dev/null 2>&1 && chown -R {MacRetiUser} '{retiDir}'");
+                if (hasEnv) await Utils.ExecCmd($"id -u {MacRetiUser} >/dev/null 2>&1 && chmod 600 '{envPath}'");
+            }
+            else if (IsWindows())
+            {
+                // Grant the per-service virtual account modify rights on the reti dir.
+                await Utils.ExecCmd($"icacls \"{retiDir}\" /grant \"NT SERVICE\\Reti Validator:(OI)(CI)M\" /T");
+                // Strip inherited ACEs from .env and limit access to SYSTEM, Administrators,
+                // and the service account (read-only) so other local users cannot read it.
+                if (hasEnv) await Utils.ExecCmd($"icacls \"{envPath}\" /inheritance:r /grant \"NT SERVICE\\Reti Validator:R\" /grant \"SYSTEM:F\" /grant \"Administrators:F\"");
+            }
+        }
+
         // POST: reti
         [HttpPost]
         public async Task<ActionResult> CreateRetiService(RetiCreate model)
@@ -46,7 +81,8 @@ namespace FUNC.Controllers
                 if (IsWindows())
                 {
                     string binPath = Path.Combine(AppContext.BaseDirectory, "Services", "RetiService.exe");
-                    await Utils.ExecCmd($"sc create \"Reti Validator\" binPath= \"{binPath}\" start= delayed-auto");
+                    // Run under the auto-managed per-service virtual account instead of LocalSystem.
+                    await Utils.ExecCmd($"sc create \"Reti Validator\" binPath= \"{binPath}\" obj= \"NT SERVICE\\Reti Validator\" start= delayed-auto");
                 }
                 else if (IsLinux())
                 {
@@ -61,6 +97,8 @@ namespace FUNC.Controllers
                     await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
                     await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
                 }
+
+                await ApplyDirOwnership();
 
                 return Ok();
             }
@@ -78,6 +116,7 @@ namespace FUNC.Controllers
             {
                 await StopRetiService();
                 await DownloadExtractReti();
+                await ApplyDirOwnership();
                 await StartRetiService();
                 return Ok();
             }

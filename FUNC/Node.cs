@@ -7,10 +7,39 @@ namespace FUNC
 {
     public class Node
     {
+        // Dedicated least-privilege account the node service runs as (non-root/non-SYSTEM).
+        private const string LinuxNodeUser = "func-node";
+        private const string MacNodeUser = "_func-node";
+
         private static async Task ExtractTemplate(string name)
         {
             string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.tar");
             await TarFile.ExtractToDirectoryAsync(templatePath, Utils.NodeDataParent(name), true);
+        }
+
+        // FUNC runs elevated and creates the node data dir as root. The node service
+        // itself runs as an unprivileged account, so hand ownership of the data dir to
+        // that account. Call after any operation that creates or relocates the dir.
+        private static async Task ApplyDirOwnership(string name)
+        {
+            string dataDir = Path.Combine(Utils.NodeDataParent(name), name);
+            if (!Directory.Exists(dataDir)) return;
+            if (IsLinux())
+            {
+                await Utils.ExecCmd($"id -u {LinuxNodeUser} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin {LinuxNodeUser}");
+                await Utils.ExecCmd($"chown -R {LinuxNodeUser}:{LinuxNodeUser} '{dataDir}'");
+            }
+            else if (IsMacOS())
+            {
+                // The _func-node account is created by the pkg postinstall; skip if absent.
+                await Utils.ExecCmd($"id -u {MacNodeUser} >/dev/null 2>&1 && chown -R {MacNodeUser} '{dataDir}'");
+            }
+            else if (IsWindows())
+            {
+                // Grant the per-service virtual account modify rights on its data dir.
+                string account = $"NT SERVICE\\{Utils.Cap(name)} Node";
+                await Utils.ExecCmd($"icacls \"{dataDir}\" /grant \"{account}:(OI)(CI)M\" /T");
+            }
         }
 
         public static async Task<NodeStatus> Get(string name)
@@ -133,7 +162,10 @@ namespace FUNC
             {
                 string nodeDataDir = Path.Combine(Utils.NodeDataParent(name), name);
                 string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \\\"{nodeDataDir}\\\"";
-                await Utils.ExecCmd($"sc create \"{Utils.Cap(name)} Node\" binPath= \"{binPath}\" start= auto");
+                string serviceName = $"{Utils.Cap(name)} Node";
+                // Run under the auto-managed per-service virtual account instead of LocalSystem.
+                await Utils.ExecCmd($"sc create \"{serviceName}\" binPath= \"{binPath}\" obj= \"NT SERVICE\\{serviceName}\" start= auto");
+                await ApplyDirOwnership(name);
             }
             else if (IsLinux())
             {
@@ -141,6 +173,7 @@ namespace FUNC
                 string template = File.ReadAllText(templatePath);
                 string service = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
                 File.WriteAllText($"/lib/systemd/system/{name}.service", service);
+                await ApplyDirOwnership(name);
                 await Utils.ExecCmd($"systemctl daemon-reload");
                 await Utils.ExecCmd($"systemctl enable {name}");
             }
@@ -161,6 +194,7 @@ namespace FUNC
                 Directory.Delete(Path.Combine(Utils.NodeDataParent(name), name), true);
             }
             await ExtractTemplate(name);
+            await ApplyDirOwnership(name);
         }
 
         public static async Task<string> Catchup(string name, Catchup model)
@@ -218,7 +252,7 @@ namespace FUNC
             File.WriteAllText(configPath, model.Json);
         }
 
-        public static void SetDir(string name, Dir model)
+        public static async Task SetDir(string name, Dir model)
         {
             string currentPath = Path.Combine(Utils.NodeDataParent(name), name);
             string requestPath = Path.Combine(model.Path, name);
@@ -226,6 +260,7 @@ namespace FUNC
             string filePath = Path.Combine(Utils.appDataDir, $"{name}.data");
             File.WriteAllText(filePath, model.Path);
             Directory.Delete(currentPath, true);
+            await ApplyDirOwnership(name);
         }
 
         public static void CopyFolder(string sourceFolder, string destFolder)

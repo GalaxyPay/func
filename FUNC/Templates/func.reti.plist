@@ -4,6 +4,8 @@
     <dict>
         <key>Label</key>
         <string>func.reti</string>
+        <key>UserName</key>
+        <string>_func-reti</string>
         <key>ProgramArguments</key>
             <array>
                 <string>/usr/local/share/func/reti/reti</string>

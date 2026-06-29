@@ -158,11 +158,11 @@ namespace FUNC.Controllers
 
         // PUT: voi/dir
         [HttpPut("dir")]
-        public ActionResult<string> SetNodeDataDir(Dir model)
+        public async Task<ActionResult<string>> SetNodeDataDir(Dir model)
         {
             try
             {
-                Node.SetDir(_name, model);
+                await Node.SetDir(_name, model);
                 return Ok();
             }
             catch (Exception ex)

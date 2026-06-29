@@ -121,12 +121,6 @@
                     {{ partStats[item.address]?.proposals.toLocaleString() }}
                   </span>
                 </v-col>
-                <v-col class="text-subtitle-1">
-                  Blocks Certified:
-                  <span class="font-weight-bold">
-                    {{ partStats[item.address]?.votes.toLocaleString() }}
-                  </span>
-                </v-col>
               </v-row>
             </td>
           </tr>
@@ -248,7 +242,7 @@
 <script lang="ts" setup>
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
-import { b64, delay, execAtc, formatAddr } from "@/utils";
+import { b64, delay, effectiveResetDate, execAtc, formatAddr } from "@/utils";
 import {
   mdiChevronDown,
   mdiClose,
@@ -259,6 +253,7 @@ import {
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
+import type { PropType } from "vue";
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -266,9 +261,13 @@ const props = defineProps({
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
   status: { type: String, required: true },
+  currentRound: {
+    type: BigInt as unknown as PropType<bigint>,
+    required: false,
+  },
 });
 
-const emit = defineEmits(["partDetails", "generatingKey"]);
+const emit = defineEmits(["partDetails", "generatingKey", "blockTimestamps"]);
 
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
@@ -284,6 +283,7 @@ const addr = ref<string>();
 const gen = ref<{ first?: bigint | string; last?: bigint | string }>({});
 const lastRound = ref<bigint>();
 const acctInfos = ref<modelsv2.Account[]>([]);
+const emittedPart = ref<PartDetails>();
 
 const validAddress = (v: string) =>
   algosdk.isValidAddress(v) || "Invalid Address";
@@ -317,14 +317,44 @@ const partClient = axios.create({
 
 const statsClient = axios.create({
   baseURL:
-    props.name === "Algorand"
-      ? "https://lab-mainnet-gql.4160.nodely.dev"
-      : props.name === "Voi"
-      ? "https://api.voirewards.com/proposers"
-      : undefined,
+    props.name === "Voi" ? "https://api.voirewards.com/proposers" : undefined,
 });
 
 const partStats = ref<any>({});
+
+// Block timestamps (seconds) emitted to the calendar: the cached history from
+// the last stats refresh plus any blocks observed live this session.
+let cachedTimestamps: number[] = [];
+let liveTimestamps: number[] = [];
+
+type ProposalsCache = {
+  [network: string]: { [address: string]: { hwm: number; ts: number[] } };
+};
+
+function loadProposalsCache(): ProposalsCache {
+  try {
+    return JSON.parse(localStorage.getItem("partProposalsCache") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveProposalsCache(cache: ProposalsCache) {
+  localStorage.setItem("partProposalsCache", JSON.stringify(cache));
+}
+
+function emitBlockTimestamps(addrs: string[]) {
+  const cache = loadProposalsCache();
+  const netCache = cache[props.name] || {};
+  const ts: number[] = [];
+  for (const addr of addrs) {
+    const entry = netCache[addr];
+    if (entry?.ts) ts.push(...entry.ts);
+  }
+  cachedTimestamps = ts;
+  liveTimestamps = [];
+  emit("blockTimestamps", [...cachedTimestamps]);
+}
 
 async function getKeys(): Promise<Participation[]> {
   const { data }: { data: Participation[] } = await partClient.get("");
@@ -352,17 +382,16 @@ async function refreshPartData() {
     keys.value = tempKeys;
     const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
     let proposals = 0;
-    let votes = 0;
     if (activeKeys?.length) {
       loading.value = true;
       partStats.value =
         (await getStats(activeKeys.map((k) => k.address))) || {};
       for (const value of Object.values(partStats.value) as any[]) {
         proposals += value?.proposals || 0;
-        votes += value?.votes || 0;
       }
     }
     loading.value = false;
+    emitBlockTimestamps(activeKeys?.map((k) => k.address) || []);
     const activeStake = acctInfos.value
       .filter((a) => activeKeys?.some((k) => k.address === a.address))
       .reduce((a, c) => a + Number(c.amount), 0);
@@ -370,14 +399,112 @@ async function refreshPartData() {
       activeKeys: activeKeys?.length || 0,
       activeStake,
       proposals: Object.keys(partStats.value).length ? proposals : undefined,
-      votes: Object.keys(partStats.value).length ? votes : undefined,
     };
+    emittedPart.value = partDetails;
     emit("partDetails", partDetails);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
+
+async function checkNewBlock(round: bigint) {
+  if (props.status !== "Running") return;
+  try {
+    const online = keys.value
+      ?.filter((k) => isKeyActive(k))
+      .map((k) => k.address);
+    if (!online?.length) return;
+    const resp = await props.algodClient.block(round).headerOnly(true).do();
+    const proposer = resp.block.header.proposer?.toString();
+    if (!proposer || !online.includes(proposer)) return;
+    playBlockSound();
+    if (partStats.value[proposer]) {
+      partStats.value[proposer].proposals =
+        (partStats.value[proposer].proposals || 0) + 1;
+    } else {
+      partStats.value[proposer] = { proposals: 1 };
+    }
+    if (emittedPart.value) {
+      emittedPart.value.proposals = (emittedPart.value.proposals || 0) + 1;
+      emit("partDetails", emittedPart.value);
+    }
+    liveTimestamps.push(Number(resp.block.header.timestamp));
+    emit("blockTimestamps", [...cachedTimestamps, ...liveTimestamps]);
+  } catch (err: any) {
+    console.error(err);
+  }
+}
+
+let audioCtx: AudioContext | undefined;
+
+function playBlockSound() {
+  try {
+    audioCtx ??= new (
+      window.AudioContext || (window as any).webkitAudioContext
+    )();
+    const ctx = audioCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    const now = ctx.currentTime;
+
+    const out = ctx.createGain();
+    out.gain.value = 0.9;
+    out.connect(ctx.destination);
+
+    // Solid wooden "tok": short, dense tone with a fast pitch drop and
+    // a second partial just above to add body instead of a hollow ring.
+    const partials = [
+      { type: "sine" as OscillatorType, f0: 720, f1: 560, level: 0.7 },
+      { type: "sine" as OscillatorType, f0: 1180, f1: 940, level: 0.35 },
+    ];
+    for (const p of partials) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = p.type;
+      osc.frequency.setValueAtTime(p.f0, now);
+      osc.frequency.exponentialRampToValueAtTime(p.f1, now + 0.012);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(p.level, now + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+      osc.connect(g).connect(out);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    }
+
+    // Sharp percussive attack (the "t") for a solid, dry strike.
+    const noise = ctx.createBufferSource();
+    const buf = ctx.createBuffer(
+      1,
+      Math.ceil(ctx.sampleRate * 0.02),
+      ctx.sampleRate
+    );
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    }
+    noise.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 2400;
+    bp.Q.value = 1.2;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0.5, now);
+    nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+    noise.connect(bp).connect(nGain).connect(out);
+    noise.start(now);
+    noise.stop(now + 0.03);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+watch(
+  () => props.currentRound,
+  (val, old) => {
+    if (!val || !old || val <= old) return;
+    checkNewBlock(val);
+  }
+);
 
 onMounted(() => {
   refreshPartData();
@@ -396,8 +523,8 @@ function viewRewards(item: Participation) {
     props.name === "Algorand"
       ? `https://algonoderewards.com/${item.address}`
       : props.name === "Voi"
-      ? `https://voirewards.com/wallet/${item.address}#epochs`
-      : undefined;
+        ? `https://voirewards.com/wallet/${item.address}#epochs`
+        : undefined;
   if (url) window.open(url, "_blank");
 }
 
@@ -438,11 +565,11 @@ function keyStatus(item: Participation) {
   return !isKeyActive(item)
     ? { text: "Unregistered", color: "red" }
     : ii.val
-    ? {
-        text: `Ineligible For Incentives${ii.reason ? ": " + ii.reason : ""}`,
-        color: "warning",
-      }
-    : { text: "Online", color: "success" };
+      ? {
+          text: `Ineligible For Incentives${ii.reason ? ": " + ii.reason : ""}`,
+          color: "warning",
+        }
+      : { text: "Online", color: "success" };
 }
 
 async function deleteKey(id: string) {
@@ -482,7 +609,7 @@ async function generateKey() {
       .then(async () => {
         let generating = true;
         while (generating) {
-          await delay(920);
+          await delay(500);
           const keys = await getKeys();
           if (
             keys?.some(
@@ -593,60 +720,48 @@ function copyVal(val: string | number | bigint | undefined) {
 
 async function getStats(addrs: string[]) {
   try {
-    const resetDate = store.resetDates.find(
-      (rr) => rr.name === props.name
-    )?.date;
+    const resetDate = effectiveResetDate(
+      store.resetDates.find((rr) => rr.name === props.name)
+    );
     const stats: any = {};
     switch (props.name) {
       case "Algorand": {
-        let query = "    query bulkAccounts {";
-        addrs.forEach((a) => {
-          query += `
-          addr_${a}: votingAddrStat(
-            addrBin: "${a}"
-          ) { ...addrData	}`;
-        });
-        query += `
-        }
-        fragment addrData on VotingAddrStat {
-          proposals
-          votes
-        }`;
-        const { data } = await statsClient.post("graphql", {
-          query,
-          operationName: "bulkAccounts",
-        });
-        Object.keys(data.data).forEach((key) => {
-          stats[key.substring(5)] = data.data[key];
-        });
-        if (resetDate) {
-          const nodley = "https://mainnet-idx.4160.nodely.dev";
-          const indexer = new algosdk.Indexer("", nodley, "");
-          const afterTime = new Date(resetDate).toISOString();
-          let resp = await indexer
-            .searchForBlockHeaders()
-            .afterTime(afterTime)
-            .limit(1000)
-            .proposers(addrs)
-            .do();
-          const blocks = resp.blocks;
-          while (resp.blocks.length && resp.nextToken) {
-            resp = await indexer
+        const nodely = "https://mainnet-idx.4160.nodely.dev";
+        const indexer = new algosdk.Indexer("", nodely, "");
+        const cache = loadProposalsCache();
+        const netCache = (cache[props.name] ??= {});
+        const resetSec = resetDate ? new Date(resetDate).getTime() / 1000 : 0;
+        await Promise.all(
+          addrs.map(async (addr) => {
+            const entry = (netCache[addr] ??= { hwm: 0, ts: [] });
+            let resp = await indexer
               .searchForBlockHeaders()
-              .afterTime(afterTime)
+              .minRound(entry.hwm + 1)
               .limit(1000)
-              .proposers(addrs)
-              .nextToken(resp.nextToken)
+              .proposers([addr])
               .do();
-            blocks.push(...resp.blocks);
-          }
-          addrs.forEach(
-            (addr) =>
-              (stats[addr].proposals = blocks.filter(
-                (b) => b.proposer?.toString() === addr
-              ).length)
-          );
-        }
+            entry.ts.push(...resp.blocks.map((b) => Number(b.timestamp)));
+            let currentRound = Number(resp.currentRound);
+            while (resp.blocks.length && resp.nextToken) {
+              resp = await indexer
+                .searchForBlockHeaders()
+                .minRound(entry.hwm + 1)
+                .limit(1000)
+                .proposers([addr])
+                .nextToken(resp.nextToken)
+                .do();
+              entry.ts.push(...resp.blocks.map((b) => Number(b.timestamp)));
+              currentRound = Number(resp.currentRound);
+            }
+            entry.hwm = currentRound;
+            stats[addr] = {
+              proposals: resetSec
+                ? entry.ts.filter((t) => t >= resetSec).length
+                : entry.ts.length,
+            };
+          })
+        );
+        saveProposalsCache(cache);
         break;
       }
       case "Voi": {
@@ -657,7 +772,6 @@ async function getStats(addrs: string[]) {
             );
             stats[addr] = {
               proposals: data.total_blocks,
-              votes: data.vote_count,
             };
           })
         );
