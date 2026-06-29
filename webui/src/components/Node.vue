@@ -345,7 +345,7 @@ async function waitForRunning() {
   if (awaitingStart) return;
   awaitingStart = true;
   store.setSnackbar(
-    "Node starting — this can take a minute. The dashboard will update automatically.",
+    "Node starting - please wait. This can take a minute, especially after an update. The dashboard will refresh automatically.",
     "info",
     -1
   );
