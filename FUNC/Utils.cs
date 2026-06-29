@@ -61,6 +61,7 @@ namespace FUNC
             else if (IsMacOS())
             {
                 if (sc.StartsWith("none")) { status = "Not Found"; }
+                else if (sc.StartsWith("stopped")) { status = "Stopped"; }
                 else if (sc.StartsWith("-")) { status = "Stopped"; }
                 else { status = "Running"; }
             }

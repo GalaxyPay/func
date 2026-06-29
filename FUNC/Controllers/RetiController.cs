@@ -143,7 +143,7 @@ namespace FUNC.Controllers
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd($"launchctl kickstart system/func.reti");
+                    await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.reti.plist");
                 }
 
                 return Ok();
@@ -171,7 +171,7 @@ namespace FUNC.Controllers
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd($"launchctl kill 9 system/func.reti");
+                    await Utils.ExecCmd($"launchctl bootout system/func.reti");
                 }
 
                 return Ok();
