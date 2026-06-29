@@ -49,6 +49,19 @@ namespace FUNC.Controllers
             }
         }
 
+        // Migrate a legacy 3.x LocalSystem Reti service onto the virtual account and
+        // grant it the existing reti dir, so it keeps working after upgrade. See
+        // Node.MigrateWindowsServices for the rationale. Self-limiting.
+        public static async Task MigrateWindowsService()
+        {
+            if (!IsWindows()) return;
+            const string svc = "Reti Validator";
+            if (!(await Utils.ExecCmd($"sc qc \"{svc}\"")).Contains("LocalSystem")) return;
+            await Utils.ExecCmd($"sc config \"{svc}\" obj= \"NT SERVICE\\{svc}\"");
+            await ApplyDirOwnership();
+            await Utils.RestartWindowsService(svc);
+        }
+
         // POST: reti
         [HttpPost]
         public async Task<ActionResult> CreateRetiService(RetiCreate model)

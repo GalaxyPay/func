@@ -43,6 +43,19 @@ namespace FUNC
             return output;
         }
 
+        public static async Task RestartWindowsService(string svc)
+        {
+            await ExecCmd($"sc stop \"{svc}\"");
+            // sc stop is async; wait for it to actually stop before starting.
+            for (int i = 0; i < 20; i++)
+            {
+                string q = await ExecCmd($"sc query \"{svc}\"");
+                if (q.Contains("STOPPED") || q.Contains("1060")) break;
+                await Task.Delay(500);
+            }
+            await ExecCmd($"sc start \"{svc}\"");
+        }
+
         public static string ParseServiceStatus(string sc)
         {
             string status = "Unknown";
