@@ -1,5 +1,6 @@
-onlyBuiltDependencies:
-  - esbuild
-  - vue-demi
-packages:
-  - .
+allowBuilds:
+  esbuild: true
+  vue-demi: true
+overrides:
+  "ws": ">=7.5.10"
+  "bn.js": ">=4.12.3"
