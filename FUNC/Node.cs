@@ -183,6 +183,7 @@ namespace FUNC
                 string template = File.ReadAllText(templatePath);
                 string plist = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
                 File.WriteAllText($"/Library/LaunchDaemons/func.{name}.plist", plist);
+                await ApplyDirOwnership(name);
                 await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
             }
         }
