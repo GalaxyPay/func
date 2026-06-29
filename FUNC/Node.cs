@@ -152,6 +152,24 @@ namespace FUNC
             return nodeStatus;
         }
 
+        // 3.x Windows services ran as LocalSystem with no data-dir ACL grant.
+        // Upgrading to the virtual-account model leaves them unable to access the
+        // SYSTEM-owned data dir, so they fail to start. On startup, reconfigure any
+        // legacy service onto its per-service virtual account, grant the existing
+        // data dir, and restart it. Self-limiting: once off LocalSystem it's a no-op.
+        public static async Task MigrateWindowsServices()
+        {
+            if (!IsWindows()) return;
+            foreach (string name in new[] { "algorand", "voi" })
+            {
+                string svc = $"{Utils.Cap(name)} Node";
+                if (!(await Utils.ExecCmd($"sc qc \"{svc}\"")).Contains("LocalSystem")) continue;
+                await Utils.ExecCmd($"sc config \"{svc}\" obj= \"NT SERVICE\\{svc}\"");
+                await ApplyDirOwnership(name);
+                await Utils.RestartWindowsService(svc);
+            }
+        }
+
         public static async Task CreateService(string name)
         {
             if (!Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
