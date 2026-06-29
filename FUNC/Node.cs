@@ -74,7 +74,8 @@ namespace FUNC
             }
             else if (IsMacOS())
             {
-                sc = await Utils.ExecCmd($"launchctl list | grep -i func.{name} || echo none");
+                // Not loaded but plist still on disk = Stopped; no plist = Not Found.
+                sc = await Utils.ExecCmd($"launchctl list | grep -i func.{name} || (test -f /Library/LaunchDaemons/func.{name}.plist && echo stopped || echo none)");
             }
 
             string serviceStatus = Utils.ParseServiceStatus(sc);
@@ -105,7 +106,7 @@ namespace FUNC
                 }
                 else if (IsMacOS())
                 {
-                    retiQuery = await Utils.ExecCmd($"launchctl list | grep -i func.reti || echo none");
+                    retiQuery = await Utils.ExecCmd($"launchctl list | grep -i func.reti || (test -f /Library/LaunchDaemons/func.reti.plist && echo stopped || echo none)");
                 }
 
                 string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
@@ -225,8 +226,10 @@ namespace FUNC
             }
             else if (IsMacOS())
             {
-                if (cmd == "start") await Utils.ExecCmd($"launchctl kickstart system/func.{name}");
-                else if (cmd == "stop") await Utils.ExecCmd($"launchctl kill 9 system/func.{name}");
+                // KeepAlive keeps the job running while loaded, so a deliberate stop must
+                // unload it (bootout); start re-loads it (bootstrap).
+                if (cmd == "start") await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
+                else if (cmd == "stop") await Utils.ExecCmd($"launchctl bootout system/func.{name}");
                 else if (cmd == "restart") await Utils.ExecCmd($"launchctl kickstart -k system/func.{name}");
                 else if (cmd == "delete")
                 {
