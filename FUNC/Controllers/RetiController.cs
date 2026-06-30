@@ -29,7 +29,7 @@ namespace FUNC.Controllers
             bool hasEnv = System.IO.File.Exists(envPath);
             if (IsLinux())
             {
-                await Utils.ExecCmd($"id -u {LinuxRetiUser} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin {LinuxRetiUser}");
+                await Utils.ExecCmd($"id -u {LinuxRetiUser} >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/{LinuxRetiUser} --shell /usr/sbin/nologin {LinuxRetiUser}");
                 await Utils.ExecCmd($"chown -R {LinuxRetiUser}:{LinuxRetiUser} '{retiDir}'");
                 if (hasEnv) await Utils.ExecCmd($"chmod 600 '{envPath}'");
             }
