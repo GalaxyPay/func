@@ -26,7 +26,7 @@ namespace FUNC
             if (!Directory.Exists(dataDir)) return;
             if (IsLinux())
             {
-                await Utils.ExecCmd($"id -u {LinuxNodeUser} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin {LinuxNodeUser}");
+                await Utils.ExecCmd($"id -u {LinuxNodeUser} >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/{LinuxNodeUser} --shell /usr/sbin/nologin {LinuxNodeUser}");
                 await Utils.ExecCmd($"chown -R {LinuxNodeUser}:{LinuxNodeUser} '{dataDir}'");
             }
             else if (IsMacOS())

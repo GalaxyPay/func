@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=func-reti
 Group=func-reti
+WorkingDirectory=/usr/share/func/reti
 ExecStart=/usr/share/func/reti/reti -n mainnet -e /usr/share/func/reti/.env d
 Restart=always
 RestartSec=5s

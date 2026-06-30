@@ -6,6 +6,7 @@ AssertPathExists=__PARENTDIR__/__NAME__
 [Service]
 User=func-node
 Group=func-node
+WorkingDirectory=__PARENTDIR__/__NAME__
 ExecStart=/usr/share/func/bin/algod -d __PARENTDIR__/__NAME__
 Restart=always
 RestartSec=5s

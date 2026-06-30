@@ -8,6 +8,8 @@
         <string>_func-node</string>
         <key>Program</key>
         <string>/usr/local/share/func/bin/algod</string>
+        <key>WorkingDirectory</key>
+        <string>__PARENTDIR__/__NAME__</string>
         <key>EnvironmentVariables</key>
         <dict>
             <key>ALGORAND_DATA</key>

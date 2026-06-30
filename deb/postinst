@@ -1,5 +1,8 @@
-id -u func-node >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin func-node
-id -u func-reti >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin func-reti
+#!/bin/sh
+# algod resolves its global config/telemetry path from the account's home, so the
+# service accounts need a real, writable home directory (not --no-create-home).
+id -u func-node >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-node --shell /usr/sbin/nologin func-node
+id -u func-reti >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-reti --shell /usr/sbin/nologin func-reti
 systemctl daemon-reload
 systemctl start func
 systemctl restart func

@@ -425,8 +425,13 @@ async function checkNewBlock(round: bigint) {
     } else {
       partStats.value[proposer] = { proposals: 1 };
     }
+    const account = await props.algodClient.accountInformation(proposer).do();
+    const idx = acctInfos.value.findIndex((a) => a.address === proposer);
+    if (idx >= 0) acctInfos.value.splice(idx, 1);
+    acctInfos.value.push(account);
     if (emittedPart.value) {
       emittedPart.value.proposals = (emittedPart.value.proposals || 0) + 1;
+      emittedPart.value.activeStake += Number(resp.block.header.proposerPayout);
       emit("partDetails", emittedPart.value);
     }
     liveTimestamps.push(Number(resp.block.header.timestamp));
