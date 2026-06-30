@@ -64,6 +64,7 @@ sudo rm -rf /opt/func
 sudo rm -rf /usr/local/share/func
 sudo dscl /Local/Default -delete /Users/_func-node
 sudo dscl /Local/Default -delete /Users/_func-reti
+sudo rm -rf /usr/local/var/func-node /usr/local/var/func-reti
 ```
 
 ### Linux (Uninstall)
@@ -73,8 +74,8 @@ sudo systemctl stop func
 sudo rm /lib/systemd/system/func.service
 sudo rm -rf /opt/func
 sudo rm -rf /usr/share/func
-sudo userdel func-node
-sudo userdel func-reti
+sudo userdel -r func-node
+sudo userdel -r func-reti
 ```
 
 ## Manage Node Menu Options
