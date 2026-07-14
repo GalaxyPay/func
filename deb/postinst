@@ -5,6 +5,5 @@ id -u func-node >/dev/null 2>&1 || useradd --system --create-home --home-dir /va
 id -u func-reti >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-reti --shell /usr/sbin/nologin func-reti
 systemctl daemon-reload
 systemctl start func
-systemctl restart func
 systemctl enable func
 echo "FUNC App:    http://localhost:3536"
