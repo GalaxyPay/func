@@ -1,0 +1,37 @@
+{
+  "name": "func-notify",
+  "version": "1.0.0",
+  "description": "Smart contract deployer",
+  "main": "smart_contracts/index.ts",
+  "scripts": {
+    "build": "algokit compile ts smart_contracts --output-source-map --out-dir artifacts && algokit generate client smart_contracts/artifacts --output {app_spec_dir}/{contract_name}Client.ts",
+    "deploy": "ts-node-dev --transpile-only --watch .env -r dotenv/config smart_contracts/index.ts",
+    "deploy:ci": "ts-node --transpile-only -r dotenv/config smart_contracts/index.ts",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=22.0",
+    "npm": ">=9.0"
+  },
+  "dependencies": {
+    "@algorandfoundation/algorand-typescript": "^1.0.1"
+  },
+  "devDependencies": {
+    "@algorandfoundation/algokit-client-generator": "^6.0.0",
+    "@algorandfoundation/algokit-utils": "^9.0.0",
+    "@algorandfoundation/algokit-utils-debug": "^1.0.4",
+    "@algorandfoundation/puya-ts": "^1.0.1",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@tsconfig/node22": "^22.0.0",
+    "algosdk": "^3.0.0",
+    "dotenv": "^16.4.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "esbuild": "0.25.0"
+  }
+}

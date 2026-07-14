@@ -1,0 +1,44 @@
+[algokit]
+min_version = "v2.6.0"
+
+[generate.smart-contract]
+description = "Generate a new smart contract for existing project"
+path = ".algokit/generators/create_contract"
+
+[generate.env-file]
+description = "Generate a new generic or Algorand network specific .env file"
+path = ".algokit/generators/create_env_file"
+
+[project]
+type = 'contract'
+name = 'func-notify'
+artifacts = 'smart_contracts/artifacts'
+
+[project.deploy]
+command = "npm run deploy:ci"
+
+[project.deploy.testnet]
+environment_secrets = [
+  "DEPLOYER_MNEMONIC",
+]
+
+[project.deploy.mainnet]
+environment_secrets = [
+  "DEPLOYER_MNEMONIC",
+]
+
+[project.run]
+# Commands intended for use locally and in CI
+build = { commands = [
+  'pnpm run build',
+], description = 'Build all smart contracts in the project' }
+audit-teal = { commands = [
+  # 🚨 IMPORTANT 🚨: For strict TEAL validation, remove --exclude statements. The default starter contract is not for production. Ensure thorough testing and adherence to best practices in smart contract development. This is not a replacement for a professional audit.
+  'algokit task analyze smart_contracts/artifacts --recursive --force --exclude rekey-to --exclude is-updatable --exclude missing-fee-check --exclude is-deletable --exclude can-close-asset --exclude can-close-account --exclude unprotected-deletable --exclude unprotected-updatable',
+], description = 'Audit TEAL files' }
+
+# Commands intented for CI only, prefixed with `ci-` by convention
+ci-teal-diff = { commands = [
+  'git add -N ./smart_contracts/artifacts',
+  'git diff --exit-code --minimal ./smart_contracts/artifacts',
+], description = 'Check TEAL files for differences' }
