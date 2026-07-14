@@ -22,8 +22,16 @@ export class Messages extends Contract {
   public messages = BoxMap<uint64, Message>({ keyPrefix: "" });
   public allowedSenders = BoxMap<Account, boolean>({ keyPrefix: "" });
 
+  private isOwner(): boolean {
+    return Txn.sender === Global.creatorAddress;
+  }
+
   private onlyOwner(): void {
-    assert(Txn.sender === Global.creatorAddress, "SENDER_NOT_ALLOWED");
+    assert(this.isOwner(), "SENDER_NOT_ALLOWED");
+  }
+
+  updateApplication() {
+    this.onlyOwner();
   }
 
   // MBR the caller must attach to `addMessage(_, message)` for this exact message.
@@ -79,7 +87,10 @@ export class Messages extends Contract {
   }
 
   addMessage(mbrPayment: gtxn.PaymentTxn, message: Message): uint64 {
-    assert(this.allowedSenders(Txn.sender).exists, "SENDER_NOT_ALLOWED");
+    assert(
+      this.isOwner() || this.allowedSenders(Txn.sender).exists,
+      "SENDER_NOT_ALLOWED",
+    );
     assert(!this.messages(Global.round).exists, "TRY_AGAIN");
 
     const mbrBefore = Global.currentApplicationAddress.minBalance;
