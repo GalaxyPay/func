@@ -11,17 +11,29 @@
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
+    <v-btn icon @click="showNotifications = true">
+      <v-badge
+        :model-value="store.unreadCount > 0"
+        location="top right"
+        color="red"
+        :content="store.unreadCount"
+      >
+        <v-icon :icon="mdiBell" />
+      </v-badge>
+    </v-btn>
     <v-btn icon @click="showSettings = true">
-      <v-icon
-        :icon="mdiCog"
-        :color="
+      <v-badge
+        :model-value="
           ((store.nodeUpdateAvailable && !store.showNodeVersions) ||
             store.funcUpdateAvailable) &&
           !store.downloading
-            ? 'warning'
-            : ''
         "
-      />
+        location="top right"
+        color="warning"
+        dot
+      >
+        <v-icon :icon="mdiCog" />
+      </v-badge>
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
     <v-btn
@@ -142,12 +154,14 @@
       <v-icon :icon="mdiHelpCircleOutline" color="white" class="mr-3" />
     </a>
     <Settings :visible="showSettings" @close="showSettings = false" />
+    <Messages :visible="showNotifications" @close="showNotifications = false" />
   </v-app-bar>
 </template>
 
 <script lang="ts" setup>
 import { formatAddr } from "@/utils";
 import {
+  mdiBell,
   mdiCog,
   mdiContentCopy,
   mdiHelpCircleOutline,
@@ -173,9 +187,11 @@ const { xs } = useDisplay();
 const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
+const showNotifications = ref(false);
 
 onBeforeMount(() => {
   store.refreshPart++;
+  store.fetchMessages().catch((err) => console.error(err));
 });
 async function walletAction(wallet: Wallet) {
   try {

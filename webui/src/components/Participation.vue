@@ -311,7 +311,7 @@ const port =
     : props.port;
 
 const partClient = axios.create({
-  baseURL: `${location.protocol}//${location.hostname}:${port}/v2/participation`,
+  baseURL: `${location.protocol}//${import.meta.env.VITE_HOSTNAME}:${port}/v2/participation`,
   headers: { "X-Algo-Api-Token": props.token },
 });
 

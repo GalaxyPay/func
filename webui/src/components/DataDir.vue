@@ -22,8 +22,6 @@
 </template>
 
 <script lang="ts" setup>
-import FUNC from "@/services/api";
-
 const store = useAppStore();
 
 const props = defineProps({
@@ -49,7 +47,7 @@ const loading = ref(false);
 async function save() {
   try {
     loading.value = true;
-    await FUNC.api.put(`${props.name}/dir`, { path: dataDir.value });
+    await store.api.put(`${props.name}/dir`, { path: dataDir.value });
     show.value = false;
   } catch (err: any) {
     console.error(err);
@@ -61,7 +59,7 @@ async function save() {
 watch(show, async (val) => {
   if (val) {
     try {
-      const resp = await FUNC.api.get(`${props.name}/dir`);
+      const resp = await store.api.get(`${props.name}/dir`);
       dataDir.value = resp.data;
     } catch (err: any) {
       console.error(err);

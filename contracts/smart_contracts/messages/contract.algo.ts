@@ -6,6 +6,7 @@ import {
   clone,
   Contract,
   Global,
+  GlobalState,
   gtxn,
   itxn,
   Txn,
@@ -19,6 +20,7 @@ interface Message {
 }
 
 export class Messages extends Contract {
+  public id = GlobalState<uint64>();
   public messages = BoxMap<uint64, Message>({ keyPrefix: "" });
   public allowedSenders = BoxMap<Account, boolean>({ keyPrefix: "" });
 
@@ -37,11 +39,11 @@ export class Messages extends Contract {
   // MBR the caller must attach to `addMessage(_, message)` for this exact message.
   @arc4.abimethod({ readonly: true })
   requiredMbrForMessage(message: Message): uint64 {
-    assert(!this.messages(Global.round).exists, "TRY_AGAIN");
+    const nextId: uint64 = this.id.hasValue ? this.id.value : 0 + 1;
     const before = Global.currentApplicationAddress.minBalance;
-    this.messages(Global.round).value = clone(message);
+    this.messages(nextId).value = clone(message);
     const mbr: uint64 = Global.currentApplicationAddress.minBalance - before;
-    this.messages(Global.round).delete();
+    this.messages(nextId).delete();
     return mbr;
   }
 
@@ -91,13 +93,11 @@ export class Messages extends Contract {
       this.isOwner() || this.allowedSenders(Txn.sender).exists,
       "SENDER_NOT_ALLOWED",
     );
-    assert(!this.messages(Global.round).exists, "TRY_AGAIN");
-
+    this.id.value = this.id.hasValue ? this.id.value : 0 + 1;
     const mbrBefore = Global.currentApplicationAddress.minBalance;
-    this.messages(Global.round).value = clone(message);
+    this.messages(this.id.value).value = clone(message);
     this.requireMbrCoverage(mbrBefore, mbrPayment);
-
-    return Global.round;
+    return this.id.value;
   }
 
   deleteMessage(id: uint64): void {

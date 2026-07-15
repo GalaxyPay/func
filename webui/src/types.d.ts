@@ -39,3 +39,9 @@ export interface PartDetails {
   activeStake: number;
   proposals: number | undefined;
 }
+
+export interface Message {
+  id: number;
+  title: string;
+  body: string;
+}

@@ -1,5 +1,4 @@
 import { networks } from "./data";
-import FUNC from "./services/api";
 import algosdk, { modelsv2 } from "algosdk";
 
 export async function delay(ms: number) {
@@ -71,13 +70,14 @@ export async function checkCatchup(
   name: string
 ) {
   if (algodStatus?.catchupTime) {
+    const store = useAppStore();
     const catchpoint = await getCatchpoint(name);
     if (!catchpoint) throw Error("Invald Catchpoint");
     const [round, label] = catchpoint.split("#");
     const isCatchingUp = algodStatus?.catchpoint === catchpoint;
     const needsCatchUp = BigInt(round) - algodStatus?.lastRound > 20000n;
     if (!isCatchingUp && needsCatchUp) {
-      await FUNC.api.post(`${name}/catchup`, { round, label });
+      await store.api.post(`${name}/catchup`, { round, label });
     }
   }
 }
