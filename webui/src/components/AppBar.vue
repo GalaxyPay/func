@@ -11,7 +11,7 @@
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
-    <v-btn icon @click="showNotifications = true">
+    <v-btn icon @click="showMessages = true">
       <v-badge
         :model-value="store.unreadCount > 0"
         location="top right"
@@ -154,7 +154,7 @@
       <v-icon :icon="mdiHelpCircleOutline" color="white" class="mr-3" />
     </a>
     <Settings :visible="showSettings" @close="showSettings = false" />
-    <Messages :visible="showNotifications" @close="showNotifications = false" />
+    <Messages :visible="showMessages" @close="showMessages = false" />
   </v-app-bar>
 </template>
 
@@ -187,7 +187,7 @@ const { xs } = useDisplay();
 const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
-const showNotifications = ref(false);
+const showMessages = ref(false);
 
 onBeforeMount(() => {
   store.refreshPart++;
