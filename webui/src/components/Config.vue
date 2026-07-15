@@ -210,12 +210,13 @@ watch(show, async (val) => {
       config.value = resp.data;
       e2eIsSet = config.value.EnableP2P != null;
       hybridIsSet = config.value.EnableP2PHybridMode != null;
+      const debugHostname = import.meta.env.VITE_HOSTNAME || location.hostname;
       const debugPort =
         location.protocol === "https:"
           ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
           : port.value;
       const debugClient = axios.create({
-        baseURL: `${location.protocol}//${import.meta.env.VITE_HOSTNAME}:${debugPort}/debug`,
+        baseURL: `${location.protocol}//${debugHostname}:${debugPort}/debug`,
         headers: { "X-Algo-Api-Token": props.token },
       });
       const { data } = await debugClient.get("/settings/config");

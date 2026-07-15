@@ -305,13 +305,14 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
+const hostname = import.meta.env.VITE_HOSTNAME || location.hostname;
 const port =
   location.protocol === "https:"
     ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
     : props.port;
 
 const partClient = axios.create({
-  baseURL: `${location.protocol}//${import.meta.env.VITE_HOSTNAME}:${port}/v2/participation`,
+  baseURL: `${location.protocol}//${hostname}:${port}/v2/participation`,
   headers: { "X-Algo-Api-Token": props.token },
 });
 
