@@ -6,21 +6,40 @@ FUNC is a Cross-platform Service that makes it easy to spin up a node for Algora
 
 ## Installation
 
-Head over to the [releases page](https://github.com/GalaxyPay/func/releases) and download the install file for your OS.
+The easiest way to install is with the one-line script for your OS. It detects your OS/architecture, downloads the latest release, and installs it for you.
 
-The installer does not include the node software. It is automatically downloaded from [this open-source repo](https://github.com/GalaxyPay/go-algo-win) (Windows) or [the official Algorand repo](https://github.com/algorand/go-algorand) (Mac/Linux) the first time you open the app. This separation allows the node software to be updated without needing to update this app.
+### Mac / Linux
 
-The app is a [locally hosted webpage](http://localhost:3536). After install, bookmark it for easy access.
+```sh
+curl -fsSL https://raw.githubusercontent.com/GalaxyPay/func/main/install.sh | sudo sh
+```
 
 ### Windows
 
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/GalaxyPay/func/main/install.ps1 | iex
+```
+
+That's it. Once installed, visit the [locally hosted webpage](http://localhost:3536) and bookmark it for easy access.
+
+The installer does not include the node software. It is automatically downloaded from [this open-source repo](https://github.com/GalaxyPay/go-algo-win) (Windows) or [the official Algorand repo](https://github.com/algorand/go-algorand) (Mac/Linux) the first time you open the app. This separation allows the node software to be updated without needing to update this app.
+
+> The scripts are open-source ([install.sh](install.sh), [install.ps1](install.ps1)) so you can review them yourself or have a trusted friend do so.
+
+### Manual Installation
+
+If you'd rather not use the script, head over to the [releases page](https://github.com/GalaxyPay/func/releases) and download the install file for your OS.
+
+#### Windows (Manual)
+
 In order to run it, you'll need to click "More info" on the "Windows protected your PC" dialog.
 Then click the "Run Anyway" button.
-The code is open-source so you can review it yourself or have a trusted friend do so.
 
 When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
 
-### MacOS
+#### MacOS (Manual)
 
 After downloading the `.pkg` file to your machine, run
 
@@ -35,7 +54,7 @@ If instead you wish to install the package by double-clicking the `.pkg` file , 
 3. Click Open Anyway. (This button is available for about an hour after you try to open the app.)
 4. Enter your login password, then click OK.
 
-### Linux
+#### Linux (Manual)
 
 After downloading the `.deb` file to your machine, run
 
