@@ -61,7 +61,6 @@
 </template>
 
 <script lang="ts" setup>
-import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -124,8 +123,8 @@ ALGO_ALGOD_TOKEN=${props.token}
 RETI_VALIDATORID=${validatorId.value}
 RETI_NODENUM=${nodeNum.value}
 MANAGER_MNEMONIC=${mnemonic.value}`;
-    await FUNC.api.post("reti", { env });
-    await FUNC.api.put("reti/start");
+    await store.api.post("reti", { env });
+    await store.api.put("reti/start");
     show.value = false;
   } catch (err: any) {
     console.error(err);

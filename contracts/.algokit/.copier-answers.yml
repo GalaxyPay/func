@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 0.3.7
+_src_path: gh:algorandfoundation/algokit-typescript-template
+author_email: 8963261+acfunk@users.noreply.github.com
+author_name: Andrew Funk
+contract_name: notifications
+preset_name: starter
+project_name: func-notify
+

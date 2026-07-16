@@ -66,7 +66,6 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import FUNC from "@/services/api";
 import { delay } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
@@ -179,13 +178,13 @@ async function saveConfig() {
   if (!valid) return;
   try {
     loading.value = true;
-    await FUNC.api.put(`${props.name}/config`, {
+    await store.api.put(`${props.name}/config`, {
       json: JSON.stringify(config.value, null, 4),
     });
     if (props.running) {
-      await FUNC.api.put(`${props.name}/stop`);
+      await store.api.put(`${props.name}/stop`);
       await delay(500);
-      await FUNC.api.put(`${props.name}/start`);
+      await store.api.put(`${props.name}/start`);
     }
     show.value = false;
   } catch (err: any) {
@@ -207,16 +206,17 @@ let hybridIsSet: boolean;
 watch(show, async (val) => {
   if (val) {
     try {
-      const resp = await FUNC.api.get(`${props.name}/config`);
+      const resp = await store.api.get(`${props.name}/config`);
       config.value = resp.data;
       e2eIsSet = config.value.EnableP2P != null;
       hybridIsSet = config.value.EnableP2PHybridMode != null;
+      const debugHostname = import.meta.env.VITE_HOSTNAME || location.hostname;
       const debugPort =
         location.protocol === "https:"
           ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
           : port.value;
       const debugClient = axios.create({
-        baseURL: `${location.protocol}//${location.hostname}:${debugPort}/debug`,
+        baseURL: `${location.protocol}//${debugHostname}:${debugPort}/debug`,
         headers: { "X-Algo-Api-Token": props.token },
       });
       const { data } = await debugClient.get("/settings/config");

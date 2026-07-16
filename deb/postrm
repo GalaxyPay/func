@@ -1,0 +1,43 @@
+#!/bin/sh
+# Runs after package files are removed.
+#   remove  -> service already stopped by prerm; node data and accounts are preserved.
+#   purge   -> tear down node/reti services, then delete the service accounts and all node data.
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+
+if [ "$1" = "purge" ]; then
+    # The node and reti daemons are independent, Restart=always systemd units that
+    # the app creates at runtime with dynamic, per-network names (algorand, voi, ...),
+    # plus a fixed "reti" unit. They run as func-node/func-reti and are NOT stopped by
+    # prerm (which only stops the main "func" app). Identify them by their run-as
+    # account so they can be stopped and removed before we delete the accounts/data.
+    if [ -d /run/systemd/system ]; then
+        for unit_file in /lib/systemd/system/*.service; do
+            [ -e "$unit_file" ] || continue
+            if grep -qE '^User=(func-node|func-reti)$' "$unit_file" 2>/dev/null; then
+                unit="$(basename "$unit_file")"
+                systemctl disable --now "$unit" >/dev/null 2>&1 || true
+                rm -f "$unit_file"
+            fi
+        done
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+
+    # Kill anything still running as the service accounts (in case the units above
+    # were started by other means) so userdel and data removal can proceed cleanly.
+    for user in func-node func-reti; do
+        pkill -KILL -u "$user" >/dev/null 2>&1 || true
+    done
+
+    # Remove the accounts, their homes, and all node/reti data (lives under /usr/share/func).
+    for user in func-node func-reti; do
+        if id -u "$user" >/dev/null 2>&1; then
+            userdel "$user" >/dev/null 2>&1 || true
+        fi
+    done
+    rm -rf /var/lib/func-node /var/lib/func-reti
+    rm -rf /usr/share/func
+fi

@@ -229,15 +229,13 @@
 </template>
 
 <script setup lang="ts">
-import { networks } from "@/data";
-import FUNC from "@/services/api";
+import { AlgodFunc } from "@/clients";
 import { NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay, effectiveResetDate } from "@/utils";
 import { mdiClose, mdiOpenInNew } from "@mdi/js";
 import { Algodv2, modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
-const FuncApi = FUNC.api;
 const store = useAppStore();
 const { xs } = useDisplay();
 const props = defineProps({ name: { type: String, required: true } });
@@ -452,31 +450,19 @@ async function getNodeStatus() {
     const oldStatus: NodeStatus | undefined = nodeStatus.value
       ? JSON.parse(JSON.stringify(nodeStatus.value))
       : undefined;
-    const resp = await FuncApi.get(props.name);
+    const resp = await store.api.get(props.name);
     nodeStatus.value = resp.data;
     store.machineName = nodeStatus.value?.machineName;
     store.isWindows = nodeStatus.value?.isWindows;
     if (nodeStatus.value?.serviceStatus !== "Running") {
       refreshing = false;
     }
-    if (location.protocol === "https:") {
-      if (nodeStatus.value && oldStatus?.token !== nodeStatus.value.token) {
-        algodClient.value = new Algodv2(
-          nodeStatus.value.token,
-          `https://${location.hostname}`,
-          networks.find((n) => n.title === props.name)?.yarpAlgodPort
-        );
-      }
-    } else if (
+    if (
       nodeStatus.value &&
       (oldStatus?.port !== nodeStatus.value.port ||
         oldStatus?.token !== nodeStatus.value.token)
     ) {
-      algodClient.value = new Algodv2(
-        nodeStatus.value.token,
-        `http://${location.hostname}`,
-        nodeStatus.value.port
-      );
+      algodClient.value = new AlgodFunc(props.name, nodeStatus.value);
       await delay(500);
     }
   } catch (err: any) {
@@ -527,8 +513,8 @@ async function checkReti() {
   ) {
     restartAttempted = true;
     console.error("reti not running - attempting restart");
-    await FuncApi.put("reti/stop");
-    await FuncApi.put("reti/start");
+    await store.api.put("reti/stop");
+    await store.api.put("reti/start");
   }
 }
 
@@ -572,7 +558,7 @@ async function updateReti() {
   try {
     if (!retiUpdate.value) return;
     loading.value = true;
-    await FuncApi.post("reti/update");
+    await store.api.post("reti/update");
     await getNodeStatus();
     store.setSnackbar("Reti Updated", "success");
   } catch (err: any) {

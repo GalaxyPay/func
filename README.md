@@ -6,21 +6,40 @@ FUNC is a Cross-platform Service that makes it easy to spin up a node for Algora
 
 ## Installation
 
-Head over to the [releases page](https://github.com/GalaxyPay/func/releases) and download the install file for your OS.
+The easiest way to install is with the one-line script for your OS. It detects your OS/architecture, downloads the latest release, and installs it for you.
 
-The installer does not include the node software. It is automatically downloaded from [this open-source repo](https://github.com/GalaxyPay/go-algo-win) (Windows) or [the official Algorand repo](https://github.com/algorand/go-algorand) (Mac/Linux) the first time you open the app. This separation allows the node software to be updated without needing to update this app.
+### Mac / Linux
 
-The app is a [locally hosted webpage](http://localhost:3536). After install, bookmark it for easy access.
+```sh
+curl -fsSL https://raw.githubusercontent.com/GalaxyPay/func/main/install.sh | sudo sh
+```
 
 ### Windows
 
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/GalaxyPay/func/main/install.ps1 | iex
+```
+
+That's it. Once installed, visit the [locally hosted webpage](http://localhost:3536) and bookmark it for easy access.
+
+The installer does not include the node software. It is automatically downloaded from [this open-source repo](https://github.com/GalaxyPay/go-algo-win) (Windows) or [the official Algorand repo](https://github.com/algorand/go-algorand) (Mac/Linux) the first time you open the app. This separation allows the node software to be updated without needing to update this app.
+
+> The scripts are open-source ([install.sh](install.sh), [install.ps1](install.ps1)) so you can review them yourself or have a trusted friend do so.
+
+### Manual Installation
+
+If you'd rather not use the script, head over to the [releases page](https://github.com/GalaxyPay/func/releases) and download the install file for your OS.
+
+#### Windows (Manual)
+
 In order to run it, you'll need to click "More info" on the "Windows protected your PC" dialog.
 Then click the "Run Anyway" button.
-The code is open-source so you can review it yourself or have a trusted friend do so.
 
 When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
 
-### MacOS
+#### MacOS (Manual)
 
 After downloading the `.pkg` file to your machine, run
 
@@ -35,7 +54,7 @@ If instead you wish to install the package by double-clicking the `.pkg` file , 
 3. Click Open Anyway. (This button is available for about an hour after you try to open the app.)
 4. Enter your login password, then click OK.
 
-### Linux
+#### Linux (Manual)
 
 After downloading the `.deb` file to your machine, run
 
@@ -49,33 +68,29 @@ Then visit the locally hosted webpage at <http://localhost:3536> (for remote acc
 
 ## Uninstall
 
-The app is a **Node Service Manager** - uninstalling it will **_not_** remove node services that you create with it. If you wish to remove everything, use the app to Remove Services and even Delete Node Data before uninstalling the app.
+The app is a **Node Service Manager** - uninstalling it will **_not_** remove node data by default. To also remove your node data (participation and KMD keys), use the "purge" option noted for your OS below.
 
 ### Windows (Uninstall)
 
+- To purge everything, use the app to Remove Services and even Delete Node Data before the next step
 - Settings > Apps > Installed apps > Search: FUNC > Uninstall
 
 ### Mac (Uninstall)
 
+An uninstall script is bundled with the app:
+
 ```sh
-sudo launchctl bootout system/func.api
-sudo rm /Library/LaunchDaemons/func.api.plist
-sudo rm -rf /opt/func
-sudo rm -rf /usr/local/share/func
-sudo dscl /Local/Default -delete /Users/_func-node
-sudo dscl /Local/Default -delete /Users/_func-reti
-sudo rm -rf /usr/local/var/func-node /usr/local/var/func-reti
+sudo /opt/func/uninstall.sh           # remove the app, keep node data
+sudo /opt/func/uninstall.sh --purge   # also remove node data and service accounts
 ```
 
 ### Linux (Uninstall)
 
+The `.deb` is a standard package, so use your package manager:
+
 ```sh
-sudo systemctl stop func
-sudo rm /lib/systemd/system/func.service
-sudo rm -rf /opt/func
-sudo rm -rf /usr/share/func
-sudo userdel -r func-node
-sudo userdel -r func-reti
+sudo apt remove func    # remove the app, keep node data
+sudo apt purge func     # also remove node data and service accounts
 ```
 
 ## Manage Node Menu Options
@@ -125,7 +140,7 @@ sudo userdel -r func-reti
 
 If you want to participate in consensus, you'll need to generate a Participation Key for your account and register that key with account to bring it "online".
 
-[Read more about how Participation Keys function in the Algorand Consensus Protocol](https://developer.algorand.org/docs/get-details/algorand_consensus/#participation-keys)
+[Read more about how Participation Keys function in the Algorand Consensus Protocol](https://dev.algorand.co/concepts/protocol/overview/#participation-keys)
 
 ### Self-Custody
 
@@ -139,7 +154,7 @@ If you want to participate in consensus, you'll need to generate a Participation
 ### Escrow Account
 
 1. Wait for your node to sync.
-2. Click the + icon in the Participation Keys section.
+2. Click the "Generate Key..." button in the Participation Keys section.
 3. Enter your escrow account in the Address field.
 4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
 5. Copy and paste the key info into escrow site and follow their instructions.
@@ -177,7 +192,7 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 Note the `create-package` scripts take arguments of version and architecure (`amd64` or `arm64`). For example:
 
 ```sh
-./create-package-deb.sh 3.5.1 amd64
+./create-package-deb.sh 4.1.0 amd64
 ```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.

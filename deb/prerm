@@ -1,0 +1,9 @@
+#!/bin/sh
+# Runs before package files are removed (on remove and upgrade).
+# Stop and disable the service so its files can be cleaned up.
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl stop func >/dev/null 2>&1 || true
+    systemctl disable func >/dev/null 2>&1 || true
+fi

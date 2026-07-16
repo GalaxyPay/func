@@ -1,8 +1,8 @@
 // Plugins
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
-import Vue from "@vitejs/plugin-vue";
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import vue from "@vitejs/plugin-vue";
+import vuetify from "vite-plugin-vuetify";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 // Utilities
@@ -12,11 +12,8 @@ import { fileURLToPath, URL } from "node:url";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    Vue({
-      template: { transformAssetUrls },
-    }),
-    // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
-    Vuetify(),
+    vue(),
+    vuetify(),
     AutoImport({
       imports: [
         "vue",
@@ -50,10 +47,16 @@ export default defineConfig({
   build: {
     outDir: "../publish/wwwroot",
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1024,
     rollupOptions: {
       output: {
-        manualChunks: {
-          algosdk: ["algosdk"],
+        codeSplitting: {
+          groups: [
+            {
+              test: /node_modules\/algosdk/,
+              name: "algosdk",
+            },
+          ],
         },
       },
     },

@@ -114,7 +114,6 @@
 </template>
 
 <script setup lang="ts">
-import FUNC from "@/services/api";
 import { NodeStatus } from "@/types";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
@@ -138,7 +137,7 @@ const telemetryEnabled = computed(() =>
 async function createNode() {
   try {
     loading.value = true;
-    await FUNC.api.post(props.name);
+    await store.api.post(props.name);
     store.setSnackbar("Service Created. Starting...", "success", -1);
     await startNode();
   } catch (err: any) {
@@ -150,7 +149,7 @@ async function createNode() {
 async function startNode() {
   try {
     loading.value = true;
-    await FUNC.api.put(`${props.name}/start`);
+    await store.api.put(`${props.name}/start`);
     loading.value = false;
     // The node may not bind immediately (e.g. while a previous instance
     // releases the port), so hand off to the parent to poll until it's
@@ -165,7 +164,7 @@ async function startNode() {
 async function stopNode() {
   try {
     loading.value = true;
-    await FUNC.api.put(`${props.name}/stop`);
+    await store.api.put(`${props.name}/stop`);
     emit("cancelAwait");
     await finish("Node Stopped");
   } catch (err: any) {
@@ -177,7 +176,7 @@ async function stopNode() {
 async function deleteNode() {
   try {
     loading.value = true;
-    await FUNC.api.delete(props.name);
+    await store.api.delete(props.name);
     emit("cancelAwait");
     await finish("Service Removed");
   } catch (err: any) {
@@ -190,7 +189,7 @@ async function startReti() {
   try {
     loading.value = true;
     store.stoppingReti = false;
-    await FUNC.api.put("reti/start");
+    await store.api.put("reti/start");
     await finish("Reti Started");
   } catch (err: any) {
     console.error(err);
@@ -202,7 +201,7 @@ async function stopReti() {
   try {
     loading.value = true;
     store.stoppingReti = true;
-    await FUNC.api.put("reti/stop");
+    await store.api.put("reti/stop");
     await finish("Reti Stopped");
   } catch (err: any) {
     console.error(err);
@@ -213,7 +212,7 @@ async function stopReti() {
 async function deleteReti() {
   try {
     loading.value = true;
-    await FUNC.api.delete("reti");
+    await store.api.delete("reti");
     await finish("Reti Removed");
   } catch (err: any) {
     console.error(err);
@@ -225,7 +224,7 @@ async function toggleTelemetry() {
   try {
     loading.value = true;
     const action = telemetryEnabled.value ? "Disable" : "Enable";
-    await FUNC.api.put(`${props.name}/telemetry/${action}`);
+    await store.api.put(`${props.name}/telemetry/${action}`);
     await finish(`Telemetry ${action}d`);
   } catch (err: any) {
     console.error(err);
@@ -248,7 +247,7 @@ async function resetNode() {
     return;
   try {
     loading.value = true;
-    await FUNC.api.post(`${props.name}/reset`);
+    await store.api.post(`${props.name}/reset`);
     store.setSnackbar("Data Deleted", "success");
   } catch (err: any) {
     console.error(err);

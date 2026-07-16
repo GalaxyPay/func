@@ -114,7 +114,6 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
-import FUNC from "@/services/api";
 import { mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
@@ -144,7 +143,7 @@ onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
   await getVersion();
   if (store.funcUpdateAvailable) {
-    url.value = (await FUNC.api.get("func/latest")).data;
+    url.value = (await store.api.get("func/latest")).data;
   }
 });
 
@@ -165,7 +164,7 @@ async function getVersion() {
   }
 
   try {
-    const goalVersion = await FUNC.api.get("goal/version");
+    const goalVersion = await store.api.get("goal/version");
     store.goalVersion = goalVersion.data;
     if (store.goalVersion?.installed) store.ready = true;
     else {
@@ -201,7 +200,7 @@ async function updateNode(release: string, bypass = false) {
     return;
   try {
     store.downloading = true;
-    await FUNC.api.post("goal/update", { name: release });
+    await store.api.post("goal/update", { name: release });
     await getVersion();
     store.refreshStatus++;
   } catch (err: any) {
