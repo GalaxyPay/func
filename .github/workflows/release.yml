@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
           run_install: false
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: "pnpm"
           cache-dependency-path: webui/pnpm-lock.yaml
 
@@ -34,7 +34,7 @@ jobs:
           cd ..
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: webui
           path: "publish/wwwroot"
@@ -45,10 +45,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -59,7 +59,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -68,7 +68,7 @@ jobs:
         run: ./create-package-pkg.sh $VERSION amd64
 
       - name: Upload darwin-amd64 Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: darwin-amd64-package
           path: "Output/*.pkg"
@@ -79,10 +79,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -93,7 +93,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -102,7 +102,7 @@ jobs:
         run: ./create-package-pkg.sh $VERSION arm64
 
       - name: Upload darwin-arm64 Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: darwin-arm64-package
           path: "Output/*.pkg"
@@ -113,10 +113,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -127,7 +127,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -136,7 +136,7 @@ jobs:
         run: ./create-package-deb.sh $VERSION amd64
 
       - name: Upload linux-amd64 Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-amd64-package
           path: "Output/*.deb"
@@ -147,10 +147,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -161,7 +161,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -170,7 +170,7 @@ jobs:
         run: ./create-package-deb.sh $VERSION arm64
 
       - name: Upload linux-arm64 Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-arm64-package
           path: "Output/*.deb"
@@ -181,10 +181,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -207,7 +207,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -219,7 +219,7 @@ jobs:
           options: /DMyAppVersion=${{env.VERSION}}
 
       - name: Upload win Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-amd64-setup
           path: "Output"
@@ -230,10 +230,10 @@ jobs:
     needs: webui
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -256,7 +256,7 @@ jobs:
           cd ..
 
       - name: Download webui Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webui
           path: "publish/wwwroot"
@@ -268,7 +268,7 @@ jobs:
           options: /DMyAppVersion=${{env.VERSION}} /DMyArchitecture=arm64
 
       - name: Upload win-arm Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-arm64-setup
           path: "Output"
@@ -287,37 +287,37 @@ jobs:
       ]
     steps:
       - name: Download darwin-amd64 Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: darwin-amd64-package
           path: "Output"
 
       - name: Download darwin-arm64 Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: darwin-arm64-package
           path: "Output"
 
       - name: Download linux-amd64 Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-amd64-package
           path: "Output"
 
       - name: Download linux-arm64 Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-arm64-package
           path: "Output"
 
       - name: Download win Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-amd64-setup
           path: "Output"
 
       - name: Download win-arm Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-arm64-setup
           path: "Output"
