@@ -8,10 +8,15 @@ $ErrorActionPreference = "Stop"
 $repo = "GalaxyPay/func"
 
 # --- Detect architecture ---
-$arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
-    "X64"   { "amd64" }
-    "Arm64" { "arm64" }
-    default { throw "Unsupported architecture: $_" }
+# PROCESSOR_ARCHITEW6432 is set when running a 32-bit process on 64-bit Windows;
+# fall back to PROCESSOR_ARCHITECTURE otherwise.
+$archRaw = $env:PROCESSOR_ARCHITEW6432
+if (-not $archRaw) { $archRaw = $env:PROCESSOR_ARCHITECTURE }
+
+$arch = switch ($archRaw) {
+    "AMD64" { "amd64" }
+    "ARM64" { "arm64" }
+    default { throw "Unsupported architecture: '$archRaw'" }
 }
 
 Write-Host "Detected windows-$arch"
