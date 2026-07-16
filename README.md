@@ -140,7 +140,7 @@ sudo apt purge func     # also remove node data and service accounts
 
 If you want to participate in consensus, you'll need to generate a Participation Key for your account and register that key with account to bring it "online".
 
-[Read more about how Participation Keys function in the Algorand Consensus Protocol](https://developer.algorand.org/docs/get-details/algorand_consensus/#participation-keys)
+[Read more about how Participation Keys function in the Algorand Consensus Protocol](https://dev.algorand.co/concepts/protocol/overview/#participation-keys)
 
 ### Self-Custody
 
@@ -192,7 +192,7 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 Note the `create-package` scripts take arguments of version and architecure (`amd64` or `arm64`). For example:
 
 ```sh
-./create-package-deb.sh 3.5.1 amd64
+./create-package-deb.sh 4.1.0 amd64
 ```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
