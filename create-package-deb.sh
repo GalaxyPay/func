@@ -10,7 +10,7 @@ cp deb/func.service $PKG/lib/systemd/system/
 cp -r publish/* $PKG/opt/func
 
 mkdir $PKG/DEBIAN
-cp deb/postinst $PKG/DEBIAN
+cp deb/postinst deb/prerm deb/postrm $PKG/DEBIAN
 
 echo "Package: func" > $PKG/DEBIAN/control
 echo "Version: $1" >> $PKG/DEBIAN/control
@@ -20,6 +20,6 @@ echo "Architecture: $2" >> $PKG/DEBIAN/control
 echo "Maintainer: Andy Funk <acfunk@gmail.com>" >> $PKG/DEBIAN/control
 echo "Description: Algorand Node Manager" >> $PKG/DEBIAN/control
 
-chmod 0755 $PKG/DEBIAN/postinst
+chmod 0755 $PKG/DEBIAN/postinst $PKG/DEBIAN/prerm $PKG/DEBIAN/postrm
 
 dpkg-deb --build $PKG

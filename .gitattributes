@@ -3,6 +3,15 @@
 ###############################################################################
 * text=auto
 
+# Shell scripts and deb maintainer scripts must use LF line endings, even when
+# checked out on Windows (CRLF breaks the shebang / dpkg maintainer scripts).
+*.sh text eol=lf
+deb/postinst text eol=lf
+deb/prerm text eol=lf
+deb/postrm text eol=lf
+pkg/scripts/preinstall text eol=lf
+pkg/scripts/postinstall text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

@@ -68,33 +68,29 @@ Then visit the locally hosted webpage at <http://localhost:3536> (for remote acc
 
 ## Uninstall
 
-The app is a **Node Service Manager** - uninstalling it will **_not_** remove node services that you create with it. If you wish to remove everything, use the app to Remove Services and even Delete Node Data before uninstalling the app.
+The app is a **Node Service Manager** - uninstalling it will **_not_** remove node data by default. To also remove your node data (participation and KMD keys), use the "purge" option noted for your OS below.
 
 ### Windows (Uninstall)
 
+- To purge everything, use the app to Remove Services and even Delete Node Data before the next step
 - Settings > Apps > Installed apps > Search: FUNC > Uninstall
 
 ### Mac (Uninstall)
 
+An uninstall script is bundled with the app:
+
 ```sh
-sudo launchctl bootout system/func.api
-sudo rm /Library/LaunchDaemons/func.api.plist
-sudo rm -rf /opt/func
-sudo rm -rf /usr/local/share/func
-sudo dscl /Local/Default -delete /Users/_func-node
-sudo dscl /Local/Default -delete /Users/_func-reti
-sudo rm -rf /usr/local/var/func-node /usr/local/var/func-reti
+sudo /opt/func/uninstall.sh           # remove the app, keep node data
+sudo /opt/func/uninstall.sh --purge   # also remove node data and service accounts
 ```
 
 ### Linux (Uninstall)
 
+The `.deb` is a standard package, so use your package manager:
+
 ```sh
-sudo systemctl stop func
-sudo rm /lib/systemd/system/func.service
-sudo rm -rf /opt/func
-sudo rm -rf /usr/share/func
-sudo userdel -r func-node
-sudo userdel -r func-reti
+sudo apt remove func    # remove the app, keep node data
+sudo apt purge func     # also remove node data and service accounts
 ```
 
 ## Manage Node Menu Options
@@ -158,7 +154,7 @@ If you want to participate in consensus, you'll need to generate a Participation
 ### Escrow Account
 
 1. Wait for your node to sync.
-2. Click the + icon in the Participation Keys section.
+2. Click the "Generate Key..." button in the Participation Keys section.
 3. Enter your escrow account in the Address field.
 4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
 5. Copy and paste the key info into escrow site and follow their instructions.
