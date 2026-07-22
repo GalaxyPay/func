@@ -361,6 +361,7 @@ async function waitForRunning() {
         // algod status together so the steady-state autoRefresh kicks in.
         await getAllStatus();
         store.setSnackbar("Node Running", "success");
+        await checkCatchup(algodStatus.value, props.name);
         return;
       } catch {
         // Not serving yet — keep waiting.
@@ -571,7 +572,7 @@ async function updateReti() {
 watch(
   () => status.value,
   async (val, oldVal) => {
-    if (val === "Syncing") {
+    if (val === "Syncing" && algodStatus.value) {
       try {
         await checkCatchup(algodStatus.value, props.name);
       } catch (err: any) {
