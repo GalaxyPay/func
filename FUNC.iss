@@ -53,3 +53,23 @@ Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "
 [UninstallRun]
 Filename: "sc.exe"; Parameters: "stop FUNC"; RunOnceId: "StopService"
 Filename: "sc.exe"; Parameters: "delete FUNC"; RunOnceId: "DelService"
+
+[Code]
+// On upgrade, stop the FUNC service so its files can be replaced
+// (required for silent upgrades, where in-use file errors abort setup).
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode, I: Integer;
+begin
+  Result := '';
+  Exec(ExpandConstant('{sys}\sc.exe'), 'stop FUNC', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // 1060 = service does not exist (fresh install); nothing to wait for.
+  // sc stop is asynchronous, so poll until the service reports STOPPED.
+  if ResultCode <> 1060 then
+    for I := 1 to 20 do
+    begin
+      Exec(ExpandConstant('{cmd}'), '/C sc query FUNC | find "STOPPED"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      if ResultCode = 0 then Break;
+      Sleep(500);
+    end;
+end;

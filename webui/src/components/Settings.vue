@@ -17,16 +17,19 @@
           </v-col>
           <v-col class="text-right">
             <v-btn
-              :color="url ? 'warning' : ''"
+              :color="
+                store.funcUpdateAvailable && !updatingFunc ? 'warning' : ''
+              "
               variant="tonal"
-              :disabled="!url"
-              :href="url"
+              :disabled="!store.funcUpdateAvailable || updatingFunc"
+              :loading="updatingFunc"
+              @click="updateFunc()"
             >
-              Download
+              Update
               <v-tooltip
                 activator="parent"
                 location="left"
-                :text="`Download ${funcLatest}`"
+                :text="`Update to ${funcLatest}`"
               />
             </v-btn>
           </v-col>
@@ -136,15 +139,12 @@ const show = computed({
 
 const appVersion = __APP_VERSION__;
 const funcLatest = ref();
-const url = ref();
+const updatingFunc = ref(false);
 let init = false;
 
 onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
   await getVersion();
-  if (store.funcUpdateAvailable) {
-    url.value = (await store.api.get("func/latest")).data;
-  }
 });
 
 const githubClient = axios.create({
@@ -178,6 +178,45 @@ async function getVersion() {
       store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     store.ready = true;
+    console.error(err);
+    store.setSnackbar(err?.response?.data || err.message, "error");
+  }
+}
+
+async function updateFunc() {
+  if (!confirm("Are you sure you want to update FUNC to the latest version?"))
+    return;
+  try {
+    updatingFunc.value = true;
+    const started = (await store.api.get("func/started")).data;
+    await store.api.post("func/update");
+    store.setSnackbar(
+      "Updating FUNC - this page will reload when complete",
+      "info",
+      -1
+    );
+    // The installer restarts the service; poll until its process start
+    // time changes (restarts too fast to be caught as downtime), then reload.
+    const start = Date.now();
+    const interval = setInterval(async () => {
+      if (Date.now() - start > 2 * 60 * 1000) {
+        clearInterval(interval);
+        updatingFunc.value = false;
+        store.setSnackbar("FUNC update timed out", "error");
+        return;
+      }
+      try {
+        const { data } = await store.api.get("func/started");
+        if (data !== started) {
+          clearInterval(interval);
+          location.reload();
+        }
+      } catch {
+        // service is down mid-update; keep waiting
+      }
+    }, 1000);
+  } catch (err: any) {
+    updatingFunc.value = false;
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
   }
