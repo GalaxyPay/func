@@ -25,8 +25,15 @@ create_hidden_user() {
 create_hidden_user _func-node "FUNC Node" /usr/local/var/func-node
 create_hidden_user _func-reti "FUNC Reti" /usr/local/var/func-reti
 mkdir -p /usr/local/share/func
+FRESH_INSTALL=1
+[ -f /Library/LaunchDaemons/func.api.plist ] && FRESH_INSTALL=0
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
 launchctl bootstrap system /Library/LaunchDaemons/func.api.plist
 sleep 2
-open http://localhost:3536
+if [ "$FRESH_INSTALL" -eq 1 ]; then
+  console_uid=$(stat -f %u /dev/console)
+  if [ "$console_uid" -gt 0 ]; then
+    launchctl asuser "$console_uid" sudo -u "#$console_uid" open http://localhost:3536
+  fi
+fi
 exit 0
