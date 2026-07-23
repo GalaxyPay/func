@@ -12,6 +12,16 @@ namespace FUNC.Controllers
 
         const string scriptBase = "https://raw.githubusercontent.com/GalaxyPay/func/main";
 
+        // GET: func/started
+        // Process start time; the client uses a change in this value to detect
+        // that the service was restarted (i.e. an update completed).
+        [HttpGet("started")]
+        public ActionResult<string> FuncStarted()
+        {
+            using var p = Process.GetCurrentProcess();
+            return p.StartTime.ToUniversalTime().ToString("O");
+        }
+
         // POST: func/update
         [HttpPost("update")]
         public async Task<ActionResult> FuncUpdate()

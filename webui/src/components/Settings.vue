@@ -188,31 +188,31 @@ async function updateFunc() {
     return;
   try {
     updatingFunc.value = true;
+    const started = (await store.api.get("func/started")).data;
     await store.api.post("func/update");
     store.setSnackbar(
       "Updating FUNC - this page will reload when complete",
       "info",
       -1
     );
-    // The service goes down while the installer replaces it;
-    // wait for it to come back up, then reload.
-    let wentDown = false;
+    // The installer restarts the service; poll until its process start
+    // time changes (restarts too fast to be caught as downtime), then reload.
     const start = Date.now();
     const interval = setInterval(async () => {
-      if (Date.now() - start > 5 * 60 * 1000) {
+      if (Date.now() - start > 2 * 60 * 1000) {
         clearInterval(interval);
         updatingFunc.value = false;
         store.setSnackbar("FUNC update timed out", "error");
         return;
       }
       try {
-        await store.api.get("algorand");
-        if (wentDown) {
+        const { data } = await store.api.get("func/started");
+        if (data !== started) {
           clearInterval(interval);
           location.reload();
         }
       } catch {
-        wentDown = true;
+        // service is down mid-update; keep waiting
       }
     }, 1000);
   } catch (err: any) {
