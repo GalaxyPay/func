@@ -36,9 +36,18 @@ $out = Join-Path $env:TEMP $asset.name
 Write-Host "Downloading $($asset.name)..."
 Invoke-WebRequest $asset.browser_download_url -OutFile $out
 
-# --- Install (elevates via UAC; runs silently) ---
+# --- Install (runs silently; elevates via UAC if not already admin) ---
 Write-Host "Installing..."
-Start-Process -FilePath $out -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Verb RunAs -Wait
+$silentArgs = "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+    # Already elevated (e.g. run by the FUNC service for a self-upgrade);
+    # -Verb RunAs would fail in a non-interactive session.
+    Start-Process -FilePath $out -ArgumentList $silentArgs -Wait
+}
+else {
+    Start-Process -FilePath $out -ArgumentList $silentArgs -Verb RunAs -Wait
+}
 
 Remove-Item $out -Force
 Write-Host ""
