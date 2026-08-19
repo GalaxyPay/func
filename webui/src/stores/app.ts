@@ -69,14 +69,18 @@ export const useAppStore = defineStore("app", {
         .include("values")
         .do();
       const abiType = algosdk.ABIType.from("(string,string)");
-      this.messages = (resp.boxes ?? []).map((box) => {
-        const abiData = abiType.decode(box.value!) as string[];
-        return {
-          id: algosdk.decodeUint64(box.name),
-          title: abiData[0],
-          body: abiData[1],
-        };
-      });
+      // Message boxes have 8-byte uint64 keys; allowedSenders boxes have
+      // 32-byte address keys and hold no message data.
+      this.messages = (resp.boxes ?? [])
+        .filter((box) => box.name.length === 8)
+        .map((box) => {
+          const abiData = abiType.decode(box.value!) as string[];
+          return {
+            id: algosdk.decodeUint64(box.name),
+            title: abiData[0],
+            body: abiData[1],
+          };
+        });
       // Drop read ids that no longer correspond to an existing message.
       const ids = new Set(this.messages.map((m) => m.id));
       this.setReadMessages(this.readMessages.filter((id) => ids.has(id)));

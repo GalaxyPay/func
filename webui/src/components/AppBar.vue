@@ -11,7 +11,7 @@
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
-    <v-btn icon @click="showMessages = true">
+    <v-btn icon @click="openMessages">
       <v-badge
         :model-value="store.unreadCount > 0"
         location="top right"
@@ -152,6 +152,7 @@
     </v-btn>
     <Settings :visible="showSettings" @close="showSettings = false" />
     <Messages :visible="showMessages" @close="showMessages = false" />
+    <Admin :visible="showAdmin" @close="showAdmin = false" />
   </v-app-bar>
 </template>
 
@@ -185,6 +186,13 @@ const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
 const showMessages = ref(false);
+const showAdmin = ref(false);
+
+// Shift-click the bell to open the (hidden) contract admin dialog.
+function openMessages(e: MouseEvent) {
+  if (e.shiftKey) showAdmin.value = true;
+  else showMessages.value = true;
+}
 
 onBeforeMount(() => {
   store.refreshPart++;
