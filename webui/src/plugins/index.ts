@@ -6,10 +6,11 @@
 
 // Plugins
 import vuetify from "./vuetify";
+import { lute } from "@txnlab/use-wallet-lute";
+import { pera } from "@txnlab/use-wallet-pera";
 import {
   NetworkConfigBuilder,
   NetworkId,
-  WalletId,
   WalletManagerPlugin,
 } from "@txnlab/use-wallet-vue";
 import pinia from "../stores";
@@ -32,7 +33,7 @@ export function registerPlugins(app: App) {
     .use(vuetify)
     .use(pinia)
     .use(WalletManagerPlugin, {
-      wallets: [WalletId.LUTE, WalletId.PERA],
+      wallets: [lute(), pera()],
       defaultNetwork: DEFAULT_NETWORK as NetworkId,
       networks,
     });
