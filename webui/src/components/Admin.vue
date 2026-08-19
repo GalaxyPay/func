@@ -158,8 +158,8 @@
 
 <script lang="ts" setup>
 import { Message } from "@/types";
-import { execAtc, formatAddr } from "@/utils";
-import { mdiClose, mdiContentCopy, mdiDelete } from "@mdi/js";
+import { execAtc } from "@/utils";
+import { mdiClose, mdiDelete } from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { modelsv2 } from "algosdk";
 
@@ -284,11 +284,6 @@ watch(
 watch(canPost, (val) => {
   if (!val && props.visible) emit("close");
 });
-
-function copy(text: string) {
-  navigator.clipboard.writeText(text);
-  store.setSnackbar("Copied", "info", 1000);
-}
 
 // Quote the exact MBR a method requires via a signer-less simulate. The
 // readonly methods create and delete a box internally, hence
