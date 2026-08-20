@@ -11,7 +11,7 @@
       <div class="ml-1 app-version text-grey">{{ appVersion }}</div>
     </div>
     <v-spacer />
-    <v-btn icon @click="showMessages = true">
+    <v-btn icon @click="openMessages">
       <v-badge
         :model-value="store.unreadCount > 0"
         location="top right"
@@ -20,6 +20,7 @@
       >
         <v-icon :icon="mdiBell" />
       </v-badge>
+      <v-tooltip text="Messages" activator="parent" location="bottom" />
     </v-btn>
     <v-btn icon @click="showSettings = true">
       <v-badge
@@ -36,13 +37,8 @@
       </v-badge>
       <v-tooltip text="Settings" activator="parent" location="bottom" />
     </v-btn>
-    <v-btn
-      color="primary"
-      variant="tonal"
-      :icon="!!store.showMachineName && xs"
-      class="mr-3"
-    >
-      <template v-if="!store.showMachineName || !xs">
+    <v-btn color="primary" variant="tonal" :icon="xs">
+      <template v-if="!xs">
         {{ formatAddr(activeAccount?.address) || "Connect Wallet" }}
       </template>
       <template v-else>
@@ -150,11 +146,13 @@
         </v-list>
       </v-menu>
     </v-btn>
-    <a href="https://func.algo.xyz" target="_blank">
-      <v-icon :icon="mdiHelpCircleOutline" color="white" class="mr-3" />
-    </a>
+    <v-btn icon href="https://func.algo.xyz" target="_blank">
+      <v-icon :icon="mdiHelpCircleOutline" />
+      <v-tooltip text="Help" activator="parent" location="bottom" />
+    </v-btn>
     <Settings :visible="showSettings" @close="showSettings = false" />
     <Messages :visible="showMessages" @close="showMessages = false" />
+    <Admin :visible="showAdmin" @close="showAdmin = false" />
   </v-app-bar>
 </template>
 
@@ -188,6 +186,13 @@ const appVersion = __APP_VERSION__;
 const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
 const showMessages = ref(false);
+const showAdmin = ref(false);
+
+// Shift-click the bell to open the (hidden) contract admin dialog.
+function openMessages(e: MouseEvent) {
+  if (e.shiftKey) showAdmin.value = true;
+  else showMessages.value = true;
+}
 
 onBeforeMount(() => {
   store.refreshPart++;

@@ -32,6 +32,10 @@ export class Messages extends Contract {
     assert(this.isOwner(), "SENDER_NOT_ALLOWED");
   }
 
+  createApplication() {
+    this.id.value = 0;
+  }
+
   updateApplication() {
     this.onlyOwner();
   }
@@ -39,7 +43,7 @@ export class Messages extends Contract {
   // MBR the caller must attach to `addMessage(_, message)` for this exact message.
   @arc4.abimethod({ readonly: true })
   requiredMbrForMessage(message: Message): uint64 {
-    const nextId: uint64 = this.id.hasValue ? this.id.value : 0 + 1;
+    const nextId: uint64 = this.id.value + 1;
     const before = Global.currentApplicationAddress.minBalance;
     this.messages(nextId).value = clone(message);
     const mbr: uint64 = Global.currentApplicationAddress.minBalance - before;
@@ -93,7 +97,7 @@ export class Messages extends Contract {
       this.isOwner() || this.allowedSenders(Txn.sender).exists,
       "SENDER_NOT_ALLOWED",
     );
-    this.id.value = this.id.hasValue ? this.id.value : 0 + 1;
+    this.id.value++;
     const mbrBefore = Global.currentApplicationAddress.minBalance;
     this.messages(this.id.value).value = clone(message);
     this.requireMbrCoverage(mbrBefore, mbrPayment);

@@ -1,6 +1,8 @@
 allowBuilds:
   esbuild: true
   vue-demi: true
+minimumReleaseAgeExclude:
+  - algosdk@3.7.0
 overrides:
   "ws": ">=7.5.10"
   "bn.js": ">=4.12.3"
