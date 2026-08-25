@@ -6,9 +6,11 @@
         <string>func.update</string>
         <key>ProgramArguments</key>
         <array>
-            <string>/bin/sh</string>
-            <string>-c</string>
-            <string>curl -fsSL https://raw.githubusercontent.com/GalaxyPay/func/main/install.sh | sh</string>
+            <string>/usr/sbin/installer</string>
+            <string>-target</string>
+            <string>/</string>
+            <string>-pkg</string>
+            <string>__PKG__</string>
         </array>
         <key>RunAtLoad</key>
         <true/>

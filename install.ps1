@@ -41,8 +41,7 @@ Write-Host "Installing..."
 $silentArgs = "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($isAdmin) {
-    # Already elevated (e.g. run by the FUNC service for a self-upgrade);
-    # -Verb RunAs would fail in a non-interactive session.
+    # Already elevated; -Verb RunAs would fail in a non-interactive session.
     Start-Process -FilePath $out -ArgumentList $silentArgs -Wait
 }
 else {

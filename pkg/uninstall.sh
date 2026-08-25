@@ -17,6 +17,9 @@ fi
 echo "Stopping FUNC app..."
 launchctl bootout system/func.api 2>/dev/null || true
 rm -f /Library/LaunchDaemons/func.api.plist
+# Left behind only if an update failed before its postinstall could remove it.
+launchctl bootout system/func.update 2>/dev/null || true
+rm -f /Library/LaunchDaemons/func.update.plist
 
 if [ "$PURGE" -eq 1 ]; then
     echo "Purging node/reti services, data, and accounts..."

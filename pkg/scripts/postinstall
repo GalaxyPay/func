@@ -25,6 +25,10 @@ create_hidden_user() {
 create_hidden_user _func-node "FUNC Node" /usr/local/var/func-node
 create_hidden_user _func-reti "FUNC Reti" /usr/local/var/func-reti
 mkdir -p /usr/local/share/func
+# If this install was started by the func.update launchd job, remove its plist
+# so RunAtLoad doesn't re-run the installer on every boot. Only the file is
+# removed; booting out the job here would kill the installer running this script.
+rm -f /Library/LaunchDaemons/func.update.plist
 FRESH_INSTALL=1
 [ -f /Library/LaunchDaemons/func.api.plist ] && FRESH_INSTALL=0
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
