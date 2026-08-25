@@ -12,8 +12,17 @@ namespace FUNC.Controllers
     {
         private readonly ILogger<FuncController> _logger = logger;
 
+        // TEMP: local-update test mode. Set the path for the OS you're testing to a
+        // locally built installer and func/update will run it instead of downloading
+        // the latest GitHub release (a same-version reinstall exercises the full
+        // flow). Leave empty for the normal flow. Remove before release, along with
+        // the forced funcUpdateAvailable in Settings.vue.
+        private const string TestInstaller = "";
+
         private static async Task<string> DownloadLatestInstaller(string pattern)
         {
+            if (TestInstaller.Length > 0) return TestInstaller;
+
             var client = new GitHubClient(new ProductHeaderValue("func"));
             var latest = await client.Repository.Release.GetLatest("GalaxyPay", "func");
             var asset = latest.Assets.FirstOrDefault(a => a.Name.EndsWith(pattern))

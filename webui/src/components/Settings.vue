@@ -163,6 +163,12 @@ async function getVersion() {
     store.setSnackbar(err?.response?.data || err.message, "error");
   }
 
+  // TEMP: force the update offer so a same-version local build can exercise
+  // the update flow (pairs with the TestInstaller* paths in FuncController).
+  // Remove before release.
+  store.funcUpdateAvailable = true;
+  funcLatest.value ??= appVersion;
+
   try {
     const goalVersion = await store.api.get("goal/version");
     store.goalVersion = goalVersion.data;
