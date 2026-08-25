@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc;
+using Octokit;
 using static System.OperatingSystem;
 
 namespace FUNC.Controllers
@@ -10,7 +12,29 @@ namespace FUNC.Controllers
     {
         private readonly ILogger<FuncController> _logger = logger;
 
-        const string scriptBase = "https://raw.githubusercontent.com/GalaxyPay/func/main";
+        private static async Task<string> DownloadLatestInstaller(string pattern)
+        {
+            var client = new GitHubClient(new ProductHeaderValue("func"));
+            var latest = await client.Repository.Release.GetLatest("GalaxyPay", "func");
+            var asset = latest.Assets.FirstOrDefault(a => a.Name.EndsWith(pattern))
+                ?? throw new Exception("Installer Not Found");
+
+            // The installer kills this process mid-install, so the download can't
+            // be deleted afterward; clear installers left by previous updates.
+            foreach (string old in Directory.GetFiles(Path.GetTempPath(), $"func_*{pattern}"))
+            {
+                try { System.IO.File.Delete(old); } catch { }
+            }
+
+            string filePath = Path.Combine(Path.GetTempPath(), asset.Name);
+            using var httpClient = new HttpClient();
+            using var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl);
+            using (FileStream fs = new(filePath, System.IO.FileMode.Create))
+            {
+                await s.CopyToAsync(fs);
+            }
+            return filePath;
+        }
 
         // GET: func/started
         // Process start time; the client uses a change in this value to detect
@@ -28,25 +52,26 @@ namespace FUNC.Controllers
         {
             try
             {
+                string arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "amd64";
                 if (IsWindows())
                 {
-                    // Run the install script in a detached process; children of a
+                    string installerPath = await DownloadLatestInstaller($"_windows-{arch}.exe");
+                    // Run the installer in a detached process; children of a
                     // service survive the installer stopping the FUNC service.
                     ProcessStartInfo psi = new()
                     {
-                        FileName = "powershell.exe",
+                        FileName = installerPath,
                         UseShellExecute = false,
                         CreateNoWindow = true,
                     };
-                    psi.ArgumentList.Add("-NoProfile");
-                    psi.ArgumentList.Add("-ExecutionPolicy");
-                    psi.ArgumentList.Add("Bypass");
-                    psi.ArgumentList.Add("-Command");
-                    psi.ArgumentList.Add($"irm {scriptBase}/install.ps1 | iex");
+                    psi.ArgumentList.Add("/VERYSILENT");
+                    psi.ArgumentList.Add("/SUPPRESSMSGBOXES");
+                    psi.ArgumentList.Add("/NORESTART");
                     Process.Start(psi);
                 }
                 else if (IsLinux())
                 {
+                    string installerPath = await DownloadLatestInstaller($"_linux-{arch}.deb");
                     // systemd-run puts the upgrade in its own transient unit so it
                     // isn't killed when the package's prerm stops the func service
                     // (systemd kills the service's whole cgroup).
@@ -56,18 +81,20 @@ namespace FUNC.Controllers
                         UseShellExecute = false,
                     };
                     psi.ArgumentList.Add("--collect");
-                    psi.ArgumentList.Add("/bin/sh");
-                    psi.ArgumentList.Add("-c");
-                    psi.ArgumentList.Add($"curl -fsSL {scriptBase}/install.sh | sh");
+                    psi.ArgumentList.Add("/usr/bin/dpkg");
+                    psi.ArgumentList.Add("-i");
+                    psi.ArgumentList.Add(installerPath);
                     Process.Start(psi);
                 }
                 else if (IsMacOS())
                 {
+                    string installerPath = await DownloadLatestInstaller($"_darwin-{arch}.pkg");
                     // Run the upgrade as its own launchd job so it isn't killed when
                     // the pkg's preinstall boots out func.api (launchd kills the
                     // job's process group).
                     string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.update.plist");
-                    System.IO.File.Copy(templatePath, "/Library/LaunchDaemons/func.update.plist", true);
+                    string plist = System.IO.File.ReadAllText(templatePath).Replace("__PKG__", installerPath);
+                    System.IO.File.WriteAllText("/Library/LaunchDaemons/func.update.plist", plist);
                     await Utils.ExecCmd("launchctl bootout system/func.update"); // clear previous run, if any
                     await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.update.plist");
                 }
