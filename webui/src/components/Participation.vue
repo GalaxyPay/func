@@ -242,7 +242,14 @@
 <script lang="ts" setup>
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
-import { b64, delay, effectiveResetDate, execAtc, formatAddr } from "@/utils";
+import {
+  b64,
+  delay,
+  effectiveResetDate,
+  execAtc,
+  formatAddr,
+  getSuggestedParams,
+} from "@/utils";
 import {
   mdiChevronDown,
   mdiClose,
@@ -641,7 +648,7 @@ async function registerKey(item: Participation) {
   try {
     store.overlay = true;
     const atc = new algosdk.AtomicTransactionComposer();
-    const suggestedParams = await props.algodClient.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.algodClient);
     const ii = incentiveIneligible(item.address);
     if (ii.val && !ii.reason) {
       suggestedParams.flatFee = true;
@@ -669,7 +676,7 @@ async function registerKey(item: Participation) {
 async function offline() {
   try {
     store.overlay = true;
-    const suggestedParams = await props.algodClient.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.algodClient);
     const atc = new algosdk.AtomicTransactionComposer();
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: activeAccount.value!.address,

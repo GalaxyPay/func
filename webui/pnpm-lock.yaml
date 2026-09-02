@@ -12,12 +12,12 @@ importers:
 
   .:
     dependencies:
+      '@galaxypay/use-wallet-lute':
+        specifier: ^1.0.0
+        version: 1.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
-      '@txnlab/use-wallet-lute':
-        specifier: ^5.0.0
-        version: 5.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)
       '@txnlab/use-wallet-pera':
         specifier: ^5.0.0
         version: 5.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)
@@ -245,6 +245,16 @@ packages:
 
   '@evanhahn/lottie-web-light@5.8.1':
     resolution: {integrity: sha512-U0G1tt3/UEYnyCNNslWPi1dB7X1xQ9aoSip+B3GTKO/Bns8yz/p39vBkRSN9d25nkbHuCsbjky2coQftj5YVKw==}
+
+  '@galaxypay/lute-connect@3.0.1':
+    resolution: {integrity: sha512-a65433V13EQIV0eHpCcgFbOgs4Tp+zsRDhMFn5it0oTi1XfG2ld/SsRr0n0aLWTnaXNyOWQ7931bbd41a4Vo9w==}
+
+  '@galaxypay/use-wallet-lute@1.0.0':
+    resolution: {integrity: sha512-NCDGkyV9kglpVrksZg5QbLM8ZLeX5O+38WE6CDkl6K1wjXD9IUg5dC2w0e247RujdojiHTeU0yHjh/3Nd+01Nw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@txnlab/use-wallet': ^5.0.0
+      algosdk: ^3.0.0
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -545,13 +555,6 @@ packages:
     peerDependenciesMeta:
       '@vue/composition-api':
         optional: true
-
-  '@txnlab/use-wallet-lute@5.0.0':
-    resolution: {integrity: sha512-/S12FyeXjx6JvOs4KvkKIF9R2x/nRmxu7QBOu806qaz3fdXV84KeRyUVA51UvRJsxS4b5nWyH2i9mIOm44gSGg==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      '@txnlab/use-wallet': ^5.0.0
-      algosdk: ^3.0.0
 
   '@txnlab/use-wallet-pera@5.0.0':
     resolution: {integrity: sha512-kTqbD47GcKOjLSr2OjDAfH4aP04Cme2aBUVbZpz7OgaBdALxvFk0bBpznv4TD4RN5X1JQ4438w9HlJPEFaKgHg==}
@@ -1239,9 +1242,6 @@ packages:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
 
-  lute-connect@2.0.1:
-    resolution: {integrity: sha512-gyQj9SbRjQnZ0mOp9UusrTX6kSePR5PwiEGeQ7VpmDcSaY4WbQPBEoQfRoyyzA054Ly2ypBE3vpdNG3Dvh5CYw==}
-
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -1873,6 +1873,14 @@ snapshots:
 
   '@evanhahn/lottie-web-light@5.8.1': {}
 
+  '@galaxypay/lute-connect@3.0.1': {}
+
+  '@galaxypay/use-wallet-lute@1.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)':
+    dependencies:
+      '@galaxypay/lute-connect': 3.0.1
+      '@txnlab/use-wallet': 5.0.0(algosdk@3.7.0)
+      algosdk: 3.7.0
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -2058,12 +2066,6 @@ snapshots:
       '@tanstack/store': 0.9.1
       vue: 3.5.41(typescript@7.0.2)
       vue-demi: 0.14.10(vue@3.5.41(typescript@7.0.2))
-
-  '@txnlab/use-wallet-lute@5.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)':
-    dependencies:
-      '@txnlab/use-wallet': 5.0.0(algosdk@3.7.0)
-      algosdk: 3.7.0
-      lute-connect: 2.0.1
 
   '@txnlab/use-wallet-pera@5.0.0(@txnlab/use-wallet@5.0.0(algosdk@3.7.0))(algosdk@3.7.0)':
     dependencies:
@@ -2801,8 +2803,6 @@ snapshots:
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
-
-  lute-connect@2.0.1: {}
 
   magic-string@0.30.21:
     dependencies:

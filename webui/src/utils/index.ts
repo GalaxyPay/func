@@ -1,5 +1,6 @@
-import { networks } from "./data";
-import algosdk, { modelsv2 } from "algosdk";
+import { couldBeCurvePoint } from "./ed25519-check";
+import { networks } from "@/data";
+import algosdk, { Address, modelsv2 } from "algosdk";
 
 export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,4 +81,17 @@ export async function checkCatchup(
       await store.api.post(`${name}/catchup`, { round, label });
     }
   }
+}
+
+export async function getSuggestedParams(
+  algodClient: algosdk.Algodv2
+): Promise<algosdk.SuggestedParams> {
+  const store = useAppStore();
+  if (!store.account) throw Error("Invalid Account");
+  const authAddrPk =
+    store.account.authAddr?.publicKey ??
+    Address.fromString(store.account.address).publicKey;
+  const sp = await algodClient.getTransactionParams().do();
+  if (!couldBeCurvePoint(authAddrPk)) sp.minFee = 3000n;
+  return sp;
 }

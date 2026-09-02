@@ -74,8 +74,8 @@
                   class="mr-1"
                 />
                 {{
-                  account
-                    ? (Number(account.amount) / 10 ** 6).toLocaleString(
+                  store.account
+                    ? (Number(store.account.amount) / 10 ** 6).toLocaleString(
                         undefined,
                         {
                           maximumFractionDigits: 6,
@@ -174,7 +174,6 @@ import {
   useNetwork,
   useWallet,
 } from "@txnlab/use-wallet-vue";
-import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -183,7 +182,6 @@ const { activeNetwork } = useNetwork();
 const { xs } = useDisplay();
 
 const appVersion = __APP_VERSION__;
-const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
 const showMessages = ref(false);
 const showAdmin = ref(false);
@@ -237,11 +235,11 @@ watch(
   () => store.refreshPart,
   async () => {
     if (activeAccount.value) {
-      account.value = await algodClient.value
+      store.account = await algodClient.value
         .accountInformation(activeAccount.value.address)
         .do();
     } else {
-      account.value = undefined;
+      store.account = undefined;
     }
   }
 );

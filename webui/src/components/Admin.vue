@@ -158,7 +158,7 @@
 
 <script lang="ts" setup>
 import { Message } from "@/types";
-import { execAtc } from "@/utils";
+import { execAtc, getSuggestedParams } from "@/utils";
 import { mdiClose, mdiDelete } from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { modelsv2 } from "algosdk";
@@ -293,7 +293,7 @@ async function quoteMbr(
   args: algosdk.ABIValue[]
 ): Promise<bigint> {
   const atc = new algosdk.AtomicTransactionComposer();
-  const suggestedParams = await algodClient.value.getTransactionParams().do();
+  const suggestedParams = await getSuggestedParams(algodClient.value);
   atc.addMethodCall({
     appID: appId,
     method,
@@ -325,7 +325,7 @@ async function addMessage() {
     // (id + 1) must be referenced explicitly.
     await loadState();
     const sender = activeAccount.value!.address;
-    const suggestedParams = await algodClient.value.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(algodClient.value);
     const pay = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender,
       receiver: appAddress,
@@ -359,7 +359,7 @@ async function addMessage() {
 async function deleteMessage(item: Message) {
   try {
     store.overlay = true;
-    const suggestedParams = await algodClient.value.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(algodClient.value);
     // Cover the fee-0 inner refund payment.
     suggestedParams.flatFee = true;
     suggestedParams.fee = 2n * BigInt(suggestedParams.minFee);
@@ -388,7 +388,7 @@ async function allowSender() {
     const addr = newSender.value;
     const mbr = await quoteMbr(abi.mbrForSender, [addr]);
     const sender = activeAccount.value!.address;
-    const suggestedParams = await algodClient.value.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(algodClient.value);
     const pay = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender,
       receiver: appAddress,
@@ -418,7 +418,7 @@ async function allowSender() {
 async function revokeSender(addr: string) {
   try {
     store.overlay = true;
-    const suggestedParams = await algodClient.value.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(algodClient.value);
     // Cover the fee-0 inner refund payment.
     suggestedParams.flatFee = true;
     suggestedParams.fee = 2n * BigInt(suggestedParams.minFee);
@@ -485,7 +485,7 @@ watch(specModel, async (model) => {
 async function updateContract() {
   try {
     store.overlay = true;
-    const suggestedParams = await algodClient.value.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(algodClient.value);
     const atc = new algosdk.AtomicTransactionComposer();
     atc.addMethodCall({
       appID: appId,

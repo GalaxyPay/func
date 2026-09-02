@@ -1,7 +1,7 @@
 // Utilities
 import { AlgodFunc } from "@/clients";
 import { GoalVersion, Message, SnackBar } from "@/types";
-import algosdk from "algosdk";
+import algosdk, { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
 export const useAppStore = defineStore("app", {
@@ -15,6 +15,7 @@ export const useAppStore = defineStore("app", {
       timeout: 0,
       display: false,
     } as SnackBar,
+    account: undefined as undefined | modelsv2.Account,
     refreshPart: 0,
     refreshStatus: 0,
     connectMenu: false,
