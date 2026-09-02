@@ -16,8 +16,8 @@
         <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-data-table
-        :headers="headers"
-        :items="items"
+        :headers
+        :items
         :items-per-page="-1"
         density="comfortable"
         hide-default-footer
