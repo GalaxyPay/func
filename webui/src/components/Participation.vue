@@ -376,6 +376,8 @@ async function getKeys(): Promise<Participation[]> {
     .sort((a, b) => Number(b.key.voteLastValid) - Number(a.key.voteLastValid));
 }
 
+let statsRequestId = 0;
+
 async function refreshPartData() {
   try {
     const tempKeys = await getKeys();
@@ -388,34 +390,55 @@ async function refreshPartData() {
       })
     );
     keys.value = tempKeys;
-    const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
-    let proposals = 0;
-    if (activeKeys?.length) {
-      loading.value = true;
-      partStats.value =
-        (await getStats(activeKeys.map((k) => k.address))) || {};
-      for (const value of Object.values(partStats.value) as any[]) {
+    const activeKeys = tempKeys?.filter((k) => isKeyActive(k)) || [];
+    const activeAddrs = activeKeys.map((k) => k.address);
+    const activeStake = acctInfos.value
+      .filter((a) => activeAddrs.includes(a.address))
+      .reduce((a, c) => a + Number(c.amount), 0);
+
+    // Emit what algod alone can tell us right away; the proposal count
+    // depends on a (potentially slow) stats fetch and follows separately.
+    const details: PartDetails = {
+      activeKeys: activeKeys.length,
+      activeStake,
+      proposals: undefined,
+    };
+    emittedPart.value = details;
+    emit("partDetails", details);
+    emitBlockTimestamps(activeAddrs);
+
+    if (!activeAddrs.length) {
+      partStats.value = {};
+      return;
+    }
+
+    const token = ++statsRequestId;
+    loading.value = true;
+    try {
+      const stats = (await getStats(activeAddrs)) || {};
+      // A newer refresh superseded this one; drop the stale result.
+      if (token !== statsRequestId) return;
+      partStats.value = stats;
+      let proposals = 0;
+      for (const value of Object.values(stats) as any[]) {
         proposals += value?.proposals || 0;
       }
+      // Spread the live object so any activeStake payout applied by
+      // checkNewBlock while the fetch was in flight is preserved.
+      emittedPart.value = {
+        ...details,
+        proposals: Object.keys(stats).length ? proposals : undefined,
+      };
+      emit("partDetails", emittedPart.value);
+      emitBlockTimestamps(activeAddrs);
+    } finally {
+      if (token === statsRequestId) loading.value = false;
     }
-    loading.value = false;
-    emitBlockTimestamps(activeKeys?.map((k) => k.address) || []);
-    const activeStake = acctInfos.value
-      .filter((a) => activeKeys?.some((k) => k.address === a.address))
-      .reduce((a, c) => a + Number(c.amount), 0);
-    const partDetails: PartDetails = {
-      activeKeys: activeKeys?.length || 0,
-      activeStake,
-      proposals: Object.keys(partStats.value).length ? proposals : undefined,
-    };
-    emittedPart.value = partDetails;
-    emit("partDetails", partDetails);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err?.response?.data || err.message, "error");
   }
 }
-
 async function checkNewBlock(round: bigint) {
   if (props.status !== "Running") return;
   try {
@@ -731,6 +754,29 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
+const ALGORAND_INDEXERS = [
+  "https://mainnet-idx.4160.nodely.dev",
+  "https://mainnet-idx.algonode.xyz",
+  "https://mainnet-idx.algonode.network",
+];
+
+// Choose the first indexer that answers a quick health probe. algosdk has no
+// per-request timeout, so probing up front avoids waiting out a dead primary.
+// The last URL is the fallback and is used without probing.
+async function pickIndexer(urls: string[], timeoutMs = 3000) {
+  for (const url of urls.slice(0, -1)) {
+    try {
+      const resp = await fetch(`${url}/health`, {
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (resp.ok) return url;
+    } catch {
+      // Unreachable or slow; try the next one.
+    }
+  }
+  return urls[urls.length - 1];
+}
+
 async function getStats(addrs: string[]) {
   try {
     const resetDate = effectiveResetDate(
@@ -739,8 +785,11 @@ async function getStats(addrs: string[]) {
     const stats: any = {};
     switch (props.name) {
       case "Algorand": {
-        const nodely = "https://mainnet-idx.4160.nodely.dev";
-        const indexer = new algosdk.Indexer("", nodely, "");
+        const indexer = new algosdk.Indexer(
+          "",
+          await pickIndexer(ALGORAND_INDEXERS),
+          ""
+        );
         const cache = loadProposalsCache();
         const netCache = (cache[props.name] ??= {});
         const resetSec = resetDate ? new Date(resetDate).getTime() / 1000 : 0;
