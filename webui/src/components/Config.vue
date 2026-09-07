@@ -66,7 +66,7 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { delay } from "@/utils";
+import { delay, errorMessage } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -189,7 +189,7 @@ async function saveConfig() {
     show.value = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Save node config"), "error");
   }
   loading.value = false;
 }
@@ -223,7 +223,7 @@ watch(show, async (val) => {
       debugConfig.value = data;
     } catch (err: any) {
       console.error(err);
-      store.setSnackbar(err?.response?.data || err.message, "error");
+      store.setSnackbar(errorMessage(err, "Load node config"), "error");
     }
   }
 });

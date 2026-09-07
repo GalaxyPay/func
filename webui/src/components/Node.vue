@@ -229,11 +229,11 @@
 </template>
 
 <script setup lang="ts">
-import { AlgodFunc } from "@/clients";
+import { AlgodFunc, algodTarget } from "@/clients";
 import { NodeStatus, PartDetails } from "@/types";
-import { checkCatchup, delay, effectiveResetDate } from "@/utils";
+import { checkCatchup, delay, effectiveResetDate, errorMessage } from "@/utils";
 import { mdiClose, mdiOpenInNew } from "@mdi/js";
-import { Algodv2, modelsv2 } from "algosdk";
+import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -317,7 +317,11 @@ const status = computed(() =>
       : "Unknown"
 );
 
-const algodClient = ref<Algodv2>();
+const algodClient = ref<AlgodFunc>();
+
+// Names the endpoint algod calls are aimed at, so a connection failure says
+// which process couldn't be reached.
+const algodEndpoint = computed(() => algodTarget(algodClient.value?.baseUrl));
 
 onBeforeMount(async () => {
   await getAllStatus();
@@ -361,7 +365,7 @@ async function waitForRunning() {
         // algod status together so the steady-state autoRefresh kicks in.
         await getAllStatus();
         store.setSnackbar("Node Running", "success");
-        await checkCatchup(algodStatus.value, props.name);
+        await startCatchup();
         return;
       } catch {
         // Not serving yet — keep waiting.
@@ -429,7 +433,10 @@ async function autoRefresh() {
       } else {
         console.error(err);
         if (err.status !== 502 && !store.downloading)
-          store.setSnackbar(err?.response?.data || err.message, "error");
+          store.setSnackbar(
+            errorMessage(err, "Node status update", algodEndpoint.value),
+            "error"
+          );
         await delay(500);
       }
     }
@@ -468,7 +475,7 @@ async function getNodeStatus() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Get service status"), "error");
   }
 }
 
@@ -495,16 +502,25 @@ async function getAlgodStatus() {
     }
     console.error(err);
     if (err.status !== 502 && !store.downloading)
-      store.setSnackbar(err?.response?.data || err.message, "error");
+      store.setSnackbar(
+        errorMessage(err, "Get node status", algodEndpoint.value),
+        "error"
+      );
   }
 }
 
 async function checkReti() {
   if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
-    const releases = await axios({
-      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
-    });
-    retiLatest.value = releases.data.name;
+    // Only used to flag an available update, so a GitHub outage shouldn't
+    // surface as a node status failure or break the refresh loop.
+    try {
+      const releases = await axios({
+        url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
+      });
+      retiLatest.value = releases.data.name;
+    } catch (err: any) {
+      console.error(errorMessage(err, "Check for Reti updates"), err);
+    }
   }
   if (
     nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
@@ -564,22 +580,26 @@ async function updateReti() {
     store.setSnackbar("Reti Updated", "success");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Update Reti"), "error");
   }
   loading.value = false;
+}
+
+// Fast catchup needs both a reachable catchpoint host and a reachable node,
+// so report which of the two failed rather than a bare fetch error.
+async function startCatchup() {
+  try {
+    await checkCatchup(algodStatus.value, props.name);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Start fast catchup"), "error");
+  }
 }
 
 watch(
   () => status.value,
   async (val, oldVal) => {
-    if (val === "Syncing" && algodStatus.value) {
-      try {
-        await checkCatchup(algodStatus.value, props.name);
-      } catch (err: any) {
-        console.error(err);
-        store.setSnackbar(err?.response?.data || err.message, "error");
-      }
-    }
+    if (val === "Syncing" && algodStatus.value) await startCatchup();
     if (oldVal === "Syncing") reloadPartDetails();
   }
 );

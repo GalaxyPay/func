@@ -117,6 +117,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
+import { errorMessage } from "@/utils";
 import { mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
@@ -160,7 +161,7 @@ async function getVersion() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Check for FUNC updates"), "error");
   }
 
   try {
@@ -179,7 +180,7 @@ async function getVersion() {
   } catch (err: any) {
     store.ready = true;
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Get installed node version"), "error");
   }
 }
 
@@ -218,7 +219,7 @@ async function updateFunc() {
   } catch (err: any) {
     updatingFunc.value = false;
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Update FUNC"), "error");
   }
 }
 
@@ -244,7 +245,7 @@ async function updateNode(release: string, bypass = false) {
     store.refreshStatus++;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, `Update node to ${release}`), "error");
   }
   store.downloading = false;
 }

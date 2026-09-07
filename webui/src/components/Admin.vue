@@ -158,7 +158,7 @@
 
 <script lang="ts" setup>
 import { Message } from "@/types";
-import { execAtc, getSuggestedParams } from "@/utils";
+import { errorMessage, execAtc, getSuggestedParams } from "@/utils";
 import { mdiClose, mdiDelete } from "@mdi/js";
 import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { modelsv2 } from "algosdk";
@@ -184,6 +184,8 @@ const show = computed({
 });
 
 const appId = BigInt(import.meta.env.VITE_MESSAGES_APP_ID);
+// This dialog talks to the wallet's configured node, not the local one.
+const adminEndpoint = "the network's algod API";
 const appAddress = algosdk.getApplicationAddress(appId);
 
 const abi = {
@@ -261,7 +263,7 @@ async function loadState() {
     senders.value = snds;
   } catch (err: any) {
     console.error(err);
-    loadError.value = err?.response?.data || err.message;
+    loadError.value = errorMessage(err, "Load contract state", adminEndpoint);
   }
 }
 
@@ -351,7 +353,7 @@ async function addMessage() {
     await loadState();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Add message", adminEndpoint), "error");
   }
   store.overlay = false;
 }
@@ -377,7 +379,10 @@ async function deleteMessage(item: Message) {
     await loadState();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Delete message", adminEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -410,7 +415,10 @@ async function allowSender() {
     await loadState();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Allow sender", adminEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -436,7 +444,10 @@ async function revokeSender(addr: string) {
     await loadState();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Revoke sender", adminEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -502,7 +513,10 @@ async function updateContract() {
     await loadState();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Update contract", adminEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }

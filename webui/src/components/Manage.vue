@@ -115,6 +115,7 @@
 
 <script setup lang="ts">
 import { NodeStatus } from "@/types";
+import { errorMessage } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
 
@@ -142,7 +143,7 @@ async function createNode() {
     await startNode();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Create service"), "error");
   }
 }
 
@@ -157,7 +158,7 @@ async function startNode() {
     emit("awaitRunning");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Start node"), "error");
   }
 }
 
@@ -169,7 +170,7 @@ async function stopNode() {
     await finish("Node Stopped");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Stop node"), "error");
   }
 }
 
@@ -181,7 +182,7 @@ async function deleteNode() {
     await finish("Service Removed");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Remove service"), "error");
   }
 }
 
@@ -193,7 +194,7 @@ async function startReti() {
     await finish("Reti Started");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Start Reti"), "error");
   }
 }
 
@@ -205,7 +206,7 @@ async function stopReti() {
     await finish("Reti Stopped");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Stop Reti"), "error");
   }
 }
 
@@ -216,7 +217,7 @@ async function deleteReti() {
     await finish("Reti Removed");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Remove Reti"), "error");
   }
 }
 
@@ -228,7 +229,7 @@ async function toggleTelemetry() {
     await finish(`Telemetry ${action}d`);
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Toggle telemetry"), "error");
   }
 }
 
@@ -251,7 +252,7 @@ async function resetNode() {
     store.setSnackbar("Data Deleted", "success");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Delete node data"), "error");
   }
   loading.value = false;
 }

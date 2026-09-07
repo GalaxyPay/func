@@ -53,6 +53,7 @@
 </template>
 
 <script lang="ts" setup>
+import { errorMessage } from "@/utils";
 import { mdiClose, mdiEmail, mdiEmailOpenOutline } from "@mdi/js";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
@@ -84,7 +85,11 @@ const items = computed(() =>
 watch(
   () => props.visible,
   (visible) => {
-    if (visible) store.fetchMessages().catch((err) => console.error(err));
+    if (visible)
+      store.fetchMessages().catch((err) => {
+        console.error(err);
+        store.setSnackbar(errorMessage(err, "Load messages"), "error");
+      });
   }
 );
 </script>
