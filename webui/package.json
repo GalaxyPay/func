@@ -16,10 +16,10 @@
     "axios": "^1.20.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.42",
-    "vuetify": "^3.13.2"
+    "vuetify": "^3.13.3"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "typescript": "~6.0.3",
     "unplugin-auto-import": "^21.1.0",
