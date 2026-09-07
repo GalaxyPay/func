@@ -18,6 +18,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 
 const emit = defineEmits(["release"]);
@@ -30,9 +31,14 @@ onMounted(async () => {
     ? "GalaxyPay/go-algo-win"
     : "algorand/go-algorand";
   const url = `https://api.github.com/repos/${repo}/releases`;
-  const { data } = await axios({ url });
-  releases.value = data
-    .map((r: any) => r.tag_name)
-    .filter((n: string) => n.toLowerCase().includes("stable"));
+  try {
+    const { data } = await axios({ url });
+    releases.value = data
+      .map((r: any) => r.tag_name)
+      .filter((n: string) => n.toLowerCase().includes("stable"));
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Load node releases"), "error");
+  }
 });
 </script>

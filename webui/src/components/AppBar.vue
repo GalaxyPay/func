@@ -157,7 +157,7 @@
 </template>
 
 <script lang="ts" setup>
-import { formatAddr } from "@/utils";
+import { errorMessage, formatAddr } from "@/utils";
 import {
   mdiBell,
   mdiCog,
@@ -194,7 +194,9 @@ function openMessages(e: MouseEvent) {
 
 onBeforeMount(() => {
   store.refreshPart++;
-  store.fetchMessages().catch((err) => console.error(err));
+  store
+    .fetchMessages()
+    .catch((err) => console.error(errorMessage(err, "Load messages"), err));
 });
 async function walletAction(wallet: Wallet) {
   try {
@@ -207,7 +209,10 @@ async function walletAction(wallet: Wallet) {
     store.connectMenu = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, `${wallet.metadata.name} wallet request`, "the wallet"),
+      "error"
+    );
   }
 }
 

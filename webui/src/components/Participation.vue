@@ -240,12 +240,14 @@
 </template>
 
 <script lang="ts" setup>
+import { algodTarget } from "@/clients";
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
 import {
   b64,
   delay,
   effectiveResetDate,
+  errorMessage,
   execAtc,
   formatAddr,
   getSuggestedParams,
@@ -317,6 +319,12 @@ const port =
   location.protocol === "https:"
     ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
     : props.port;
+
+// The participation API is served by algod itself, so both clients fail
+// together when the node is down; name that endpoint in errors.
+const algodEndpoint = algodTarget(
+  `${location.protocol}//${hostname}${port ? `:${port}` : ""}`
+);
 
 const partClient = axios.create({
   baseURL: `${location.protocol}//${hostname}:${port}/v2/participation`,
@@ -436,7 +444,10 @@ async function refreshPartData() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Load participation keys", algodEndpoint),
+      "error"
+    );
   }
 }
 async function checkNewBlock(round: bigint) {
@@ -468,7 +479,7 @@ async function checkNewBlock(round: bigint) {
     liveTimestamps.push(Number(resp.block.header.timestamp));
     emit("blockTimestamps", [...cachedTimestamps, ...liveTimestamps]);
   } catch (err: any) {
-    console.error(err);
+    console.error(errorMessage(err, "Check new block", algodEndpoint), err);
   }
 }
 
@@ -544,7 +555,14 @@ watch(
 
 onMounted(() => {
   refreshPartData();
-  calcAvgBlockTime();
+  // Only drives the estimated expiry column, so report it without blocking
+  // the rest of the panel.
+  calcAvgBlockTime().catch((err) =>
+    console.error(
+      errorMessage(err, "Calculate average block time", algodEndpoint),
+      err
+    )
+  );
 });
 
 function loadDefaults() {
@@ -616,15 +634,31 @@ async function deleteKey(id: string) {
 If the key was previously registered, you should wait 320 rounds after unregistering it before deleting the key.`
     )
   ) {
-    await partClient.delete(id);
-    await refreshPartData();
+    try {
+      await partClient.delete(id);
+      await refreshPartData();
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(
+        errorMessage(err, "Delete participation key", algodEndpoint),
+        "error"
+      );
+    }
   }
 }
 
 async function showGenerateDialog() {
-  await getLastRound();
-  loadDefaults();
-  showGenerate.value = true;
+  try {
+    await getLastRound();
+    loadDefaults();
+    showGenerate.value = true;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(
+      errorMessage(err, "Get current round", algodEndpoint),
+      "error"
+    );
+  }
 }
 
 async function getLastRound() {
@@ -662,7 +696,10 @@ async function generateKey() {
       });
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Generate participation key", algodEndpoint),
+      "error"
+    );
   }
   resetAll();
 }
@@ -691,7 +728,10 @@ async function registerKey(item: Participation) {
     await execAtc(atc, props.algodClient, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Register participation key", algodEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -710,7 +750,10 @@ async function offline() {
     await execAtc(atc, props.algodClient, "Account Offline");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Take account offline", algodEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -856,7 +899,14 @@ async function getStats(addrs: string[]) {
     return stats;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(
+        err,
+        "Load block proposal stats",
+        props.name === "Voi" ? "the Voi Rewards API" : "the Algorand indexer"
+      ),
+      "error"
+    );
   }
 }
 </script>

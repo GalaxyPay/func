@@ -61,6 +61,7 @@
 </template>
 
 <script lang="ts" setup>
+import { errorMessage } from "@/utils";
 import { mdiClose } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -128,7 +129,7 @@ MANAGER_MNEMONIC=${mnemonic.value}`;
     show.value = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Add Reti service"), "error");
   }
 }
 </script>
