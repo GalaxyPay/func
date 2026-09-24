@@ -3,7 +3,7 @@
 # script is bundled inside the app at /opt/func/uninstall.sh.
 #
 #   sudo /opt/func/uninstall.sh            # remove the app, keep node data + accounts
-#   sudo /opt/func/uninstall.sh --purge    # also stop node/reti, delete data and accounts
+#   sudo /opt/func/uninstall.sh --purge    # also stop node/reti/valar, delete data and accounts
 set -u
 
 PURGE=0
@@ -22,10 +22,10 @@ launchctl bootout system/func.update 2>/dev/null || true
 rm -f /Library/LaunchDaemons/func.update.plist
 
 if [ "$PURGE" -eq 1 ]; then
-    echo "Purging node/reti services, data, and accounts..."
-    # The node and reti daemons are independent, KeepAlive launchd jobs the app
+    echo "Purging node/reti/valar services, data, and accounts..."
+    # The node, reti and valar daemons are independent, KeepAlive launchd jobs the app
     # creates at runtime with dynamic, per-network names (func.algorand, func.voi, ...),
-    # plus a fixed func.reti. Boot out and remove every func.* daemon before deleting
+    # plus fixed func.reti and func.valar. Boot out and remove every func.* daemon before deleting
     # data/accounts so nothing is left running against removed files.
     for plist in /Library/LaunchDaemons/func.*.plist; do
         [ -e "$plist" ] || continue
@@ -38,22 +38,23 @@ if [ "$PURGE" -eq 1 ]; then
     pkill -KILL -u _func-node 2>/dev/null || true
     pkill -KILL -u _func-reti 2>/dev/null || true
 
-    # Remove app files, accounts, homes, and all node/reti data.
+    # Remove app files, accounts, homes, and all node/reti/valar data.
     rm -rf /opt/func
     dscl /Local/Default -delete /Users/_func-node 2>/dev/null || true
     dscl /Local/Default -delete /Users/_func-reti 2>/dev/null || true
-    rm -rf /usr/local/var/func-node /usr/local/var/func-reti
+dscl /Local/Default -delete /Users/_func-valar 2>/dev/null || true
+    rm -rf /usr/local/var/func-node /usr/local/var/func-reti /usr/local/var/func-valar
     rm -rf /usr/local/share/func
     echo "FUNC fully removed."
 else
-    # Preserve mode: leave node/reti daemons running and all data intact; just
+    # Preserve mode: leave node/reti/valar daemons running and all data intact; just
     # remove the manager app. Stash this script so --purge stays available later
     # (removing /opt/func would otherwise delete it).
     cp "$0" /usr/local/share/func/uninstall.sh 2>/dev/null || true
     chmod 0755 /usr/local/share/func/uninstall.sh 2>/dev/null || true
     rm -rf /opt/func
     echo ""
-    echo "FUNC app removed. Node/reti services and data were preserved and keep running."
+    echo "FUNC app removed. Node/reti/valar services and data were preserved and keep running."
     echo "To remove everything later, run:"
     echo "  sudo /usr/local/share/func/uninstall.sh --purge"
 fi

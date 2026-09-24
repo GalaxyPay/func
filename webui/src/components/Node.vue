@@ -56,6 +56,31 @@
               />
             </v-chip>
           </div>
+          <div
+            class="py-1"
+            v-show="
+              nodeStatus.valarStatus &&
+              nodeStatus.valarStatus.serviceStatus !== 'Not Found'
+            "
+          >
+            <v-badge floating dot class="mx-3 mb-1" :color="valarColor" />
+            Valar Running
+            <v-chip
+              v-show="valarUpdate"
+              color="warning"
+              size="small"
+              class="ml-1"
+              @click="updateValar()"
+              density="compact"
+            >
+              Update
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="`Update to ${valarLatest}`"
+              />
+            </v-chip>
+          </div>
           <div class="py-1" v-show="nodeStatus.telemetryStatus">
             <v-badge floating dot class="mx-3 mb-1" :color="telemetryColor" />
             Telemetry
@@ -243,6 +268,7 @@ const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const retiLatest = ref<string>();
+const valarLatest = ref<string>();
 const partDetails = ref<PartDetails>();
 const generatingKey = ref(false);
 const showReset = ref(false);
@@ -257,6 +283,12 @@ const retiUpdate = computed(() => {
   if (!current || !retiLatest.value) return false;
   const trimL = current.slice(current.indexOf("version") + 8);
   return trimL.slice(0, trimL.indexOf(" ")) !== retiLatest.value;
+});
+
+const valarUpdate = computed(() => {
+  const current = nodeStatus.value?.valarStatus?.version;
+  if (!current || !valarLatest.value) return false;
+  return current !== valarLatest.value;
 });
 
 const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
@@ -292,6 +324,16 @@ const participatingColor = computed(() =>
 );
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
+
+// The Valar daemon has no health endpoint; the backend reports exeStatus from
+// recent log activity (null = service up but nothing logged yet, Stopped =
+// service up but the log has gone stale).
+const valarColor = computed(() => {
+  const vs = nodeStatus.value?.valarStatus;
+  if (vs?.serviceStatus !== "Running") return "red";
+  if (vs.exeStatus === "Running") return "success";
+  return vs.exeStatus === "Stopped" ? "warning" : "grey";
+});
 
 const telemetryEnabled = computed(() =>
   nodeStatus.value?.telemetryStatus?.includes("enabled")
@@ -424,6 +466,7 @@ async function autoRefresh() {
       }
       retry = false;
       await checkReti();
+      await checkValar();
     } catch (err: any) {
       // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
       pendingStatus = null;
@@ -491,6 +534,7 @@ async function getAlgodStatus() {
     }
     retry = false;
     await checkReti();
+    await checkValar();
     if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
       autoRefresh();
     }
@@ -533,6 +577,23 @@ async function checkReti() {
     await store.api.put("reti/stop");
     await store.api.put("reti/start");
   }
+}
+
+async function checkValar() {
+  if (nodeStatus.value?.valarStatus?.version && !valarLatest.value) {
+    // Only used to flag an available update, so a PyPI outage shouldn't
+    // surface as a node status failure or break the refresh loop.
+    try {
+      const resp = await axios({
+        url: "https://pypi.org/pypi/valar_daemon/json",
+      });
+      valarLatest.value = resp.data.info.version;
+    } catch (err: any) {
+      console.error(errorMessage(err, "Check for Valar updates"), err);
+    }
+  }
+  // No auto-restart here: systemd/launchd/SCM recovery already restart a
+  // crashed daemon.
 }
 
 const catchupProgress = computed(() => {
@@ -581,6 +642,20 @@ async function updateReti() {
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, "Update Reti"), "error");
+  }
+  loading.value = false;
+}
+
+async function updateValar() {
+  try {
+    if (!valarUpdate.value) return;
+    loading.value = true;
+    await store.api.post("valar/update");
+    await getNodeStatus();
+    store.setSnackbar("Valar Updated", "success");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Update Valar"), "error");
   }
   loading.value = false;
 }

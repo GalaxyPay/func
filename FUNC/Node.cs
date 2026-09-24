@@ -1,4 +1,5 @@
 ﻿using System.Formats.Tar;
+using FUNC.Controllers;
 using FUNC.Models;
 using Newtonsoft.Json.Linq;
 using static System.OperatingSystem;
@@ -132,7 +133,7 @@ namespace FUNC
                     }
                 }
 
-                RetiStatus retiStatus = new()
+                DaemonStatus retiStatus = new()
                 {
                     ServiceStatus = retiServiceStatus,
                     Version = version,
@@ -140,6 +141,9 @@ namespace FUNC
                 };
 
                 nodeStatus.RetiStatus = retiStatus;
+
+                // Valar Status
+                nodeStatus.ValarStatus = await ValarController.GetStatus();
 
                 // Telemetry Status
                 string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");

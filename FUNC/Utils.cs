@@ -43,6 +43,31 @@ namespace FUNC
             return output;
         }
 
+        public record ProcResult(int ExitCode, string Stdout, string Stderr);
+
+        // Run an executable directly (no shell), with optional environment variables and
+        // working directory, capturing stdout, stderr and the exit code. Unlike ExecCmd
+        // this needs no shell quoting and surfaces the error output of tools like uv.
+        public static async Task<ProcResult> RunProcess(string fileName, IEnumerable<string> args, IDictionary<string, string>? env = null, string? workingDir = null)
+        {
+            Console.WriteLine($"{fileName} {string.Join(' ', args)}");
+            Process p = new();
+            p.StartInfo.FileName = fileName;
+            foreach (string a in args) p.StartInfo.ArgumentList.Add(a);
+            if (workingDir != null) p.StartInfo.WorkingDirectory = workingDir;
+            if (env != null) foreach (var (k, v) in env) p.StartInfo.Environment[k] = v;
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
+            p.Start();
+            // Drain both pipes concurrently so a chatty stream cannot deadlock the process.
+            var stdout = p.StandardOutput.ReadToEndAsync();
+            var stderr = p.StandardError.ReadToEndAsync();
+            await Task.WhenAll(stdout, stderr);
+            await p.WaitForExitAsync();
+            return new ProcResult(p.ExitCode, stdout.Result, stderr.Result);
+        }
+
         public static async Task RestartWindowsService(string svc)
         {
             await ExecCmd($"sc stop \"{svc}\"");

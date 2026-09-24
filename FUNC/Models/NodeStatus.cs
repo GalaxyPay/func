@@ -8,10 +8,12 @@
         public required int Port { get; set; }
         public required string Token { get; set; }
         public string? TelemetryStatus { get; set; }
-        public RetiStatus? RetiStatus { get; set; }
+        public DaemonStatus? RetiStatus { get; set; }
+        public DaemonStatus? ValarStatus { get; set; }
     }
 
-    public class RetiStatus
+    // Status of an add-on daemon service (Reti, Valar).
+    public class DaemonStatus
     {
         public required string ServiceStatus { get; set; }
         public string? Version { get; set; }
