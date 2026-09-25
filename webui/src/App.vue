@@ -7,6 +7,7 @@
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
     <Snackbar />
+    <Login />
   </v-app>
 </template>
 

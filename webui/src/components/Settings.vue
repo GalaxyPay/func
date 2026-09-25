@@ -9,6 +9,20 @@
       <v-container>
         <v-row align="center">
           <v-col>
+            <div>Password</div>
+            <div class="text-caption text-grey">
+              Required to control this node
+            </div>
+          </v-col>
+          <v-col class="text-right">
+            <v-btn variant="tonal" @click="showPassword = true">Change</v-btn>
+            <v-btn variant="tonal" class="ml-2" @click="store.signOut()">
+              Sign Out
+            </v-btn>
+          </v-col>
+        </v-row>
+        <v-row align="center">
+          <v-col>
             <div>FUNC Version</div>
             <div class="text-caption text-grey">
               {{ appVersion }}
@@ -112,6 +126,55 @@
         </v-row>
       </v-container>
     </v-card>
+    <v-dialog v-model="showPassword" max-width="480">
+      <v-card>
+        <v-form ref="passwordForm" @submit.prevent="changePassword()">
+          <v-card-title>Change Password</v-card-title>
+          <v-card-text>
+            <v-text-field
+              v-model="currentPassword"
+              label="Current Password"
+              type="password"
+              autocomplete="current-password"
+              :rules="[required]"
+              :error-messages="passwordError"
+              @update:model-value="passwordError = ''"
+            />
+            <v-text-field
+              v-model="newPassword"
+              label="New Password"
+              type="password"
+              autocomplete="new-password"
+              :rules="[required, minLength]"
+              hint="At least 8 characters"
+              persistent-hint
+              class="mb-2"
+            />
+            <v-text-field
+              v-model="confirmPassword"
+              label="Confirm New Password"
+              type="password"
+              autocomplete="new-password"
+              :rules="[required, matches]"
+            />
+            <div class="text-caption text-grey mt-2">
+              Every other browser and device will be signed out.
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn text="Cancel" variant="tonal" @click="showPassword = false" />
+            <v-btn
+              type="submit"
+              text="Change"
+              color="primary"
+              variant="tonal"
+              :loading="changingPassword"
+            />
+          </v-card-actions>
+        </v-form>
+      </v-card>
+    </v-dialog>
   </v-dialog>
 </template>
 
@@ -140,6 +203,43 @@ const show = computed({
 
 const appVersion = __APP_VERSION__;
 const funcLatest = ref();
+
+const showPassword = ref(false);
+const passwordForm = ref();
+const currentPassword = ref("");
+const newPassword = ref("");
+const confirmPassword = ref("");
+const passwordError = ref("");
+const changingPassword = ref(false);
+const required = (v: string) => !!v || "Required";
+const minLength = (v: string) =>
+  (v?.length ?? 0) >= 8 || "At least 8 characters";
+const matches = (v: string) =>
+  v === newPassword.value || "Passwords do not match";
+
+async function changePassword() {
+  const { valid } = await passwordForm.value.validate();
+  if (!valid) return;
+  changingPassword.value = true;
+  try {
+    const { data } = await store.api.put("auth/password", {
+      currentPassword: currentPassword.value,
+      newPassword: newPassword.value,
+    });
+    // The change signs out every session; keep this one on the new token.
+    store.setApiToken(data.token);
+    showPassword.value = false;
+    currentPassword.value = newPassword.value = confirmPassword.value = "";
+    store.setSnackbar("Password changed", "success");
+  } catch (err: any) {
+    if (err?.response?.status === 401) {
+      passwordError.value = "Current password is incorrect";
+    } else {
+      store.setSnackbar(errorMessage(err, "Change password"), "error");
+    }
+  }
+  changingPassword.value = false;
+}
 const updatingFunc = ref(false);
 let init = false;
 

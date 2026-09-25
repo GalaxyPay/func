@@ -3,6 +3,7 @@
 # service accounts need a real, writable home directory (not --no-create-home).
 id -u func-node >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-node --shell /usr/sbin/nologin func-node
 id -u func-reti >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-reti --shell /usr/sbin/nologin func-reti
+id -u func-valar >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-valar --shell /usr/sbin/nologin func-valar
 systemctl daemon-reload
 systemctl start func
 systemctl enable func
