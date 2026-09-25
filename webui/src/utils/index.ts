@@ -82,6 +82,16 @@ const funcOrigin = (() => {
   }
 })();
 
+// The machine running the FUNC service, and therefore algod: the host part of
+// the API origin (which is only ever set for development).
+export function nodeHostname(): string {
+  try {
+    return new URL(funcOrigin).hostname;
+  } catch {
+    return location.hostname;
+  }
+}
+
 // Recover the origin an axios request was aimed at. Network failures from
 // fetch/algosdk carry no request info, hence the optional caller-supplied
 // target in errorMessage().
@@ -124,6 +134,9 @@ export function errorMessage(
       err,
       target
     )} - check that it is running and not blocked by a firewall or network issue.`;
+  }
+  if (err?.response?.status === 401) {
+    return `${process} failed: sign in to FUNC first.`;
   }
   return `${process} failed: ${errorDetail(err)}`;
 }

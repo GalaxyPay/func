@@ -1,0 +1,17 @@
+[Unit]
+Description=Valar daemon
+After=network.target
+
+[Service]
+User=func-valar
+Group=func-valar
+WorkingDirectory=/usr/share/func/valar
+ExecStart=/usr/share/func/valar/venv/bin/python -m valar_daemon.run_daemon --config_path /usr/share/func/valar/daemon.config --log_path /usr/share/func/valar/log
+Environment=PYTHONNOUSERSITE=1
+Restart=always
+RestartSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

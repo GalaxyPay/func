@@ -1,8 +1,11 @@
 @FUNC_HostAddress = http://localhost:3536
+# Session token from POST {{FUNC_HostAddress}}/auth/login {"password": "..."}
+@FUNC_Token = paste-session-token-here
 
 ### GOAL
 GET {{FUNC_HostAddress}}/goal/version
 Accept: application/text
+Authorization: Bearer {{FUNC_Token}}
 
 ### ALGORAND
 GET {{FUNC_HostAddress}}/algorand/

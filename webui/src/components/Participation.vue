@@ -251,6 +251,7 @@ import {
   execAtc,
   formatAddr,
   getSuggestedParams,
+  nodeHostname,
 } from "@/utils";
 import {
   mdiChevronDown,
@@ -314,7 +315,7 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
-const hostname = import.meta.env.VITE_HOSTNAME || location.hostname;
+const hostname = nodeHostname();
 const port =
   location.protocol === "https:"
     ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
