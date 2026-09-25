@@ -579,6 +579,8 @@ async function checkReti() {
   }
 }
 
+let lastValarPoll = 0;
+
 async function checkValar() {
   if (nodeStatus.value?.valarStatus?.version && !valarLatest.value) {
     // Only used to flag an available update, so a PyPI outage shouldn't
@@ -592,8 +594,22 @@ async function checkValar() {
       console.error(errorMessage(err, "Check for Valar updates"), err);
     }
   }
+  // Node status is only fetched on explicit triggers, so right after a start
+  // the snapshot shows the service Running before the daemon has logged
+  // anything (exeStatus null) and would stay grey until a manual refresh.
+  // While the daemon isn't confirmed live, re-poll the service status on a
+  // throttle so the badge settles on its own. Stops once it reports Running.
   // No auto-restart here: systemd/launchd/SCM recovery already restart a
   // crashed daemon.
+  const vs = nodeStatus.value?.valarStatus;
+  if (
+    vs?.serviceStatus === "Running" &&
+    vs.exeStatus !== "Running" &&
+    Date.now() - lastValarPoll > 10000
+  ) {
+    lastValarPoll = Date.now();
+    await getNodeStatus();
+  }
 }
 
 const catchupProgress = computed(() => {

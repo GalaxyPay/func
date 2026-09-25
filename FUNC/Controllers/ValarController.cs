@@ -194,6 +194,10 @@ namespace FUNC.Controllers
                 {
                     sw.WriteLine(model.Config);
                 }
+                // Log activity is the liveness signal, so start from an empty log dir:
+                // logs left over from a removed install would otherwise report the new
+                // daemon as running before it has started.
+                if (Directory.Exists(LogDir)) Directory.Delete(LogDir, true);
                 Directory.CreateDirectory(LogDir);
 
                 // On Unix the run-as account exists before the service does, and launchd

@@ -49,7 +49,7 @@
           <v-spacer />
           <v-btn
             type="submit"
-            text="Install and Start Valar"
+            text="Start Valar Service"
             color="primary"
             variant="tonal"
           />
