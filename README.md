@@ -207,11 +207,19 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 - [local-publish.sh](local-publish.sh) and [create-package-pkg.sh](create-package-pkg.sh) (Mac)
 - [local-publish.sh](local-publish.sh) and [create-package-deb.sh](create-package-deb.sh) (Linux)
 
-To run the web UI from the Vite dev server against an installed FUNC service, set `VITE_ORIGIN=http://localhost:3536` in `webui/.env.local` and allow that dev origin in the service's `func.json` (the API sends no CORS headers otherwise):
+To run the web UI from the Vite dev server against an installed FUNC service, point it at that service in `webui/.env.development.local`:
+
+```sh
+VITE_ORIGIN=http://localhost:3536
+```
+
+The UI talks to algod on the same host, so if the service runs on another machine just use its address (for example `http://192.168.1.100:3536`). The API sends no CORS headers by default, so you also need to allow the dev server's origin on the machine running the service: create a file named `func.json` in the same folder as `auth.json`, with the following contents, then restart the FUNC service:
 
 ```json
 { "Cors": { "Origins": ["http://localhost:3000"] } }
 ```
+
+This file is only needed for development; a normal install never has one.
 
 Note the `create-package` scripts take arguments of version and architecure (`amd64` or `arm64`). For example:
 

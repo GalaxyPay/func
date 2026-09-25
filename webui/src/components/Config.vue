@@ -66,7 +66,7 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { delay, errorMessage } from "@/utils";
+import { delay, errorMessage, nodeHostname } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -210,7 +210,7 @@ watch(show, async (val) => {
       config.value = resp.data;
       e2eIsSet = config.value.EnableP2P != null;
       hybridIsSet = config.value.EnableP2PHybridMode != null;
-      const debugHostname = import.meta.env.VITE_HOSTNAME || location.hostname;
+      const debugHostname = nodeHostname();
       const debugPort =
         location.protocol === "https:"
           ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
