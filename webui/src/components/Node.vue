@@ -605,7 +605,7 @@ async function checkValar() {
   if (
     vs?.serviceStatus === "Running" &&
     vs.exeStatus !== "Running" &&
-    Date.now() - lastValarPoll > 10000
+    Date.now() - lastValarPoll > 3000
   ) {
     lastValarPoll = Date.now();
     await getNodeStatus();
