@@ -119,12 +119,13 @@ async function startValidator() {
   try {
     const { valid } = await form.value.validate();
     if (!valid) return;
-    const env = `ALGO_ALGOD_URL=http://localhost:${props.port}
-ALGO_ALGOD_TOKEN=${props.token}
-RETI_VALIDATORID=${validatorId.value}
-RETI_NODENUM=${nodeNum.value}
-MANAGER_MNEMONIC=${mnemonic.value}`;
-    await store.api.post("reti", { env });
+    // The service renders the daemon's .env itself, including the algod URL and
+    // token of the node it manages, so only the validator settings are sent.
+    await store.api.post("reti", {
+      validatorId: validatorId.value,
+      nodeNum: nodeNum.value,
+      mnemonic: mnemonic.value.trim(),
+    });
     await store.api.put("reti/start");
     show.value = false;
   } catch (err: any) {

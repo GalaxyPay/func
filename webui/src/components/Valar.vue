@@ -120,27 +120,17 @@ async function startDaemon() {
     if (!valid) return;
     loading.value = true;
     const ids = adIds.value!.split(",").map((s) => Number(s.trim()));
-    const config = `[validator_config]
-validator_ad_id_list = [${ids.join(", ")}]
-validator_manager_mnemonic = ${mnemonic.value}
-
-[algo_client_config]
-algod_config_server = http://localhost:${props.port}
-algod_config_token = ${props.token}
-
-[logging_config]
-max_log_file_size_B = 400*1024
-num_of_log_files_per_level = 3
-
-[runtime_config]
-loop_period_s = 15
-`;
     store.setSnackbar(
       "Installing Python runtime and Valar daemon. This can take a few minutes...",
       "info",
       -1
     );
-    await store.api.post("valar", { config });
+    // The service renders daemon.config itself, including the algod URL and
+    // token of the node it manages, so only the validator settings are sent.
+    await store.api.post("valar", {
+      validatorAdIds: ids,
+      mnemonic: mnemonic.value.trim(),
+    });
     await store.api.put("valar/start");
     store.setSnackbar("Valar Started", "success");
     store.refreshStatus++;

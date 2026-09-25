@@ -2,7 +2,6 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
@@ -40,32 +39,43 @@ namespace FUNC.Controllers
         private static readonly string ConfigPath = Path.Combine(ValarDir, "daemon.config");
         private static readonly string LogDir = Path.Combine(ValarDir, "log");
 
-        [GeneratedRegex(@"^\s*validator_ad_id_list\s*=\s*\[\d+(\s*,\s*\d+)*\]\s*$", RegexOptions.Multiline)]
-        private static partial Regex AdIdListLine();
+        private const string LinuxUnit = "/lib/systemd/system/valar.service";
+        private const string MacPlist = "/Library/LaunchDaemons/func.valar.plist";
 
-        // The daemon eval()s validator_ad_id_list, so only accept a plain list of integers.
-        private static void ValidateConfig(string config)
+        // The daemon eval()s several values in daemon.config, so the file is rendered
+        // here from validated fields and free-form config text is never accepted. The
+        // algod URL and token come from the Algorand node FUNC manages.
+        private static string RenderConfig(ValarCreate model)
         {
-            if (!AdIdListLine().IsMatch(config))
-                throw new Exception("validator_ad_id_list must be a list of numeric Validator Ad IDs");
+            if (model.ValidatorAdIds.Count == 0) throw new Exception("At least one Validator Ad ID is required");
+            int port = Node.AlgodPort("algorand");
+            string token = Node.AlgodToken("algorand");
+            if (port == 0 || token.Length == 0) throw new Exception("Algorand node is not configured");
+            string mnemonic = Utils.ValidateMnemonic(model.Mnemonic);
+            string ids = string.Join(", ", model.ValidatorAdIds.Select(id => id.ToString()));
+            return string.Join('\n',
+            [
+                "[validator_config]",
+                $"validator_ad_id_list = [{ids}]",
+                $"validator_manager_mnemonic = {mnemonic}",
+                "",
+                "[algo_client_config]",
+                $"algod_config_server = http://localhost:{port}",
+                $"algod_config_token = {token}",
+                "",
+                "[logging_config]",
+                "max_log_file_size_B = 400*1024",
+                "num_of_log_files_per_level = 3",
+                "",
+                "[runtime_config]",
+                "loop_period_s = 15",
+                "",
+            ]);
         }
 
         public static async Task<DaemonStatus> GetStatus()
         {
-            string query = string.Empty;
-            if (IsWindows())
-            {
-                query = await Utils.ExecCmd($"sc query \"{WinService}\"");
-            }
-            else if (IsLinux())
-            {
-                query = await Utils.ExecCmd("systemctl show valar --property=LoadState --property=ActiveState");
-            }
-            else if (IsMacOS())
-            {
-                query = await Utils.ExecCmd("launchctl list | grep -i func.valar || (test -f /Library/LaunchDaemons/func.valar.plist && echo stopped || echo none)");
-            }
-            string serviceStatus = Utils.ParseServiceStatus(query);
+            string serviceStatus = await Utils.ServiceStatus("valar", WinService);
 
             // The daemon has no health endpoint, but it appends to its log every loop
             // (15s by default), so a recently written log file is the liveness signal.
@@ -141,30 +151,31 @@ namespace FUNC.Controllers
         {
             if (!Directory.Exists(ValarDir)) return;
             bool hasConfig = System.IO.File.Exists(ConfigPath);
+            const UnixFileMode ownerOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            const UnixFileMode ownerOnlyFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
             if (IsLinux())
             {
-                await Utils.ExecCmd($"id -u {LinuxValarUser} >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/{LinuxValarUser} --shell /usr/sbin/nologin {LinuxValarUser}");
-                await Utils.ExecCmd($"chown -R {LinuxValarUser}:{LinuxValarUser} '{ValarDir}'");
-                await Utils.ExecCmd($"chmod 700 '{ValarDir}'");
-                if (hasConfig) await Utils.ExecCmd($"chmod 600 '{ConfigPath}'");
+                await Utils.EnsureUnixUser(LinuxValarUser);
+                await Utils.ChownRecursive($"{LinuxValarUser}:{LinuxValarUser}", ValarDir);
+                System.IO.File.SetUnixFileMode(ValarDir, ownerOnlyDir);
+                if (hasConfig) System.IO.File.SetUnixFileMode(ConfigPath, ownerOnlyFile);
             }
             else if (IsMacOS())
             {
                 // The _func-valar account is created by the pkg postinstall. Without it
                 // launchd cannot start the job, so fail loudly rather than skip.
-                string uid = await Utils.ExecCmd($"id -u {MacValarUser} 2>/dev/null");
-                if (string.IsNullOrWhiteSpace(uid))
+                if (!await Utils.EnsureUnixUser(MacValarUser))
                     throw new Exception($"The {MacValarUser} account is missing. Reinstall FUNC to create it.");
-                await Utils.ExecCmd($"chown -R {MacValarUser} '{ValarDir}'");
-                await Utils.ExecCmd($"chmod 700 '{ValarDir}'");
-                if (hasConfig) await Utils.ExecCmd($"chmod 600 '{ConfigPath}'");
+                await Utils.ChownRecursive(MacValarUser, ValarDir);
+                System.IO.File.SetUnixFileMode(ValarDir, ownerOnlyDir);
+                if (hasConfig) System.IO.File.SetUnixFileMode(ConfigPath, ownerOnlyFile);
             }
             else if (IsWindows())
             {
                 // Strip the ACEs inherited from ProgramData (which let all local users read)
                 // and grant only SYSTEM, Administrators and the per-service virtual account.
-                await Utils.ExecCmd($"icacls \"{ValarDir}\" /inheritance:r /grant \"SYSTEM:(OI)(CI)F\" /grant \"Administrators:(OI)(CI)F\" /grant \"{WinAccount}:(OI)(CI)M\" /T /Q");
-                if (hasConfig) await Utils.ExecCmd($"icacls \"{ConfigPath}\" /inheritance:r /grant \"{WinAccount}:R\" /grant \"SYSTEM:F\" /grant \"Administrators:F\"");
+                await Utils.Exec("icacls.exe", ValarDir, "/inheritance:r", "/grant", "SYSTEM:(OI)(CI)F", "/grant", "Administrators:(OI)(CI)F", "/grant", $"{WinAccount}:(OI)(CI)M", "/T", "/Q");
+                if (hasConfig) await Utils.Exec("icacls.exe", ConfigPath, "/inheritance:r", "/grant", $"{WinAccount}:R", "/grant", "SYSTEM:F", "/grant", "Administrators:F");
             }
         }
 
@@ -181,7 +192,7 @@ namespace FUNC.Controllers
                 // shadow ours and FUNC would end up driving the user's copy.
                 if (IsLinux() && System.IO.File.Exists("/etc/systemd/system/valar.service"))
                     throw new Exception("A valar.service unit already exists on this system");
-                ValidateConfig(model.Config);
+                string config = RenderConfig(model);
 
                 await EnsureUv();
                 await InstallDaemon(upgrade: false);
@@ -190,10 +201,7 @@ namespace FUNC.Controllers
                 {
                     System.IO.File.Delete(ConfigPath);
                 }
-                using (StreamWriter sw = System.IO.File.CreateText(ConfigPath))
-                {
-                    sw.WriteLine(model.Config);
-                }
+                System.IO.File.WriteAllText(ConfigPath, config);
                 // Log activity is the liveness signal, so start from an empty log dir:
                 // logs left over from a removed install would otherwise report the new
                 // daemon as running before it has started.
@@ -209,23 +217,23 @@ namespace FUNC.Controllers
                 {
                     string binPath = Path.Combine(AppContext.BaseDirectory, "Services", "ValarService.exe");
                     // Run under the auto-managed per-service virtual account instead of LocalSystem.
-                    await Utils.ExecCmd($"sc create \"{WinService}\" binPath= \"{binPath}\" obj= \"{WinAccount}\" start= delayed-auto");
+                    await Utils.Sc("create", WinService, "binPath=", binPath, "obj=", WinAccount, "start=", "delayed-auto");
                     // The wrapper exits non-zero when the daemon dies; have SCM restart it.
-                    await Utils.ExecCmd($"sc failure \"{WinService}\" reset= 86400 actions= restart/30000/restart/30000/restart/30000");
+                    await Utils.Sc("failure", WinService, "reset=", "86400", "actions=", "restart/30000/restart/30000/restart/30000");
                     await ApplyDirOwnership();
                 }
                 else if (IsLinux())
                 {
                     string servicePath = Path.Combine(AppContext.BaseDirectory, "Templates", "valar.service");
-                    await Utils.ExecCmd($"cp {servicePath} /lib/systemd/system");
-                    await Utils.ExecCmd("systemctl daemon-reload");
-                    await Utils.ExecCmd("systemctl enable valar");
+                    System.IO.File.Copy(servicePath, LinuxUnit, true);
+                    await Utils.Systemctl("daemon-reload");
+                    await Utils.Systemctl("enable", "valar");
                 }
                 else if (IsMacOS())
                 {
                     string plistPath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.valar.plist");
-                    await Utils.ExecCmd($"cp {plistPath} /Library/LaunchDaemons");
-                    await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.valar.plist");
+                    System.IO.File.Copy(plistPath, MacPlist, true);
+                    await Utils.Launchctl("bootstrap", "system", MacPlist);
                 }
 
                 return Ok();
@@ -263,16 +271,16 @@ namespace FUNC.Controllers
             {
                 if (IsWindows())
                 {
-                    await Utils.ExecCmd($"sc start \"{WinService}\"");
+                    await Utils.Sc("start", WinService);
                 }
                 else if (IsLinux())
                 {
-                    await Utils.ExecCmd("systemctl start valar");
-                    await Utils.ExecCmd("systemctl daemon-reload");
+                    await Utils.Systemctl("start", "valar");
+                    await Utils.Systemctl("daemon-reload");
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.valar.plist");
+                    await Utils.Launchctl("bootstrap", "system", MacPlist);
                 }
 
                 return Ok();
@@ -291,16 +299,16 @@ namespace FUNC.Controllers
             {
                 if (IsWindows())
                 {
-                    await Utils.ExecCmd($"sc stop \"{WinService}\"");
+                    await Utils.Sc("stop", WinService);
                 }
                 else if (IsLinux())
                 {
-                    await Utils.ExecCmd("systemctl stop valar");
-                    await Utils.ExecCmd("systemctl daemon-reload");
+                    await Utils.Systemctl("stop", "valar");
+                    await Utils.Systemctl("daemon-reload");
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd("launchctl bootout system/func.valar");
+                    await Utils.Launchctl("bootout", "system/func.valar");
                 }
 
                 return Ok();
@@ -319,17 +327,17 @@ namespace FUNC.Controllers
             {
                 if (IsWindows())
                 {
-                    await Utils.ExecCmd($"sc delete \"{WinService}\"");
+                    await Utils.Sc("delete", WinService);
                 }
                 else if (IsLinux())
                 {
-                    await Utils.ExecCmd("rm /lib/systemd/system/valar.service");
-                    await Utils.ExecCmd("systemctl daemon-reload");
+                    System.IO.File.Delete(LinuxUnit);
+                    await Utils.Systemctl("daemon-reload");
                 }
                 else if (IsMacOS())
                 {
-                    await Utils.ExecCmd("launchctl bootout system/func.valar");
-                    await Utils.ExecCmd("rm /Library/LaunchDaemons/func.valar.plist");
+                    await Utils.Launchctl("bootout", "system/func.valar");
+                    System.IO.File.Delete(MacPlist);
                 }
 
                 return Ok();
@@ -462,7 +470,7 @@ namespace FUNC.Controllers
                     ?? throw new Exception("uv binary not found in archive");
                 System.IO.File.Move(extracted, UvPath, true);
                 Directory.Delete(tmpDir, true);
-                await Utils.ExecCmd($"chmod 755 '{UvPath}'");
+                System.IO.File.SetUnixFileMode(UvPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
             }
 
             System.IO.File.Delete(filePath);

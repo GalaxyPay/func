@@ -164,13 +164,31 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 - The app is a locally hosted webpage, <http://localhost:3536>. After install, bookmark it for easy access.
 
+### Password
+
+The FUNC service runs with administrator privileges and manages services on your computer, so it asks you to choose a password the first time you open the app. This stops websites you visit and other machines on your network from controlling your node. Choose the password right after installing: until you do, anyone who can reach the app could choose it for you. You can change it later from Settings.
+
+The app can be opened from any device that can reach the computer (see Remote Access below), so a headless machine is set up by opening `http://<its address>:3536` from another computer. Signing in keeps you signed in on that browser for 30 days. Changing the password signs out every other browser and device.
+
+Sign-in attempts are rate limited: after five failures from one address, that address must wait 30 seconds, doubling with each further failure, and the whole network is limited to ten failures per ten minutes. Attempts made on the computer itself are never limited by the network-wide cap, so you can always sign in there.
+
+If you forget the password, delete the file below and restart the FUNC service (or reboot). The app then asks you to choose a new password.
+
+| OS      | Password file                     |
+| ------- | --------------------------------- |
+| Windows | `C:\ProgramData\func\auth.json`   |
+| macOS   | `/usr/local/share/func/auth.json` |
+| Linux   | `/usr/share/func/auth.json`       |
+
+Anyone with the password can control the node services on your machine, so pick a strong one and do not share it.
+
 - The node will restart automatically if your computer reboots, but you will need to configure your computer to **_not_** go into Sleep mode in order to keep the node running 24/7.
 
 - If you Stop a node and restart your computer, the node will restart automatically. You must remove the service if you want the node to not restart. Removing the service preserves the node data; deleting the data is a separate step.
 
 ### Remote Access (Advanced)
 
-- If you want to access the site from another computer on your network, you will need to open the following ports:
+- The app can be used from your phone or another computer on your network with the same password. To reach it, you will need to open the following ports:
   - 3536 AND 3537 - FUNC UI and API
   - 8081 - Algorand algod
   - 8082 AND 3538 - Voi algod
@@ -179,7 +197,7 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 - This should **ONLY** be done on a local network - **DO NOT** open these ports to the internet
 
-- If you want to be able to use WalletConnect wallets (e.g. Defly, Pera) or "copy to clipboard" buttons while accessing the site remotely, you'll need to use port 3537 which serves the site with a self-signed cert over HTTPS.
+- Prefer port 3537 when accessing the site remotely: it serves the site with a self-signed cert over HTTPS, so your password is not sent in the clear. It is also required for WalletConnect wallets (e.g. Defly, Pera) and the "copy to clipboard" buttons.
 
 ## Build (for Developers)
 
@@ -189,10 +207,16 @@ You can fork the repo and let Github Actions do the build for you, or you can ru
 - [local-publish.sh](local-publish.sh) and [create-package-pkg.sh](create-package-pkg.sh) (Mac)
 - [local-publish.sh](local-publish.sh) and [create-package-deb.sh](create-package-deb.sh) (Linux)
 
+To run the web UI from the Vite dev server against an installed FUNC service, set `VITE_ORIGIN=http://localhost:3536` in `webui/.env.local` and allow that dev origin in the service's `func.json` (the API sends no CORS headers otherwise):
+
+```json
+{ "Cors": { "Origins": ["http://localhost:3000"] } }
+```
+
 Note the `create-package` scripts take arguments of version and architecure (`amd64` or `arm64`). For example:
 
 ```sh
-./create-package-deb.sh 4.2.0 amd64
+./create-package-deb.sh 5.0.0 amd64
 ```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.

@@ -1,16 +1,22 @@
-﻿using System.Formats.Tar;
+using System.Formats.Tar;
+using System.Text.RegularExpressions;
 using FUNC.Controllers;
 using FUNC.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.OperatingSystem;
 
 namespace FUNC
 {
-    public class Node
+    public partial class Node
     {
         // Dedicated least-privilege account the node service runs as (non-root/non-SYSTEM).
         private const string LinuxNodeUser = "func-node";
         private const string MacNodeUser = "_func-node";
+
+        private static string WinService(string name) => $"{Utils.Cap(name)} Node";
+        private static string DataDir(string name) => Path.Combine(Utils.NodeDataParent(name), name);
+        private static readonly string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
 
         private static async Task ExtractTemplate(string name)
         {
@@ -23,63 +29,58 @@ namespace FUNC
         // that account. Call after any operation that creates or relocates the dir.
         private static async Task ApplyDirOwnership(string name)
         {
-            string dataDir = Path.Combine(Utils.NodeDataParent(name), name);
+            string dataDir = DataDir(name);
             if (!Directory.Exists(dataDir)) return;
             if (IsLinux())
             {
-                await Utils.ExecCmd($"id -u {LinuxNodeUser} >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/{LinuxNodeUser} --shell /usr/sbin/nologin {LinuxNodeUser}");
-                await Utils.ExecCmd($"chown -R {LinuxNodeUser}:{LinuxNodeUser} '{dataDir}'");
+                await Utils.EnsureUnixUser(LinuxNodeUser);
+                await Utils.ChownRecursive($"{LinuxNodeUser}:{LinuxNodeUser}", dataDir);
             }
             else if (IsMacOS())
             {
                 // The _func-node account is created by the pkg postinstall; skip if absent.
-                await Utils.ExecCmd($"id -u {MacNodeUser} >/dev/null 2>&1 && chown -R {MacNodeUser} '{dataDir}'");
+                if (await Utils.EnsureUnixUser(MacNodeUser))
+                    await Utils.ChownRecursive(MacNodeUser, dataDir);
             }
             else if (IsWindows())
             {
                 // Grant the per-service virtual account modify rights on its data dir.
-                string account = $"NT SERVICE\\{Utils.Cap(name)} Node";
-                await Utils.ExecCmd($"icacls \"{dataDir}\" /grant \"{account}:(OI)(CI)M\" /T");
+                string account = $"NT SERVICE\\{WinService(name)}";
+                await Utils.Exec("icacls.exe", dataDir, "/grant", $"{account}:(OI)(CI)M", "/T");
             }
+        }
+
+        // The algod admin token of a managed node, or empty if the node has no data dir yet.
+        public static string AlgodToken(string name)
+        {
+            try { return File.ReadAllText(Path.Combine(DataDir(name), "algod.admin.token")).Trim(); } catch { return string.Empty; }
+        }
+
+        // The port algod listens on, from the node's config.json, or 0 if unknown.
+        public static int AlgodPort(string name)
+        {
+            string? configText = null;
+            try { configText = File.ReadAllText(Path.Combine(DataDir(name), "config.json")); } catch { }
+            if (configText == null) return 0;
+            JObject config = JObject.Parse(configText);
+            string endpointAddress = config.GetValue("EndpointAddress")?.Value<string>() ?? ":0";
+            return int.TryParse(endpointAddress[(endpointAddress.IndexOf(':') + 1)..], out int port) ? port : 0;
         }
 
         public static async Task<NodeStatus> Get(string name)
         {
             string machineName = Environment.MachineName;
-            int port = 0;
-            string token = string.Empty;
-            try { token = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "algod.admin.token")); } catch { }
-            string? configText = null;
-            try { configText = File.ReadAllText(Path.Combine(Utils.NodeDataParent(name), name, "config.json")); } catch { }
-            if (configText != null)
+            string token = AlgodToken(name);
+            int port = AlgodPort(name);
+            if (port != 0)
             {
-                JObject config = JObject.Parse(configText);
-                var endpointAddressToken = config.GetValue("EndpointAddress");
-                string endpointAddress = endpointAddressToken?.Value<string>() ?? ":0";
-                port = int.Parse(endpointAddress[(endpointAddress.IndexOf(":") + 1)..]);
                 if (name == "algorand")
                     Shared.AlgoPort = port;
                 else if (name == "voi")
                     Shared.VoiPort = port;
             }
 
-            string sc = string.Empty;
-
-            if (IsWindows())
-            {
-                sc = await Utils.ExecCmd($"sc query \"{Utils.Cap(name)} Node\"");
-            }
-            else if (IsLinux())
-            {
-                sc = await Utils.ExecCmd($"systemctl show {name} --property=LoadState --property=ActiveState");
-            }
-            else if (IsMacOS())
-            {
-                // Not loaded but plist still on disk = Stopped; no plist = Not Found.
-                sc = await Utils.ExecCmd($"launchctl list | grep -i func.{name} || (test -f /Library/LaunchDaemons/func.{name}.plist && echo stopped || echo none)");
-            }
-
-            string serviceStatus = Utils.ParseServiceStatus(sc);
+            string serviceStatus = await Utils.ServiceStatus(name, WinService(name));
 
             NodeStatus nodeStatus = new()
             {
@@ -93,29 +94,13 @@ namespace FUNC
             if (name == "algorand")
             {
                 // Reti Status
-                string retiQuery = string.Empty;
-                string exePath = Path.Combine(Utils.appDataDir, "reti", "reti");
-
-                if (IsWindows())
-                {
-                    retiQuery = await Utils.ExecCmd("sc query \"Reti Validator\"");
-                    exePath += ".exe";
-                }
-                else if (IsLinux())
-                {
-                    retiQuery = await Utils.ExecCmd($"systemctl show reti --property=LoadState --property=ActiveState");
-                }
-                else if (IsMacOS())
-                {
-                    retiQuery = await Utils.ExecCmd($"launchctl list | grep -i func.reti || (test -f /Library/LaunchDaemons/func.reti.plist && echo stopped || echo none)");
-                }
-
-                string retiServiceStatus = Utils.ParseServiceStatus(retiQuery);
+                string exePath = Path.Combine(Utils.appDataDir, "reti", IsWindows() ? "reti.exe" : "reti");
+                string retiServiceStatus = await Utils.ServiceStatus("reti", "Reti Validator");
 
                 string? version = null;
                 if (File.Exists(exePath))
                 {
-                    version = await Utils.ExecCmd(exePath + " --version");
+                    version = await Utils.Exec(exePath, "--version");
                 }
 
                 string? exeStatus = null;
@@ -146,11 +131,7 @@ namespace FUNC
                 nodeStatus.ValarStatus = await ValarController.GetStatus();
 
                 // Telemetry Status
-                string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
-                string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
-                string telemetryStatus = await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry status");
-
-                nodeStatus.TelemetryStatus = telemetryStatus;
+                nodeStatus.TelemetryStatus = await Utils.Exec(diagcfgPath, "-d", DataDir(name), "telemetry", "status");
             }
 
             return nodeStatus;
@@ -166,9 +147,9 @@ namespace FUNC
             if (!IsWindows()) return;
             foreach (string name in new[] { "algorand", "voi" })
             {
-                string svc = $"{Utils.Cap(name)} Node";
-                if (!(await Utils.ExecCmd($"sc qc \"{svc}\"")).Contains("LocalSystem")) continue;
-                await Utils.ExecCmd($"sc config \"{svc}\" obj= \"NT SERVICE\\{svc}\"");
+                string svc = WinService(name);
+                if (!(await Utils.Sc("qc", svc)).Contains("LocalSystem")) continue;
+                await Utils.Sc("config", svc, "obj=", $"NT SERVICE\\{svc}");
                 await ApplyDirOwnership(name);
                 await Utils.RestartWindowsService(svc);
             }
@@ -176,18 +157,19 @@ namespace FUNC
 
         public static async Task CreateService(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
+            if (!Directory.Exists(DataDir(name)))
             {
                 await ExtractTemplate(name);
             }
 
             if (IsWindows())
             {
-                string nodeDataDir = Path.Combine(Utils.NodeDataParent(name), name);
-                string binPath = $"\\\"{Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe")}\\\" \\\"{nodeDataDir}\\\"";
-                string serviceName = $"{Utils.Cap(name)} Node";
+                string wrapper = Path.Combine(AppContext.BaseDirectory, "Services", "NodeServiceV2.exe");
+                // The service's command line: the wrapper exe plus the data dir, both quoted.
+                string binPath = $"\"{wrapper}\" \"{DataDir(name)}\"";
+                string serviceName = WinService(name);
                 // Run under the auto-managed per-service virtual account instead of LocalSystem.
-                await Utils.ExecCmd($"sc create \"{serviceName}\" binPath= \"{binPath}\" obj= \"NT SERVICE\\{serviceName}\" start= auto");
+                await Utils.Sc("create", serviceName, "binPath=", binPath, "obj=", $"NT SERVICE\\{serviceName}", "start=", "auto");
                 await ApplyDirOwnership(name);
             }
             else if (IsLinux())
@@ -197,8 +179,8 @@ namespace FUNC
                 string service = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
                 File.WriteAllText($"/lib/systemd/system/{name}.service", service);
                 await ApplyDirOwnership(name);
-                await Utils.ExecCmd($"systemctl daemon-reload");
-                await Utils.ExecCmd($"systemctl enable {name}");
+                await Utils.Systemctl("daemon-reload");
+                await Utils.Systemctl("enable", name);
             }
             else if (IsMacOS())
             {
@@ -207,15 +189,15 @@ namespace FUNC
                 string plist = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
                 File.WriteAllText($"/Library/LaunchDaemons/func.{name}.plist", plist);
                 await ApplyDirOwnership(name);
-                await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
+                await Utils.Launchctl("bootstrap", "system", $"/Library/LaunchDaemons/func.{name}.plist");
             }
         }
 
         public static async Task ResetData(string name)
         {
-            if (Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
+            if (Directory.Exists(DataDir(name)))
             {
-                Directory.Delete(Path.Combine(Utils.NodeDataParent(name), name), true);
+                Directory.Delete(DataDir(name), true);
             }
             await ExtractTemplate(name);
             await ApplyDirOwnership(name);
@@ -224,9 +206,7 @@ namespace FUNC
         public static async Task<string> Catchup(string name, Catchup model)
         {
             string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
-            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
-            string cmd = $"{goalPath} node catchup {model.Round}#{model.Label} -d {dataPath}";
-            return await Utils.ExecCmd(cmd);
+            return await Utils.Exec(goalPath, "node", "catchup", $"{model.Round}#{model.Label}", "-d", DataDir(name));
         }
 
         public static async Task ControlService(string name, string cmd)
@@ -237,54 +217,109 @@ namespace FUNC
                 {
                     await ControlService(name, "stop");
                     await ControlService(name, "start");
+                    return;
                 }
-                await Utils.ExecCmd($"sc {cmd} \"{Utils.Cap(name)} Node\"");
+                await Utils.Sc(cmd, WinService(name));
             }
             else if (IsLinux())
             {
-                if (cmd == "delete") await Utils.ExecCmd($"rm /lib/systemd/system/{name}.service");
-                else await Utils.ExecCmd($"systemctl {cmd} {name}");
-                await Utils.ExecCmd($"systemctl daemon-reload");
+                if (cmd == "delete") File.Delete($"/lib/systemd/system/{name}.service");
+                else await Utils.Systemctl(cmd, name);
+                await Utils.Systemctl("daemon-reload");
             }
             else if (IsMacOS())
             {
                 // KeepAlive keeps the job running while loaded, so a deliberate stop must
                 // unload it (bootout); start re-loads it (bootstrap).
-                if (cmd == "start") await Utils.ExecCmd($"launchctl bootstrap system /Library/LaunchDaemons/func.{name}.plist");
-                else if (cmd == "stop") await Utils.ExecCmd($"launchctl bootout system/func.{name}");
-                else if (cmd == "restart") await Utils.ExecCmd($"launchctl kickstart -k system/func.{name}");
+                string plist = $"/Library/LaunchDaemons/func.{name}.plist";
+                if (cmd == "start") await Utils.Launchctl("bootstrap", "system", plist);
+                else if (cmd == "stop") await Utils.Launchctl("bootout", $"system/func.{name}");
+                else if (cmd == "restart") await Utils.Launchctl("kickstart", "-k", $"system/func.{name}");
                 else if (cmd == "delete")
                 {
-                    await Utils.ExecCmd($"launchctl bootout system/func.{name}");
-                    await Utils.ExecCmd($"rm /Library/LaunchDaemons/func.{name}.plist");
+                    await Utils.Launchctl("bootout", $"system/func.{name}");
+                    File.Delete(plist);
                 }
             }
         }
 
         public static async Task<string> GetConfig(string name)
         {
-            if (!Directory.Exists(Path.Combine(Utils.NodeDataParent(name), name)))
+            if (!Directory.Exists(DataDir(name)))
             {
                 await ExtractTemplate(name);
             }
-            string configPath = Path.Combine(Utils.NodeDataParent(name), name, "config.json");
+            string configPath = Path.Combine(DataDir(name), "config.json");
             string config = File.ReadAllText(configPath);
             return config;
         }
 
+        // The UI round-trips the whole config.json but only edits a handful of keys.
+        // Accept only those, each validated, and require every other key to be unchanged,
+        // so the endpoint cannot be used to rewrite arbitrary algod settings.
+        [GeneratedRegex(@"^(localhost|[0-9.]*):[0-9]{1,5}$")]
+        private static partial Regex EndpointAddress();
+
+        private static readonly Dictionary<string, Action<JToken>> EditableKeys = new()
+        {
+            ["EndpointAddress"] = v =>
+            {
+                string s = v.Type == JTokenType.String ? v.Value<string>()! : throw new Exception("EndpointAddress must be a string");
+                if (!EndpointAddress().IsMatch(s) || !int.TryParse(s[(s.IndexOf(':') + 1)..], out int port) || port < 1 || port > 65535)
+                    throw new Exception("EndpointAddress must be host:port");
+            },
+            ["BaseLoggerDebugLevel"] = v =>
+            {
+                if (v.Type != JTokenType.Integer || v.Value<long>() < 0 || v.Value<long>() > 6)
+                    throw new Exception("BaseLoggerDebugLevel must be 0-6");
+            },
+            ["EnableP2P"] = v => { if (v.Type != JTokenType.Boolean) throw new Exception("EnableP2P must be a boolean"); },
+            ["EnableP2PHybridMode"] = v => { if (v.Type != JTokenType.Boolean) throw new Exception("EnableP2PHybridMode must be a boolean"); },
+            ["DNSBootstrapID"] = v =>
+            {
+                string s = v.Type == JTokenType.String ? v.Value<string>()! : throw new Exception("DNSBootstrapID must be a string");
+                if (s.Length > 512 || s.Any(char.IsControl)) throw new Exception("DNSBootstrapID is invalid");
+            },
+        };
+
         public static void SetConfig(string name, Config model)
         {
-            string configPath = Path.Combine(Utils.NodeDataParent(name), name, "config.json");
-            File.WriteAllText(configPath, model.Json);
+            string configPath = Path.Combine(DataDir(name), "config.json");
+            var loadSettings = new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error };
+
+            if (JToken.Parse(model.Json, loadSettings) is not JObject submitted)
+                throw new Exception("Config must be a JSON object");
+
+            JObject existing = [];
+            try { existing = JObject.Parse(File.ReadAllText(configPath), loadSettings); } catch { }
+
+            foreach (string key in submitted.Properties().Select(p => p.Name).Union(existing.Properties().Select(p => p.Name)))
+            {
+                if (EditableKeys.TryGetValue(key, out var validate))
+                {
+                    if (submitted.TryGetValue(key, out var value) && value.Type != JTokenType.Null) validate(value);
+                }
+                else if (!JToken.DeepEquals(submitted[key], existing[key]))
+                {
+                    throw new Exception($"Changing {key} is not supported");
+                }
+            }
+
+            File.WriteAllText(configPath, submitted.ToString(Formatting.Indented));
         }
 
         public static async Task SetDir(string name, Dir model)
         {
-            string currentPath = Path.Combine(Utils.NodeDataParent(name), name);
-            string requestPath = Path.Combine(model.Path, name);
+            string requestParent = Utils.ValidateDataParent(model.Path);
+            string currentPath = DataDir(name);
+            string requestPath = Path.Combine(requestParent, name);
+            if (string.Equals(Path.GetFullPath(requestPath), Path.GetFullPath(currentPath), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Data directory is already at that location");
+            if (Path.GetFullPath(requestPath).StartsWith(Path.GetFullPath(currentPath) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                throw new Exception("New location must not be inside the current data directory");
             CopyFolder(currentPath, requestPath);
             string filePath = Path.Combine(Utils.appDataDir, $"{name}.data");
-            File.WriteAllText(filePath, model.Path);
+            File.WriteAllText(filePath, requestParent);
             Directory.Delete(currentPath, true);
             await ApplyDirOwnership(name);
         }
@@ -310,19 +345,16 @@ namespace FUNC
 
         public static async Task EnableTelemetry(string name)
         {
-            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
-            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
-            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry endpoint -e https://tel.4160.nodely.io");
-            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry name -n anon");
-            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry enable");
+            string dataPath = DataDir(name);
+            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "endpoint", "-e", "https://tel.4160.nodely.io");
+            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "name", "-n", "anon");
+            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "enable");
             await ControlService(name, "restart");
         }
 
         public static async Task DisableTelemetry(string name)
         {
-            string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
-            string dataPath = Path.Combine(Utils.NodeDataParent(name), name);
-            await Utils.ExecCmd($"{diagcfgPath} -d {dataPath} telemetry disable");
+            await Utils.Exec(diagcfgPath, "-d", DataDir(name), "telemetry", "disable");
             await ControlService(name, "restart");
         }
     }

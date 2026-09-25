@@ -30,6 +30,11 @@ export interface Participation {
   key: modelsv2.AccountParticipation;
 }
 
+export interface AuthStatus {
+  hasPassword: boolean;
+  signedIn: boolean;
+}
+
 export interface GoalVersion {
   installed: string;
   latest: string;
