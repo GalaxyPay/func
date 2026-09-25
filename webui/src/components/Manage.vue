@@ -84,6 +84,44 @@
             v-show="nodeStatus.retiStatus.serviceStatus === 'Stopped'"
           />
         </template>
+        <template
+          v-if="
+            nodeStatus.valarStatus &&
+            (status === 'Running' ||
+              ['Running', 'Stopped'].includes(
+                nodeStatus.valarStatus.serviceStatus
+              ))
+          "
+        >
+          <v-divider class="ml-6" />
+          <v-list-subheader title="Valar" class="ml-3" />
+          <v-list-item
+            title="Add Valar Service"
+            @click="showValar = true"
+            v-show="
+              nodeStatus.valarStatus.serviceStatus === 'Not Found' &&
+              status === 'Running'
+            "
+          />
+          <v-list-item
+            title="Stop Valar"
+            @click="stopValar()"
+            v-show="nodeStatus.valarStatus.serviceStatus === 'Running'"
+          />
+          <v-list-item
+            title="Start Valar"
+            @click="startValar()"
+            v-show="
+              nodeStatus.valarStatus.serviceStatus === 'Stopped' &&
+              status === 'Running'
+            "
+          />
+          <v-list-item
+            title="Remove Valar"
+            @click="deleteValar()"
+            v-show="nodeStatus.valarStatus.serviceStatus === 'Stopped'"
+          />
+        </template>
       </v-list>
     </v-menu>
     <Config
@@ -110,11 +148,18 @@
       :token="nodeStatus.token"
       @close="showReti = false"
     />
+    <Valar
+      :visible="showValar"
+      :port="nodeStatus.port"
+      :token="nodeStatus.token"
+      @close="showValar = false"
+    />
   </v-btn>
 </template>
 
 <script setup lang="ts">
 import { NodeStatus } from "@/types";
+import { errorMessage } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 import { PropType } from "vue";
 
@@ -127,6 +172,7 @@ const props = defineProps({
 const emit = defineEmits(["awaitRunning", "cancelAwait"]);
 const loading = ref(false);
 const showReti = ref(false);
+const showValar = ref(false);
 const showConfig = ref(false);
 const showDataDir = ref(false);
 
@@ -142,7 +188,7 @@ async function createNode() {
     await startNode();
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Create service"), "error");
   }
 }
 
@@ -157,7 +203,7 @@ async function startNode() {
     emit("awaitRunning");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Start node"), "error");
   }
 }
 
@@ -169,7 +215,7 @@ async function stopNode() {
     await finish("Node Stopped");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Stop node"), "error");
   }
 }
 
@@ -181,7 +227,7 @@ async function deleteNode() {
     await finish("Service Removed");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Remove service"), "error");
   }
 }
 
@@ -193,7 +239,7 @@ async function startReti() {
     await finish("Reti Started");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Start Reti"), "error");
   }
 }
 
@@ -205,7 +251,7 @@ async function stopReti() {
     await finish("Reti Stopped");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Stop Reti"), "error");
   }
 }
 
@@ -216,7 +262,40 @@ async function deleteReti() {
     await finish("Reti Removed");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Remove Reti"), "error");
+  }
+}
+
+async function startValar() {
+  try {
+    loading.value = true;
+    await store.api.put("valar/start");
+    await finish("Valar Started");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Start Valar"), "error");
+  }
+}
+
+async function stopValar() {
+  try {
+    loading.value = true;
+    await store.api.put("valar/stop");
+    await finish("Valar Stopped");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Stop Valar"), "error");
+  }
+}
+
+async function deleteValar() {
+  try {
+    loading.value = true;
+    await store.api.delete("valar");
+    await finish("Valar Removed");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Remove Valar"), "error");
   }
 }
 
@@ -228,7 +307,7 @@ async function toggleTelemetry() {
     await finish(`Telemetry ${action}d`);
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Toggle telemetry"), "error");
   }
 }
 
@@ -251,7 +330,7 @@ async function resetNode() {
     store.setSnackbar("Data Deleted", "success");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Delete node data"), "error");
   }
   loading.value = false;
 }

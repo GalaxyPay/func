@@ -5,11 +5,19 @@ using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Developer overrides live in <appDataDir>/func.json so they survive updates:
+//   { "Cors": { "Origins": [ "http://localhost:3000" ] } }
+builder.Configuration.AddJsonFile(Path.Combine(Utils.appDataDir, "func.json"), optional: true, reloadOnChange: false);
+
 // Add services to the container.
 
-builder.Services.AddControllers();
+Auth.Load();
+builder.Services.AddControllers(options => options.Filters.Add<SessionFilter>());
 builder.Services.AddWindowsService();
 builder.Services.AddSystemd();
+
+string[] corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3536);
@@ -37,6 +45,14 @@ builder.Services.AddReverseProxy()
         });
     });
 
+// The UI is served from this same origin, so cross-origin access is only needed for
+// development (e.g. the Vite dev server) and must be listed explicitly.
+if (corsOrigins.Length > 0)
+{
+    builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+        policy.WithOrigins(corsOrigins).AllowAnyMethod().AllowAnyHeader()));
+}
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -45,7 +61,7 @@ app.Use(async (httpContext, next) =>
     httpContext.Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
     await next();
 });
-app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+if (corsOrigins.Length > 0) app.UseCors();
 app.MapControllers();
 app.UseFileServer();
 app.MapReverseProxy();

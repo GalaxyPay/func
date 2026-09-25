@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>func.valar</string>
+        <key>UserName</key>
+        <string>_func-valar</string>
+        <key>WorkingDirectory</key>
+        <string>/usr/local/share/func/valar</string>
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>PYTHONNOUSERSITE</key>
+            <string>1</string>
+        </dict>
+        <key>ProgramArguments</key>
+            <array>
+                <string>/usr/local/share/func/valar/venv/bin/python</string>
+                <string>-m</string>
+                <string>valar_daemon.run_daemon</string>
+                <string>--config_path</string>
+                <string>/usr/local/share/func/valar/daemon.config</string>
+                <string>--log_path</string>
+                <string>/usr/local/share/func/valar/log</string>
+            </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>ThrottleInterval</key>
+        <integer>30</integer>
+    </dict>
+</plist>

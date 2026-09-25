@@ -1,5 +1,5 @@
 #!/bin/sh
-# Dedicated least-privilege accounts the node and reti services run as (neither needs root).
+# Dedicated least-privilege accounts the node, reti and valar services run as (neither needs root).
 # algod resolves its global config/telemetry path from the account's home, so each
 # account needs a real, writable home directory (not /var/empty).
 create_hidden_user() {
@@ -24,6 +24,7 @@ create_hidden_user() {
 }
 create_hidden_user _func-node "FUNC Node" /usr/local/var/func-node
 create_hidden_user _func-reti "FUNC Reti" /usr/local/var/func-reti
+create_hidden_user _func-valar "FUNC Valar" /usr/local/var/func-valar
 mkdir -p /usr/local/share/func
 # If this install was started by the func.update launchd job, remove its plist
 # so RunAtLoad doesn't re-run the installer on every boot. Only the file is

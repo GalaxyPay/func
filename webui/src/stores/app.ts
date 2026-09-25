@@ -1,12 +1,39 @@
 // Utilities
 import { AlgodFunc } from "@/clients";
-import { GoalVersion, Message, SnackBar } from "@/types";
-import algosdk from "algosdk";
+import { AuthStatus, GoalVersion, Message, SnackBar } from "@/types";
+import algosdk, { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
+
+const TOKEN_KEY = "session";
+
+function readToken(): string {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+// The FUNC API requires a signed-in session (see README, "Password"). The session
+// token is kept in this browser only; a 401 from any call opens the sign-in dialog.
+function createApi() {
+  const api = axios.create({ baseURL: import.meta.env.VITE_ORIGIN });
+  const token = readToken();
+  if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  api.interceptors.response.use(undefined, (err) => {
+    if (err?.response?.status === 401) {
+      useAppStore().authRequired = true;
+    }
+    return Promise.reject(err);
+  });
+  return api;
+}
 
 export const useAppStore = defineStore("app", {
   state: () => ({
-    api: axios.create({ baseURL: import.meta.env.VITE_ORIGIN }),
+    api: createApi(),
+    authRequired: false,
+    auth: undefined as AuthStatus | undefined,
     ready: false,
     overlay: false,
     snackbar: {
@@ -15,6 +42,7 @@ export const useAppStore = defineStore("app", {
       timeout: 0,
       display: false,
     } as SnackBar,
+    account: undefined as undefined | modelsv2.Account,
     refreshPart: 0,
     refreshStatus: 0,
     connectMenu: false,
@@ -51,7 +79,42 @@ export const useAppStore = defineStore("app", {
     },
   },
   actions: {
+    // Ask the service whether a password exists and whether this browser is signed
+    // in; opens the setup or sign-in dialog when needed.
+    async checkAuth() {
+      const { data } = await this.api.get("auth");
+      this.auth = data;
+      if (!data.hasPassword || !data.signedIn) this.authRequired = true;
+      return data as AuthStatus;
+    },
+    async signOut(everywhere = false) {
+      try {
+        await this.api.post(everywhere ? "auth/logout-all" : "auth/logout");
+      } catch {
+        // Already signed out or unreachable; drop the local session regardless.
+      }
+      this.setApiToken("");
+      location.reload();
+    },
+    setApiToken(token: string) {
+      token = token.trim();
+      try {
+        if (token) localStorage.setItem(TOKEN_KEY, token);
+        else localStorage.removeItem(TOKEN_KEY);
+      } catch {
+        // Private window or blocked storage: the token lives for this page load only.
+      }
+      if (token) {
+        this.api.defaults.headers.common.Authorization = `Bearer ${token}`;
+      } else {
+        delete this.api.defaults.headers.common.Authorization;
+      }
+      this.authRequired = false;
+    },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
+      // While the sign-in dialog is up, every polled call fails with 401; the
+      // dialog already says so, so don't stack error toasts behind it.
+      if (color == "error" && this.authRequired) return;
       if (color == "error") timeout = 15000;
       this.snackbar = {
         text: text,

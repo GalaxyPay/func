@@ -104,8 +104,8 @@ namespace FUNC.Controllers
                     string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", "func.update.plist");
                     string plist = System.IO.File.ReadAllText(templatePath).Replace("__PKG__", installerPath);
                     System.IO.File.WriteAllText("/Library/LaunchDaemons/func.update.plist", plist);
-                    await Utils.ExecCmd("launchctl bootout system/func.update"); // clear previous run, if any
-                    await Utils.ExecCmd("launchctl bootstrap system /Library/LaunchDaemons/func.update.plist");
+                    await Utils.Launchctl("bootout", "system/func.update"); // clear previous run, if any
+                    await Utils.Launchctl("bootstrap", "system", "/Library/LaunchDaemons/func.update.plist");
                 }
                 else return BadRequest();
                 return Ok();

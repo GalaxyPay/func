@@ -22,6 +22,8 @@
 </template>
 
 <script lang="ts" setup>
+import { errorMessage } from "@/utils";
+
 const store = useAppStore();
 
 const props = defineProps({
@@ -51,7 +53,7 @@ async function save() {
     show.value = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Save data directory"), "error");
   }
   loading.value = false;
 }
@@ -63,7 +65,7 @@ watch(show, async (val) => {
       dataDir.value = resp.data;
     } catch (err: any) {
       console.error(err);
-      store.setSnackbar(err?.response?.data || err.message, "error");
+      store.setSnackbar(errorMessage(err, "Load data directory"), "error");
     }
   }
 });

@@ -24,7 +24,7 @@ namespace FUNC.Controllers
                 string latest = string.Empty;
 
                 string algodPath = Path.Combine(Utils.appDataDir, "bin", "algod");
-                string version = await Utils.ExecCmd($"{algodPath} -v");
+                string version = await Utils.Exec(algodPath, "-v");
                 if (version != string.Empty)
                 {
                     int firstBreak = version.IndexOf("\n") + 1;

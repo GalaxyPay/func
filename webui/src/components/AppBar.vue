@@ -74,8 +74,8 @@
                   class="mr-1"
                 />
                 {{
-                  account
-                    ? (Number(account.amount) / 10 ** 6).toLocaleString(
+                  store.account
+                    ? (Number(store.account.amount) / 10 ** 6).toLocaleString(
                         undefined,
                         {
                           maximumFractionDigits: 6,
@@ -157,7 +157,7 @@
 </template>
 
 <script lang="ts" setup>
-import { formatAddr } from "@/utils";
+import { errorMessage, formatAddr } from "@/utils";
 import {
   mdiBell,
   mdiCog,
@@ -174,7 +174,6 @@ import {
   useNetwork,
   useWallet,
 } from "@txnlab/use-wallet-vue";
-import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -183,7 +182,6 @@ const { activeNetwork } = useNetwork();
 const { xs } = useDisplay();
 
 const appVersion = __APP_VERSION__;
-const account = ref<modelsv2.Account>();
 const showSettings = ref(false);
 const showMessages = ref(false);
 const showAdmin = ref(false);
@@ -196,7 +194,9 @@ function openMessages(e: MouseEvent) {
 
 onBeforeMount(() => {
   store.refreshPart++;
-  store.fetchMessages().catch((err) => console.error(err));
+  store
+    .fetchMessages()
+    .catch((err) => console.error(errorMessage(err, "Load messages"), err));
 });
 async function walletAction(wallet: Wallet) {
   try {
@@ -209,7 +209,10 @@ async function walletAction(wallet: Wallet) {
     store.connectMenu = false;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, `${wallet.metadata.name} wallet request`, "the wallet"),
+      "error"
+    );
   }
 }
 
@@ -237,11 +240,11 @@ watch(
   () => store.refreshPart,
   async () => {
     if (activeAccount.value) {
-      account.value = await algodClient.value
+      store.account = await algodClient.value
         .accountInformation(activeAccount.value.address)
         .do();
     } else {
-      account.value = undefined;
+      store.account = undefined;
     }
   }
 );

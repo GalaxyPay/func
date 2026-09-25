@@ -240,9 +240,19 @@
 </template>
 
 <script lang="ts" setup>
+import { algodTarget } from "@/clients";
 import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
-import { b64, delay, effectiveResetDate, execAtc, formatAddr } from "@/utils";
+import {
+  b64,
+  delay,
+  effectiveResetDate,
+  errorMessage,
+  execAtc,
+  formatAddr,
+  getSuggestedParams,
+  nodeHostname,
+} from "@/utils";
 import {
   mdiChevronDown,
   mdiClose,
@@ -305,11 +315,17 @@ const headers = computed<any[]>(() => {
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
-const hostname = import.meta.env.VITE_HOSTNAME || location.hostname;
+const hostname = nodeHostname();
 const port =
   location.protocol === "https:"
     ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
     : props.port;
+
+// The participation API is served by algod itself, so both clients fail
+// together when the node is down; name that endpoint in errors.
+const algodEndpoint = algodTarget(
+  `${location.protocol}//${hostname}${port ? `:${port}` : ""}`
+);
 
 const partClient = axios.create({
   baseURL: `${location.protocol}//${hostname}:${port}/v2/participation`,
@@ -369,6 +385,8 @@ async function getKeys(): Promise<Participation[]> {
     .sort((a, b) => Number(b.key.voteLastValid) - Number(a.key.voteLastValid));
 }
 
+let statsRequestId = 0;
+
 async function refreshPartData() {
   try {
     const tempKeys = await getKeys();
@@ -381,34 +399,58 @@ async function refreshPartData() {
       })
     );
     keys.value = tempKeys;
-    const activeKeys = tempKeys?.filter((k) => isKeyActive(k));
-    let proposals = 0;
-    if (activeKeys?.length) {
-      loading.value = true;
-      partStats.value =
-        (await getStats(activeKeys.map((k) => k.address))) || {};
-      for (const value of Object.values(partStats.value) as any[]) {
+    const activeKeys = tempKeys?.filter((k) => isKeyActive(k)) || [];
+    const activeAddrs = activeKeys.map((k) => k.address);
+    const activeStake = acctInfos.value
+      .filter((a) => activeAddrs.includes(a.address))
+      .reduce((a, c) => a + Number(c.amount), 0);
+
+    // Emit what algod alone can tell us right away; the proposal count
+    // depends on a (potentially slow) stats fetch and follows separately.
+    const details: PartDetails = {
+      activeKeys: activeKeys.length,
+      activeStake,
+      proposals: undefined,
+    };
+    emittedPart.value = details;
+    emit("partDetails", details);
+    emitBlockTimestamps(activeAddrs);
+
+    if (!activeAddrs.length) {
+      partStats.value = {};
+      return;
+    }
+
+    const token = ++statsRequestId;
+    loading.value = true;
+    try {
+      const stats = (await getStats(activeAddrs)) || {};
+      // A newer refresh superseded this one; drop the stale result.
+      if (token !== statsRequestId) return;
+      partStats.value = stats;
+      let proposals = 0;
+      for (const value of Object.values(stats) as any[]) {
         proposals += value?.proposals || 0;
       }
+      // Spread the live object so any activeStake payout applied by
+      // checkNewBlock while the fetch was in flight is preserved.
+      emittedPart.value = {
+        ...details,
+        proposals: Object.keys(stats).length ? proposals : undefined,
+      };
+      emit("partDetails", emittedPart.value);
+      emitBlockTimestamps(activeAddrs);
+    } finally {
+      if (token === statsRequestId) loading.value = false;
     }
-    loading.value = false;
-    emitBlockTimestamps(activeKeys?.map((k) => k.address) || []);
-    const activeStake = acctInfos.value
-      .filter((a) => activeKeys?.some((k) => k.address === a.address))
-      .reduce((a, c) => a + Number(c.amount), 0);
-    const partDetails: PartDetails = {
-      activeKeys: activeKeys?.length || 0,
-      activeStake,
-      proposals: Object.keys(partStats.value).length ? proposals : undefined,
-    };
-    emittedPart.value = partDetails;
-    emit("partDetails", partDetails);
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Load participation keys", algodEndpoint),
+      "error"
+    );
   }
 }
-
 async function checkNewBlock(round: bigint) {
   if (props.status !== "Running") return;
   try {
@@ -438,7 +480,7 @@ async function checkNewBlock(round: bigint) {
     liveTimestamps.push(Number(resp.block.header.timestamp));
     emit("blockTimestamps", [...cachedTimestamps, ...liveTimestamps]);
   } catch (err: any) {
-    console.error(err);
+    console.error(errorMessage(err, "Check new block", algodEndpoint), err);
   }
 }
 
@@ -514,7 +556,14 @@ watch(
 
 onMounted(() => {
   refreshPartData();
-  calcAvgBlockTime();
+  // Only drives the estimated expiry column, so report it without blocking
+  // the rest of the panel.
+  calcAvgBlockTime().catch((err) =>
+    console.error(
+      errorMessage(err, "Calculate average block time", algodEndpoint),
+      err
+    )
+  );
 });
 
 function loadDefaults() {
@@ -586,15 +635,31 @@ async function deleteKey(id: string) {
 If the key was previously registered, you should wait 320 rounds after unregistering it before deleting the key.`
     )
   ) {
-    await partClient.delete(id);
-    await refreshPartData();
+    try {
+      await partClient.delete(id);
+      await refreshPartData();
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(
+        errorMessage(err, "Delete participation key", algodEndpoint),
+        "error"
+      );
+    }
   }
 }
 
 async function showGenerateDialog() {
-  await getLastRound();
-  loadDefaults();
-  showGenerate.value = true;
+  try {
+    await getLastRound();
+    loadDefaults();
+    showGenerate.value = true;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(
+      errorMessage(err, "Get current round", algodEndpoint),
+      "error"
+    );
+  }
 }
 
 async function getLastRound() {
@@ -632,7 +697,10 @@ async function generateKey() {
       });
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Generate participation key", algodEndpoint),
+      "error"
+    );
   }
   resetAll();
 }
@@ -641,7 +709,7 @@ async function registerKey(item: Participation) {
   try {
     store.overlay = true;
     const atc = new algosdk.AtomicTransactionComposer();
-    const suggestedParams = await props.algodClient.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.algodClient);
     const ii = incentiveIneligible(item.address);
     if (ii.val && !ii.reason) {
       suggestedParams.flatFee = true;
@@ -661,7 +729,10 @@ async function registerKey(item: Participation) {
     await execAtc(atc, props.algodClient, "Participation Key Registered");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Register participation key", algodEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -669,7 +740,7 @@ async function registerKey(item: Participation) {
 async function offline() {
   try {
     store.overlay = true;
-    const suggestedParams = await props.algodClient.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.algodClient);
     const atc = new algosdk.AtomicTransactionComposer();
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: activeAccount.value!.address,
@@ -680,7 +751,10 @@ async function offline() {
     await execAtc(atc, props.algodClient, "Account Offline");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(err, "Take account offline", algodEndpoint),
+      "error"
+    );
   }
   store.overlay = false;
 }
@@ -724,6 +798,29 @@ function copyVal(val: string | number | bigint | undefined) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
+const ALGORAND_INDEXERS = [
+  "https://mainnet-idx.4160.nodely.dev",
+  "https://mainnet-idx.algonode.xyz",
+  "https://mainnet-idx.algonode.network",
+];
+
+// Choose the first indexer that answers a quick health probe. algosdk has no
+// per-request timeout, so probing up front avoids waiting out a dead primary.
+// The last URL is the fallback and is used without probing.
+async function pickIndexer(urls: string[], timeoutMs = 3000) {
+  for (const url of urls.slice(0, -1)) {
+    try {
+      const resp = await fetch(`${url}/health`, {
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (resp.ok) return url;
+    } catch {
+      // Unreachable or slow; try the next one.
+    }
+  }
+  return urls[urls.length - 1];
+}
+
 async function getStats(addrs: string[]) {
   try {
     const resetDate = effectiveResetDate(
@@ -732,8 +829,11 @@ async function getStats(addrs: string[]) {
     const stats: any = {};
     switch (props.name) {
       case "Algorand": {
-        const nodely = "https://mainnet-idx.4160.nodely.dev";
-        const indexer = new algosdk.Indexer("", nodely, "");
+        const indexer = new algosdk.Indexer(
+          "",
+          await pickIndexer(ALGORAND_INDEXERS),
+          ""
+        );
         const cache = loadProposalsCache();
         const netCache = (cache[props.name] ??= {});
         const resetSec = resetDate ? new Date(resetDate).getTime() / 1000 : 0;
@@ -800,7 +900,14 @@ async function getStats(addrs: string[]) {
     return stats;
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(
+      errorMessage(
+        err,
+        "Load block proposal stats",
+        props.name === "Voi" ? "the Voi Rewards API" : "the Algorand indexer"
+      ),
+      "error"
+    );
   }
 }
 </script>

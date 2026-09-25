@@ -16,8 +16,8 @@
         <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-data-table
-        :headers="headers"
-        :items="items"
+        :headers
+        :items
         :items-per-page="-1"
         density="comfortable"
         hide-default-footer
@@ -53,6 +53,7 @@
 </template>
 
 <script lang="ts" setup>
+import { errorMessage } from "@/utils";
 import { mdiClose, mdiEmail, mdiEmailOpenOutline } from "@mdi/js";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
@@ -84,7 +85,11 @@ const items = computed(() =>
 watch(
   () => props.visible,
   (visible) => {
-    if (visible) store.fetchMessages().catch((err) => console.error(err));
+    if (visible)
+      store.fetchMessages().catch((err) => {
+        console.error(err);
+        store.setSnackbar(errorMessage(err, "Load messages"), "error");
+      });
   }
 );
 </script>

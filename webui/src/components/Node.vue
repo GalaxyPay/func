@@ -56,6 +56,31 @@
               />
             </v-chip>
           </div>
+          <div
+            class="py-1"
+            v-show="
+              nodeStatus.valarStatus &&
+              nodeStatus.valarStatus.serviceStatus !== 'Not Found'
+            "
+          >
+            <v-badge floating dot class="mx-3 mb-1" :color="valarColor" />
+            Valar Running
+            <v-chip
+              v-show="valarUpdate"
+              color="warning"
+              size="small"
+              class="ml-1"
+              @click="updateValar()"
+              density="compact"
+            >
+              Update
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="`Update to ${valarLatest}`"
+              />
+            </v-chip>
+          </div>
           <div class="py-1" v-show="nodeStatus.telemetryStatus">
             <v-badge floating dot class="mx-3 mb-1" :color="telemetryColor" />
             Telemetry
@@ -229,11 +254,11 @@
 </template>
 
 <script setup lang="ts">
-import { AlgodFunc } from "@/clients";
+import { AlgodFunc, algodTarget } from "@/clients";
 import { NodeStatus, PartDetails } from "@/types";
-import { checkCatchup, delay, effectiveResetDate } from "@/utils";
+import { checkCatchup, delay, effectiveResetDate, errorMessage } from "@/utils";
 import { mdiClose, mdiOpenInNew } from "@mdi/js";
-import { Algodv2, modelsv2 } from "algosdk";
+import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -243,6 +268,7 @@ const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const retiLatest = ref<string>();
+const valarLatest = ref<string>();
 const partDetails = ref<PartDetails>();
 const generatingKey = ref(false);
 const showReset = ref(false);
@@ -257,6 +283,12 @@ const retiUpdate = computed(() => {
   if (!current || !retiLatest.value) return false;
   const trimL = current.slice(current.indexOf("version") + 8);
   return trimL.slice(0, trimL.indexOf(" ")) !== retiLatest.value;
+});
+
+const valarUpdate = computed(() => {
+  const current = nodeStatus.value?.valarStatus?.version;
+  if (!current || !valarLatest.value) return false;
+  return current !== valarLatest.value;
 });
 
 const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
@@ -293,6 +325,16 @@ const participatingColor = computed(() =>
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
 
+// The Valar daemon has no health endpoint; the backend reports exeStatus from
+// recent log activity (null = service up but nothing logged yet, Stopped =
+// service up but the log has gone stale).
+const valarColor = computed(() => {
+  const vs = nodeStatus.value?.valarStatus;
+  if (vs?.serviceStatus !== "Running") return "red";
+  if (vs.exeStatus === "Running") return "success";
+  return vs.exeStatus === "Stopped" ? "warning" : "grey";
+});
+
 const telemetryEnabled = computed(() =>
   nodeStatus.value?.telemetryStatus?.includes("enabled")
 );
@@ -317,7 +359,11 @@ const status = computed(() =>
       : "Unknown"
 );
 
-const algodClient = ref<Algodv2>();
+const algodClient = ref<AlgodFunc>();
+
+// Names the endpoint algod calls are aimed at, so a connection failure says
+// which process couldn't be reached.
+const algodEndpoint = computed(() => algodTarget(algodClient.value?.baseUrl));
 
 onBeforeMount(async () => {
   await getAllStatus();
@@ -361,7 +407,7 @@ async function waitForRunning() {
         // algod status together so the steady-state autoRefresh kicks in.
         await getAllStatus();
         store.setSnackbar("Node Running", "success");
-        await checkCatchup(algodStatus.value, props.name);
+        await startCatchup();
         return;
       } catch {
         // Not serving yet — keep waiting.
@@ -420,6 +466,7 @@ async function autoRefresh() {
       }
       retry = false;
       await checkReti();
+      await checkValar();
     } catch (err: any) {
       // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
       pendingStatus = null;
@@ -429,7 +476,10 @@ async function autoRefresh() {
       } else {
         console.error(err);
         if (err.status !== 502 && !store.downloading)
-          store.setSnackbar(err?.response?.data || err.message, "error");
+          store.setSnackbar(
+            errorMessage(err, "Node status update", algodEndpoint.value),
+            "error"
+          );
         await delay(500);
       }
     }
@@ -468,7 +518,7 @@ async function getNodeStatus() {
     }
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Get service status"), "error");
   }
 }
 
@@ -484,6 +534,7 @@ async function getAlgodStatus() {
     }
     retry = false;
     await checkReti();
+    await checkValar();
     if (nodeStatus.value?.serviceStatus === "Running" && !refreshing) {
       autoRefresh();
     }
@@ -495,16 +546,25 @@ async function getAlgodStatus() {
     }
     console.error(err);
     if (err.status !== 502 && !store.downloading)
-      store.setSnackbar(err?.response?.data || err.message, "error");
+      store.setSnackbar(
+        errorMessage(err, "Get node status", algodEndpoint.value),
+        "error"
+      );
   }
 }
 
 async function checkReti() {
   if (nodeStatus.value?.retiStatus?.version && !retiLatest.value) {
-    const releases = await axios({
-      url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
-    });
-    retiLatest.value = releases.data.name;
+    // Only used to flag an available update, so a GitHub outage shouldn't
+    // surface as a node status failure or break the refresh loop.
+    try {
+      const releases = await axios({
+        url: "https://api.github.com/repos/algorandfoundation/reti/releases/latest",
+      });
+      retiLatest.value = releases.data.name;
+    } catch (err: any) {
+      console.error(errorMessage(err, "Check for Reti updates"), err);
+    }
   }
   if (
     nodeStatus.value?.retiStatus?.serviceStatus === "Running" &&
@@ -516,6 +576,39 @@ async function checkReti() {
     console.error("reti not running - attempting restart");
     await store.api.put("reti/stop");
     await store.api.put("reti/start");
+  }
+}
+
+let lastValarPoll = 0;
+
+async function checkValar() {
+  if (nodeStatus.value?.valarStatus?.version && !valarLatest.value) {
+    // Only used to flag an available update, so a PyPI outage shouldn't
+    // surface as a node status failure or break the refresh loop.
+    try {
+      const resp = await axios({
+        url: "https://pypi.org/pypi/valar_daemon/json",
+      });
+      valarLatest.value = resp.data.info.version;
+    } catch (err: any) {
+      console.error(errorMessage(err, "Check for Valar updates"), err);
+    }
+  }
+  // Node status is only fetched on explicit triggers, so right after a start
+  // the snapshot shows the service Running before the daemon has logged
+  // anything (exeStatus null) and would stay grey until a manual refresh.
+  // While the daemon isn't confirmed live, re-poll the service status on a
+  // throttle so the badge settles on its own. Stops once it reports Running.
+  // No auto-restart here: systemd/launchd/SCM recovery already restart a
+  // crashed daemon.
+  const vs = nodeStatus.value?.valarStatus;
+  if (
+    vs?.serviceStatus === "Running" &&
+    vs.exeStatus !== "Running" &&
+    Date.now() - lastValarPoll > 3000
+  ) {
+    lastValarPoll = Date.now();
+    await getNodeStatus();
   }
 }
 
@@ -564,22 +657,40 @@ async function updateReti() {
     store.setSnackbar("Reti Updated", "success");
   } catch (err: any) {
     console.error(err);
-    store.setSnackbar(err?.response?.data || err.message, "error");
+    store.setSnackbar(errorMessage(err, "Update Reti"), "error");
   }
   loading.value = false;
+}
+
+async function updateValar() {
+  try {
+    if (!valarUpdate.value) return;
+    loading.value = true;
+    await store.api.post("valar/update");
+    await getNodeStatus();
+    store.setSnackbar("Valar Updated", "success");
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Update Valar"), "error");
+  }
+  loading.value = false;
+}
+
+// Fast catchup needs both a reachable catchpoint host and a reachable node,
+// so report which of the two failed rather than a bare fetch error.
+async function startCatchup() {
+  try {
+    await checkCatchup(algodStatus.value, props.name);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Start fast catchup"), "error");
+  }
 }
 
 watch(
   () => status.value,
   async (val, oldVal) => {
-    if (val === "Syncing" && algodStatus.value) {
-      try {
-        await checkCatchup(algodStatus.value, props.name);
-      } catch (err: any) {
-        console.error(err);
-        store.setSnackbar(err?.response?.data || err.message, "error");
-      }
-    }
+    if (val === "Syncing" && algodStatus.value) await startCatchup();
     if (oldVal === "Syncing") reloadPartDetails();
   }
 );

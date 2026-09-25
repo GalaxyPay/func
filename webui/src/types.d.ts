@@ -7,10 +7,11 @@ export interface NodeStatus {
   port: number;
   token: string;
   telemetryStatus?: string;
-  retiStatus?: RetiStatus;
+  retiStatus?: DaemonStatus;
+  valarStatus?: DaemonStatus;
 }
 
-export interface RetiStatus {
+export interface DaemonStatus {
   serviceStatus: string;
   version?: string;
   exeStatus?: string;
@@ -27,6 +28,11 @@ export interface Participation {
   address: string;
   id: string;
   key: modelsv2.AccountParticipation;
+}
+
+export interface AuthStatus {
+  hasPassword: boolean;
+  signedIn: boolean;
 }
 
 export interface GoalVersion {
