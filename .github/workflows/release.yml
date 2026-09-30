@@ -4,7 +4,7 @@ on:
     branches: [main]
 
 env:
-  VERSION: "5.0.0"
+  VERSION: "5.0.1"
 
 jobs:
   webui:
@@ -333,6 +333,12 @@ jobs:
         with:
           name: windows-arm64-setup
           path: "Output"
+
+      # The in-app updater verifies each installer against its .sha256 sidecar.
+      - name: Generate Checksums
+        run: |
+          cd Output
+          for f in *; do sha256sum "$f" > "$f.sha256"; done
 
       - name: Create Release
         uses: ncipollo/release-action@v1

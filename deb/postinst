@@ -4,6 +4,15 @@
 id -u func-node >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-node --shell /usr/sbin/nologin func-node
 id -u func-reti >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-reti --shell /usr/sbin/nologin func-reti
 id -u func-valar >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/func-valar --shell /usr/sbin/nologin func-valar
+# Packages up to 5.0.0 were built without --root-owner-group, so their files were
+# owned by the CI runner's UID. dpkg re-owns the files it replaces but not every
+# existing directory, so reclaim the install tree. /usr/share/func holds data owned
+# by the service accounts, so only the directory itself is reclaimed.
+chown -R root:root /opt/func
+chmod -R go-w /opt/func
+mkdir -p /usr/share/func
+chown root:root /usr/share/func
+chmod go-w /usr/share/func
 systemctl daemon-reload
 systemctl start func
 systemctl enable func
