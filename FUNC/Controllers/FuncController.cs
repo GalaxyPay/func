@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
 using static System.OperatingSystem;
@@ -18,20 +19,45 @@ namespace FUNC.Controllers
             var latest = await client.Repository.Release.GetLatest("GalaxyPay", "func");
             var asset = latest.Assets.FirstOrDefault(a => a.Name.EndsWith(pattern))
                 ?? throw new Exception("Installer Not Found");
+            var shaAsset = latest.Assets.FirstOrDefault(a => a.Name == asset.Name + ".sha256")
+                ?? throw new Exception("Installer Checksum Not Found");
 
             // The installer kills this process mid-install, so the download can't
-            // be deleted afterward; clear installers left by previous updates.
-            foreach (string old in Directory.GetFiles(Path.GetTempPath(), $"func_*{pattern}"))
+            // be deleted afterward; clear downloads left by previous updates
+            // (loose files from older versions, private dirs from newer ones).
+            string tempPath = Path.GetTempPath();
+            foreach (string old in Directory.GetFiles(tempPath, $"func_*{pattern}"))
             {
                 try { System.IO.File.Delete(old); } catch { }
             }
+            foreach (string old in Directory.GetDirectories(tempPath, "func-update-*"))
+            {
+                try { Directory.Delete(old, true); } catch { }
+            }
 
-            string filePath = Path.Combine(Path.GetTempPath(), asset.Name);
+            // The installer runs as root/SYSTEM, so download it into a fresh directory
+            // only this account can write to (0700 on Unix), not a predictable path
+            // in the shared temp dir.
+            string dir = Directory.CreateTempSubdirectory("func-update-").FullName;
+            string filePath = Path.Combine(dir, asset.Name);
             using var httpClient = new HttpClient();
-            using var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl);
-            using (FileStream fs = new(filePath, System.IO.FileMode.Create))
+            using (var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl))
+            using (FileStream fs = new(filePath, System.IO.FileMode.CreateNew))
             {
                 await s.CopyToAsync(fs);
+            }
+
+            // Sidecar format: "<hex>  <filename>"
+            string expected = (await httpClient.GetStringAsync(shaAsset.BrowserDownloadUrl)).Trim().Split(' ', '\t')[0];
+            string actual;
+            using (FileStream fs = new(filePath, System.IO.FileMode.Open, FileAccess.Read))
+            {
+                actual = Convert.ToHexString(await SHA256.HashDataAsync(fs));
+            }
+            if (!string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
+            {
+                Directory.Delete(dir, true);
+                throw new Exception("Installer failed checksum verification");
             }
             return filePath;
         }

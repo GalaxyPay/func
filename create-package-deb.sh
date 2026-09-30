@@ -22,4 +22,5 @@ echo "Description: Algorand Node Manager" >> $PKG/DEBIAN/control
 
 chmod 0755 $PKG/DEBIAN/postinst $PKG/DEBIAN/prerm $PKG/DEBIAN/postrm
 
-dpkg-deb --build $PKG
+chmod -R go-w $PKG
+dpkg-deb --root-owner-group --build $PKG
