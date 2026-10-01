@@ -224,7 +224,7 @@ This file is only needed for development; a normal install never has one.
 Note the `create-package` scripts take arguments of version and architecure (`amd64` or `arm64`). For example:
 
 ```sh
-./create-package-deb.sh 5.0.1 amd64
+./create-package-deb.sh 5.0.2 amd64
 ```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
