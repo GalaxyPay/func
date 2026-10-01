@@ -7,6 +7,7 @@
 // Plugins
 import vuetify from "./vuetify";
 import { lute } from "@galaxypay/use-wallet-lute";
+import { defly } from "@txnlab/use-wallet-defly";
 import { pera } from "@txnlab/use-wallet-pera";
 import {
   NetworkConfigBuilder,
@@ -33,7 +34,7 @@ export function registerPlugins(app: App) {
     .use(vuetify)
     .use(pinia)
     .use(WalletManagerPlugin, {
-      wallets: [lute(), pera()],
+      wallets: [lute(), pera(), defly()],
       defaultNetwork: DEFAULT_NETWORK as NetworkId,
       networks,
     });
