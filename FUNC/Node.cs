@@ -142,18 +142,28 @@ namespace FUNC
         // SYSTEM-owned data dir, so they fail to start. On startup, reconfigure any
         // legacy service onto its per-service virtual account, grant the existing
         // data dir, and restart it. Self-limiting: once off LocalSystem it's a no-op.
+        //
+        // Also (re)apply the crash-restart recovery actions, which services created
+        // before they were added to CreateService lack. Idempotent.
         public static async Task MigrateWindowsServices()
         {
             if (!IsWindows()) return;
             foreach (string name in new[] { "algorand", "voi" })
             {
                 string svc = WinService(name);
-                if (!(await Utils.Sc("qc", svc)).Contains("LocalSystem")) continue;
+                string qc = await Utils.Sc("qc", svc);
+                if (!qc.Contains("SERVICE_NAME")) continue;
+                await SetWindowsRecovery(svc);
+                if (!qc.Contains("LocalSystem")) continue;
                 await Utils.Sc("config", svc, "obj=", $"NT SERVICE\\{svc}");
                 await ApplyDirOwnership(name);
                 await Utils.RestartWindowsService(svc);
             }
         }
+
+        // The service wrapper exits non-zero when algod dies; have the SCM restart it.
+        private static Task SetWindowsRecovery(string svc) =>
+            Utils.Sc("failure", svc, "reset=", "86400", "actions=", "restart/30000/restart/30000/restart/30000");
 
         public static async Task CreateService(string name)
         {
@@ -170,6 +180,7 @@ namespace FUNC
                 string serviceName = WinService(name);
                 // Run under the auto-managed per-service virtual account instead of LocalSystem.
                 await Utils.Sc("create", serviceName, "binPath=", binPath, "obj=", $"NT SERVICE\\{serviceName}", "start=", "auto");
+                await SetWindowsRecovery(serviceName);
                 await ApplyDirOwnership(name);
             }
             else if (IsLinux())

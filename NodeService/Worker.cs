@@ -11,7 +11,7 @@ namespace NodeService
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Process process = new()
+            using Process process = new()
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -25,17 +25,20 @@ namespace NodeService
             try
             {
                 process.Start();
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                }
+                await process.WaitForExitAsync(stoppingToken);
+
+                // algod exited on its own. Terminate with a non-zero exit code so the
+                // Service Control Manager records a failure and the recovery actions
+                // configured with `sc failure` restart the service.
+                _logger.LogError("algod exited with code {Code}", process.ExitCode);
+                Exit(1);
             }
             catch (OperationCanceledException)
             {
                 // When the stopping token is canceled, for example, a call made from services.msc,
                 // we shouldn't exit with a non-zero exit code. In other words, this is expected...
 
-                process.Kill();
+                try { process.Kill(); } catch { }
             }
             catch (Exception ex)
             {
