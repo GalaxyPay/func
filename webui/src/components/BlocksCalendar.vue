@@ -1,14 +1,14 @@
 <template>
-  <v-container v-if="totalBlocks > 0" fluid>
-    <v-divider />
-    <v-card-title class="d-flex align-center">
-      Block Calendar
+  <section v-if="totalBlocks > 0" class="node-section">
+    <div class="section-head">
+      <span class="section-label">Block Calendar</span>
       <v-spacer />
-      <span class="text-body-2 text-grey">
-        {{ totalBlocks.toLocaleString() }} blocks · last 12 months
+      <span class="text-caption text-dim">
+        <span class="font-mono">{{ totalBlocks.toLocaleString() }}</span>
+        blocks · last 12 months
       </span>
-    </v-card-title>
-    <v-container fluid class="overflow-x-auto text-center">
+    </div>
+    <div class="group calendar-wrap">
       <div class="calendar">
         <div class="month-labels" :style="gridColumnsStyle">
           <div
@@ -54,8 +54,8 @@
           More
         </div>
       </div>
-    </v-container>
-  </v-container>
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -63,8 +63,6 @@ const props = defineProps<{
   name: string;
   timestamps: number[];
 }>();
-
-const ACCENT = { r: 26, g: 203, b: 247 };
 
 function dayKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -157,6 +155,12 @@ const monthLabels = computed(() => {
       });
     }
   });
+  // A label needs ~3 week columns of room. The window usually opens partway
+  // through a month, so drop that leading partial month rather than let it
+  // collide with the next one.
+  if (labels.length > 1 && labels[1].column - labels[0].column < 3) {
+    labels.shift();
+  }
   return labels;
 });
 
@@ -165,9 +169,9 @@ const gridColumnsStyle = computed(() => ({
 }));
 
 function levelColor(level: number) {
-  if (level <= 0) return "rgba(127, 127, 127, 0.15)";
+  if (level <= 0) return "rgb(var(--v-theme-surface-selected))";
   const alpha = 0.25 + (level / 4) * 0.75;
-  return `rgba(${ACCENT.r}, ${ACCENT.g}, ${ACCENT.b}, ${alpha})`;
+  return `rgba(var(--v-theme-primary), ${alpha})`;
 }
 
 function cellColor(count: number) {
@@ -179,6 +183,14 @@ function cellColor(count: number) {
 </script>
 
 <style scoped>
+.node-section {
+  margin-top: 32px;
+}
+.calendar-wrap {
+  overflow-x: auto;
+  padding: 18px 16px 14px;
+  text-align: center;
+}
 .calendar {
   display: inline-block;
 }
@@ -191,8 +203,7 @@ function cellColor(count: number) {
 }
 .month-label {
   font-size: 10px;
-  color: rgb(var(--v-theme-on-surface));
-  opacity: 0.6;
+  color: rgb(var(--v-theme-text-dim));
   white-space: nowrap;
 }
 .heatmap {
@@ -212,8 +223,7 @@ function cellColor(count: number) {
   gap: 3px;
   margin-top: 8px;
   font-size: 10px;
-  color: rgb(var(--v-theme-on-surface));
-  opacity: 0.6;
+  color: rgb(var(--v-theme-text-dim));
 }
 .legend-cell {
   display: inline-block;

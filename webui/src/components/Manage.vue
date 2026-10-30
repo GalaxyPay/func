@@ -1,14 +1,15 @@
 <template>
   <v-btn
-    variant="tonal"
+    variant="flat"
     color="primary"
     :append-icon="mdiChevronDown"
     :disabled="loading"
-    :width="230"
+    block
   >
     Manage
     <v-menu activator="parent" bottom scrim>
       <v-list density="compact">
+        <v-list-subheader title="Node" />
         <v-list-item
           title="Create Service"
           @click="createNode()"
@@ -55,8 +56,8 @@
               ))
           "
         >
-          <v-divider class="ml-6" />
-          <v-list-subheader title="Reti" class="ml-3" />
+          <v-divider />
+          <v-list-subheader title="Reti" />
           <v-list-item
             title="Add Reti Service"
             @click="showReti = true"
@@ -93,8 +94,8 @@
               ))
           "
         >
-          <v-divider class="ml-6" />
-          <v-list-subheader title="Valar" class="ml-3" />
+          <v-divider />
+          <v-list-subheader title="Valar" />
           <v-list-item
             title="Add Valar Service"
             @click="showValar = true"

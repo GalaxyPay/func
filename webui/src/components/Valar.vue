@@ -5,7 +5,7 @@
       <v-card-title class="d-flex">
         Valar Daemon
         <v-spacer />
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-form ref="form" @submit.prevent="startDaemon()">
         <v-card-text>
@@ -51,7 +51,7 @@
             type="submit"
             text="Start Valar Service"
             color="primary"
-            variant="tonal"
+            variant="flat"
           />
         </v-card-actions>
       </v-form>

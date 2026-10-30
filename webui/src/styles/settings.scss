@@ -1,0 +1,214 @@
+/**
+ * Vuetify sass settings (vite-plugin-vuetify `styles.configFile`).
+ *
+ * Sizes, radii and type. Colors live in the theme (plugins/vuetify.ts).
+ * `$layers` puts Vuetify's CSS in cascade layers, so the unlayered rules in
+ * main.css win without extra specificity.
+ */
+@use "sass:map";
+
+$font: (
+  "Geist Variable",
+  "Geist",
+  system-ui,
+  -apple-system,
+  "Segoe UI",
+  sans-serif
+);
+
+@use "vuetify/settings" with (
+  $layers: true,
+  $body-font-family: $font,
+  $heading-font-family: $font,
+  $border-radius-root: 8px,
+  $typography: (
+    "h4": (
+      "size": 2.125rem,
+      "weight": 500,
+      "line-height": 1.2,
+      "letter-spacing": -0.02em,
+    ),
+    "h5": (
+      "size": 1.375rem,
+      "weight": 500,
+      "line-height": 1.25,
+      "letter-spacing": -0.01em,
+    ),
+    "h6": (
+      "size": 1.125rem,
+      "weight": 500,
+      "line-height": 1.35,
+      "letter-spacing": normal,
+    ),
+    "subtitle-1": (
+      "size": 0.875rem,
+      "weight": 400,
+      "line-height": 1.55,
+      "letter-spacing": normal,
+    ),
+    "subtitle-2": (
+      "size": 0.875rem,
+      "weight": 500,
+      "line-height": 1.55,
+      "letter-spacing": normal,
+    ),
+    "body-1": (
+      "size": 0.875rem,
+      "weight": 400,
+      "line-height": 1.55,
+      "letter-spacing": normal,
+    ),
+    "body-2": (
+      "size": 0.8125rem,
+      "weight": 400,
+      "line-height": 1.5,
+      "letter-spacing": normal,
+    ),
+    "button": (
+      "size": 0.8125rem,
+      "weight": 500,
+      "line-height": normal,
+      "letter-spacing": normal,
+      "text-transform": none,
+    ),
+    "caption": (
+      "size": 0.75rem,
+      "weight": 400,
+      "line-height": 1.5,
+      "letter-spacing": normal,
+    ),
+    "overline": (
+      "size": 0.6875rem,
+      "weight": 500,
+      "line-height": 1.5,
+      "letter-spacing": 0.06em,
+      "text-transform": uppercase,
+    ),
+  ),
+
+  // Buttons: 36 / 13, radius 8, flat
+  $button-height: 36px,
+  $button-border-radius: 8px,
+  $button-text-letter-spacing: normal,
+  $button-text-transform: none,
+  $button-elevation: (
+    "default": 0,
+    "hover": 0,
+    "active": 0,
+  ),
+
+  // Inputs: 40px at every density, radius 8
+  $input-control-height: 40px,
+  $input-density: (
+    "default": 0,
+    "comfortable": 0,
+    "compact": 0,
+  ),
+  $field-border-radius: 8px,
+  $field-font-size: 0.875rem,
+  $field-letter-spacing: normal,
+  $field-control-padding-start: 12px,
+  $field-control-padding-end: 12px,
+  $field-outline-opacity: 1,
+  $field-focused-border-width: 1px,
+  $label-font-size: 0.875rem,
+  $label-letter-spacing: normal,
+  $input-details-font-size: 0.75rem,
+  $input-details-letter-spacing: normal,
+
+  // Surfaces: hairline borders, no shadows
+  $card-border-radius: 10px,
+  $card-elevation: 0,
+  $card-hover-elevation: 0,
+  $card-title-font-size: 1.125rem,
+  $card-title-font-weight: 500,
+  $card-title-letter-spacing: normal,
+  $card-title-line-height: 1.35,
+  $card-title-padding: 16px 24px 4px,
+  $card-subtitle-font-size: 0.8125rem,
+  $card-subtitle-letter-spacing: normal,
+  $card-text-font-size: 0.875rem,
+  $card-text-letter-spacing: normal,
+  $card-text-line-height: 1.55,
+  $card-text-padding: 16px 24px,
+  $card-actions-padding: 16px 24px,
+  $card-actions-min-height: 0,
+  $dialog-border-radius: 14px,
+  $dialog-card-header-padding: 16px 24px 4px,
+  $dialog-card-text-padding: 8px 24px 16px,
+  $dialog-card-text-letter-spacing: normal,
+  $menu-content-border-radius: 10px,
+  $navigation-drawer-temporary-elevation: 0,
+  $snackbar-border-radius: 9px,
+  $snackbar-font-size: 0.8125rem,
+  $snackbar-letter-spacing: normal,
+  $snackbar-elevation: 0,
+  $tooltip-border-radius: 7px,
+  $tooltip-font-size: 0.75rem,
+
+  // Alerts: radius 9, padding 11 / 12, 13px
+  $alert-border-radius: 9px,
+  $alert-padding: 11px 12px,
+  $alert-elevation: 0,
+  $alert-title-font-size: 0.8125rem,
+  $alert-title-font-weight: 500,
+  $alert-title-letter-spacing: normal,
+  $alert-title-line-height: 1.45,
+  $alert-text-line-height: 1.45,
+  $alert-prepend-margin-inline-end: 10px,
+
+  // Chips: type tags (bordered, 11px mono) and status chips (10px, tinted)
+  $chip-border-radius: 5px,
+  $chip-label-border-radius: 5px,
+  $chip-font-weight: 500,
+  $chip-elevation: 0,
+
+  // Tabs: 14px, 2px underline
+  $tabs-height: 40px,
+  $tab-min-width: 0,
+  $tab-slider-size: 2px,
+
+  // Lists and menus
+  $list-padding: 5px,
+  $list-item-min-height: 36px,
+  $list-item-one-line-min-height: 36px,
+  $list-item-padding: 7px 10px,
+  $list-item-title-font-size: 0.8125rem,
+  $list-item-title-letter-spacing: normal,
+  $list-item-title-line-height: 1.4,
+  $list-item-subtitle-font-size: 0.75rem,
+  $list-item-subtitle-letter-spacing: normal,
+  $list-item-nav-title-font-size: 0.875rem,
+  $list-item-nav-title-font-weight: 400,
+  $list-item-nav-title-letter-spacing: normal,
+
+  // Tables: 50px rows, no header
+  $table-row-height: 50px,
+  $table-font-size: 0.875rem,
+  $table-row-font-size: 0.875rem,
+  $table-column-padding: 0 14px,
+  $table-line-height: 1.4,
+
+  // Switch: 34 x 20 track, 16px thumb
+  $switch-inset-track-width: 34px,
+  $switch-inset-track-height: 20px,
+  $switch-inset-thumb-width: 16px,
+  $switch-inset-thumb-height: 16px,
+  $switch-inset-thumb-off-width: 16px,
+  $switch-inset-thumb-off-height: 16px,
+  $switch-thumb-elevation: 0,
+
+  $bottom-navigation-content-font-size: 0.75rem,
+  $bottom-navigation-elevation: 0,
+  $bottom-navigation-icon-font-size: 1.25rem,
+  $app-bar-flat-elevation: 0,
+  $toolbar-title-font-size: 1rem
+);
+
+// Fix the order of Vuetify's cascade layers. Every compiled component
+// stylesheet starts with this statement, so the order holds whichever
+// stylesheet the browser loads first (otherwise the reset can outrank
+// component styles when a component chunk loads before vuetify/styles).
+@layer vuetify.reset, vuetify.transitions, vuetify.base, vuetify.components,
+  vuetify.overrides, vuetify.theme.background, vuetify.theme.foreground,
+  vuetify.utilities;

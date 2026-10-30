@@ -4,127 +4,117 @@
       <v-card-title class="d-flex">
         Settings
         <v-spacer />
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-container>
-        <v-row align="center">
-          <v-col>
-            <div>Password</div>
-            <div class="text-caption text-grey">
-              Required to control this node
+      <div class="settings-body">
+        <div class="group">
+          <div class="set-row">
+            <div class="set-title">Password</div>
+            <div class="set-desc">Required to control this node</div>
+            <div class="set-actions">
+              <v-btn
+                variant="outlined"
+                size="small"
+                @click="showPassword = true"
+              >
+                Change
+              </v-btn>
+              <v-btn variant="outlined" size="small" @click="store.signOut()">
+                Sign Out
+              </v-btn>
             </div>
-          </v-col>
-          <v-col class="text-right">
-            <v-btn variant="tonal" @click="showPassword = true">Change</v-btn>
-            <v-btn variant="tonal" class="ml-2" @click="store.signOut()">
-              Sign Out
-            </v-btn>
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>FUNC Version</div>
-            <div class="text-caption text-grey">
-              {{ appVersion }}
+          </div>
+          <div class="set-row">
+            <div class="set-title">FUNC Version</div>
+            <div class="set-desc">
+              <span class="font-mono">{{ appVersion }}</span>
               {{ !store.funcUpdateAvailable ? "(latest)" : "" }}
             </div>
-          </v-col>
-          <v-col class="text-right">
-            <v-btn
-              :color="
-                store.funcUpdateAvailable && !updatingFunc ? 'warning' : ''
-              "
-              variant="tonal"
-              :disabled="!store.funcUpdateAvailable || updatingFunc"
-              :loading="updatingFunc"
-              @click="updateFunc()"
-            >
-              Update
-              <v-tooltip
-                activator="parent"
-                location="left"
-                :text="`Update to ${funcLatest}`"
-              />
-            </v-btn>
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Node Version</div>
-            <div class="text-caption text-grey">
-              {{ store.goalVersion?.installed }}
+            <div class="set-actions">
+              <v-btn
+                :color="
+                  store.funcUpdateAvailable && !updatingFunc ? 'warning' : ''
+                "
+                :variant="
+                  store.funcUpdateAvailable && !updatingFunc
+                    ? 'flat'
+                    : 'outlined'
+                "
+                size="small"
+                :disabled="!store.funcUpdateAvailable || updatingFunc"
+                :loading="updatingFunc"
+                @click="updateFunc()"
+              >
+                Update
+                <v-tooltip
+                  activator="parent"
+                  location="left"
+                  :text="`Update to ${funcLatest}`"
+                />
+              </v-btn>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-title">Node Version</div>
+            <div class="set-desc">
+              <span class="font-mono">{{ store.goalVersion?.installed }}</span>
               {{ !store.nodeUpdateAvailable ? "(latest)" : "" }}
             </div>
-          </v-col>
-          <v-col class="text-right">
-            <Releases
-              class="ml-2"
-              @release="updateNode"
-              v-if="store.showNodeVersions"
-            />
-            <v-btn
-              :color="store.nodeUpdateAvailable ? 'warning' : ''"
-              variant="tonal"
-              :disabled="!store.nodeUpdateAvailable || store.downloading"
-              @click="updateNodeLatest()"
-              v-else
-            >
-              Update
-              <v-tooltip
-                activator="parent"
-                location="left"
-                :text="`Update to ${store.goalVersion?.latest}`"
+            <div class="set-actions">
+              <Releases
+                @release="updateNode"
+                v-if="store.showNodeVersions"
               />
-            </v-btn>
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Manual Node Version Selection</div>
-            <div class="text-caption text-grey">
-              Also suppresses new version alerts
+              <v-btn
+                :color="store.nodeUpdateAvailable ? 'warning' : ''"
+                :variant="store.nodeUpdateAvailable ? 'flat' : 'outlined'"
+                size="small"
+                :disabled="!store.nodeUpdateAvailable || store.downloading"
+                @click="updateNodeLatest()"
+                v-else
+              >
+                Update
+                <v-tooltip
+                  activator="parent"
+                  location="left"
+                  :text="`Update to ${store.goalVersion?.latest}`"
+                />
+              </v-btn>
             </div>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="store.showNodeVersions"
-              class="d-flex"
-              style="justify-content: right"
-              color="primary"
-              @click.prevent="setShowNodeVersions(!store.showNodeVersions)"
-            />
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Show Machine Name</div>
-            <div class="text-caption text-grey">In App Bar</div>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="store.showMachineName"
-              class="d-flex"
-              style="justify-content: right"
-              color="primary"
-              @click.prevent="setShowMachineName(!store.showMachineName)"
-            />
-          </v-col>
-        </v-row>
-        <v-row align="center">
-          <v-col>
-            <div>Show Alternative Networks</div>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="store.showNetworks"
-              class="d-flex"
-              style="justify-content: right"
-              color="primary"
-              @click.prevent="setShowNetworks(!store.showNetworks)"
-            />
-          </v-col>
-        </v-row>
-      </v-container>
+          </div>
+        </div>
+        <div class="group">
+          <div class="set-row">
+            <div class="set-title">Manual Node Version Selection</div>
+            <div class="set-desc">Also suppresses new version alerts</div>
+            <div class="set-actions">
+              <v-switch
+                v-model="store.showNodeVersions"
+                @click.prevent="setShowNodeVersions(!store.showNodeVersions)"
+              />
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-title">Show Machine Name</div>
+            <div class="set-desc">In App Bar</div>
+            <div class="set-actions">
+              <v-switch
+                v-model="store.showMachineName"
+                @click.prevent="setShowMachineName(!store.showMachineName)"
+              />
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-title">Show Alternative Networks</div>
+            <div class="set-actions">
+              <v-switch
+                v-model="store.showNetworks"
+                @click.prevent="setShowNetworks(!store.showNetworks)"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </v-card>
     <v-dialog v-model="showPassword" max-width="480">
       <v-card>
@@ -157,18 +147,21 @@
               autocomplete="new-password"
               :rules="[required, matches]"
             />
-            <div class="text-caption text-grey mt-2">
+            <div class="footnote mt-2">
               Every other browser and device will be signed out.
             </div>
           </v-card-text>
           <v-card-actions>
-            <v-spacer />
-            <v-btn text="Cancel" variant="tonal" @click="showPassword = false" />
+            <v-btn
+              text="Cancel"
+              variant="outlined"
+              @click="showPassword = false"
+            />
             <v-btn
               type="submit"
               text="Change"
               color="primary"
-              variant="tonal"
+              variant="flat"
               :loading="changingPassword"
             />
           </v-card-actions>
@@ -366,3 +359,53 @@ async function setShowNodeVersions(val: boolean) {
   localStorage.setItem("showNodeVersions", val.toString());
 }
 </script>
+
+<style scoped>
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 24px 24px;
+}
+.settings-body .group {
+  background: rgb(var(--v-theme-background));
+}
+.set-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title actions"
+    "desc actions";
+  align-items: center;
+  column-gap: 16px;
+  min-height: 60px;
+  padding: 12px 16px;
+}
+.set-row:not(:has(.set-desc)) {
+  grid-template-areas: "title actions";
+}
+.set-row + .set-row {
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+.set-title {
+  grid-area: title;
+  font-size: 14px;
+}
+.set-desc {
+  grid-area: desc;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgb(var(--v-theme-text-dim));
+}
+.set-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.set-actions :deep(.v-switch) {
+  flex: none;
+}
+</style>

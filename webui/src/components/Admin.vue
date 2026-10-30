@@ -4,7 +4,7 @@
       <v-card-title class="d-flex align-center">
         Messages Admin
         <v-spacer />
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-card-text>
         <v-alert v-if="loadError" type="error" class="mb-4" density="compact">
@@ -12,11 +12,11 @@
         </v-alert>
         <v-row dense class="mb-2">
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">App ID</div>
+            <div class="footnote">App ID</div>
             <div>{{ appId }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Network / Message Counter</div>
+            <div class="footnote">Network / Message Counter</div>
             <div>{{ activeNetwork }} / {{ globalId ?? "?" }}</div>
           </v-col>
         </v-row>
@@ -62,6 +62,7 @@
             />
             <v-btn
               color="primary"
+              variant="flat"
               :disabled="!canPost || !title || !body"
               @click="addMessage()"
             >
@@ -73,42 +74,41 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="text-subtitle-1">Allowed Senders</v-card-title>
           <v-card-text>
-            <div v-if="!senders.length" class="text-grey mb-2">
-              No allowed senders (creator can always post)
-            </div>
-            <div
-              v-for="sender in senders"
-              :key="sender"
-              class="d-flex align-center mb-1"
-            >
-              <span style="font-family: monospace">{{ sender }}</span>
-              <span>
-                <v-icon
-                  class="ml-2"
-                  :icon="mdiDelete"
-                  :disabled="!isCreator"
-                  @click="revokeSender(sender)"
-                />
-                <v-tooltip
-                  text="Revoke sender (refunds MBR)"
-                  location="bottom"
-                  activator="parent"
-                />
-              </span>
+            <div class="senders">
+              <div v-if="!senders.length" class="text-dim">
+                No allowed senders (creator can always post)
+              </div>
+              <div
+                v-for="sender in senders"
+                :key="sender"
+                class="d-flex align-center"
+              >
+                <span class="font-mono">{{ sender }}</span>
+                <span>
+                  <v-icon
+                    class="ml-2"
+                    :icon="mdiDelete"
+                    :disabled="!isCreator"
+                    @click="revokeSender(sender)"
+                  />
+                  <v-tooltip
+                    text="Revoke sender (refunds MBR)"
+                    location="bottom"
+                    activator="parent"
+                  />
+                </span>
+              </div>
             </div>
             <v-text-field
               v-model="newSender"
               label="Address to allow"
               density="compact"
-              class="mt-2"
-              :rules="[
-                (v: string) =>
-                  !v || algosdk.isValidAddress(v) || 'Invalid address',
-              ]"
+              :rules="[addressRule]"
               :disabled="!isCreator"
             />
             <v-btn
               color="primary"
+              variant="flat"
               :disabled="!isCreator || !algosdk.isValidAddress(newSender)"
               @click="allowSender()"
             >
@@ -143,6 +143,7 @@
             </div>
             <v-btn
               color="error"
+              variant="flat"
               class="mt-2"
               :disabled="!isCreator || !parsedSpec"
               @click="updateContract()"
@@ -187,6 +188,9 @@ const appId = BigInt(import.meta.env.VITE_MESSAGES_APP_ID);
 // This dialog talks to the wallet's configured node, not the local one.
 const adminEndpoint = "the network's algod API";
 const appAddress = algosdk.getApplicationAddress(appId);
+
+const addressRule = (v: string) =>
+  !v || algosdk.isValidAddress(v) || "Invalid address";
 
 const abi = {
   update: algosdk.ABIMethod.fromSignature("updateApplication()void"),
@@ -521,3 +525,14 @@ async function updateContract() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+/* Padding, not margin: the next field's label sits in its own top margin,
+   which would collapse into a margin here. */
+.senders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+}
+</style>

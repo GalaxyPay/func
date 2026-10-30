@@ -1,52 +1,51 @@
 <template>
-  <div v-if="nodeStatus">
-    <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
-    <v-container class="pl-5" fluid>
-      <v-row>
-        <v-col cols="12" sm="4">
-          <div class="py-1">
-            <v-badge floating dot class="mx-3 mb-1" :color="createdColor" />
+  <div v-if="nodeStatus" class="node">
+    <v-progress-linear
+      indeterminate
+      v-show="loading"
+      class="node-progress"
+      height="2"
+    />
+    <div class="node-overview">
+      <section>
+        <div class="section-label">Status</div>
+        <div class="group">
+          <div class="status-row">
+            <span class="status-dot" :class="`bg-${createdColor}`" />
             Service Created
           </div>
-          <div class="py-1">
-            <v-badge floating dot class="mx-3 mb-1" :color="runningColor" />
+          <div class="status-row">
+            <span class="status-dot" :class="`bg-${runningColor}`" />
             Node Running
           </div>
-          <div class="py-1">
-            <v-badge
-              floating
-              dot
-              class="mx-3 mb-1"
-              :class="isSyncing && !generatingKey ? 'pulsate' : ''"
-              :color="syncedColor"
+          <div class="status-row">
+            <span
+              class="status-dot"
+              :class="[
+                `bg-${syncedColor}`,
+                isSyncing && !generatingKey ? 'pulsate' : '',
+              ]"
             />
             Node Synced
           </div>
-          <div class="py-1 ellipsis">
-            <v-badge
-              floating
-              dot
-              class="mx-3 mb-1"
-              :color="participatingColor"
-            />
-            Participating in Consensus
+          <div class="status-row">
+            <span class="status-dot" :class="`bg-${participatingColor}`" />
+            <span class="ellipsis">Participating in Consensus</span>
           </div>
           <div
-            class="py-1"
+            class="status-row"
             v-show="
               nodeStatus.retiStatus &&
               nodeStatus.retiStatus.serviceStatus !== 'Not Found'
             "
           >
-            <v-badge floating dot class="mx-3 mb-1" :color="retiColor" />
+            <span class="status-dot" :class="`bg-${retiColor}`" />
             Reti Running
             <v-chip
               v-show="retiUpdate"
               color="warning"
-              size="small"
-              class="ml-1"
+              class="ml-auto"
               @click="updateReti()"
-              density="compact"
             >
               Update
               <v-tooltip
@@ -57,21 +56,19 @@
             </v-chip>
           </div>
           <div
-            class="py-1"
+            class="status-row"
             v-show="
               nodeStatus.valarStatus &&
               nodeStatus.valarStatus.serviceStatus !== 'Not Found'
             "
           >
-            <v-badge floating dot class="mx-3 mb-1" :color="valarColor" />
+            <span class="status-dot" :class="`bg-${valarColor}`" />
             Valar Running
             <v-chip
               v-show="valarUpdate"
               color="warning"
-              size="small"
-              class="ml-1"
+              class="ml-auto"
               @click="updateValar()"
-              density="compact"
             >
               Update
               <v-tooltip
@@ -81,107 +78,123 @@
               />
             </v-chip>
           </div>
-          <div class="py-1" v-show="nodeStatus.telemetryStatus">
-            <v-badge floating dot class="mx-3 mb-1" :color="telemetryColor" />
+          <div class="status-row" v-show="nodeStatus.telemetryStatus">
+            <span class="status-dot" :class="`bg-${telemetryColor}`" />
             Telemetry
-            <a :href="telemetryLink" target="_blank" v-if="telemetryEnabled">
-              <v-icon :icon="mdiOpenInNew" class="pb-1" color="primary" />
+            <a
+              :href="telemetryLink"
+              target="_blank"
+              v-if="telemetryEnabled"
+              class="telemetry-link"
+            >
+              <v-icon :icon="mdiOpenInNew" size="14" />
             </a>
           </div>
-          <Manage
-            class="mt-4"
-            :name="name"
-            :node-status="nodeStatus"
-            :status="status"
-            @await-running="waitForRunning"
-            @cancel-await="cancelWait"
-          />
-        </v-col>
-        <template v-if="nodeStatus.serviceStatus === 'Running'">
-          <v-col cols="12" sm="4" class="text-center">
-            <div class="text-h4" style="white-space: nowrap">
+        </div>
+        <Manage
+          class="mt-3"
+          :name="name"
+          :node-status="nodeStatus"
+          :status="status"
+          @await-running="waitForRunning"
+          @cancel-await="cancelWait"
+        />
+      </section>
+      <section v-if="nodeStatus.serviceStatus === 'Running'">
+        <div class="section-label">Overview</div>
+        <div class="stats-grid">
+          <v-card class="stat-card">
+            <div class="stat-label">Current Block</div>
+            <div class="stat-value">
               {{
                 algodStatus
                   ? algodStatus.lastRound.toLocaleString() || "-"
                   : "-"
               }}
             </div>
-            <div>Current Block</div>
-            <template v-if="!xs">
-              <div class="mt-13 text-h4">
-                {{ partDetails ? partDetails.activeKeys : "-" }}
-              </div>
-              <div>Online Accounts</div>
-            </template>
-          </v-col>
-          <v-col cols="12" sm="4" class="text-center">
-            <div class="text-h4">
+          </v-card>
+          <v-card class="stat-card">
+            <div class="stat-label">
+              Blocks Created
+              <v-btn
+                size="x-small"
+                :text="resetLabel"
+                variant="outlined"
+                class="ml-auto reset-btn"
+                :disabled="!algodStatus"
+                @click="showResetDialog()"
+              />
+            </div>
+            <div class="stat-value">
               {{
                 partDetails?.proposals == null
                   ? "-"
                   : partDetails.proposals.toLocaleString()
               }}
             </div>
-            <div>
-              Blocks Created
-              <div>
-                <v-btn
-                  size="x-small"
-                  :text="resetLabel"
-                  color="grey"
-                  variant="tonal"
-                  :disabled="!algodStatus"
-                  @click="showResetDialog()"
-                />
-              </div>
+          </v-card>
+          <v-card v-if="!xs" class="stat-card">
+            <div class="stat-label">Online Accounts</div>
+            <div class="stat-value">
+              {{ partDetails ? partDetails.activeKeys : "-" }}
             </div>
-            <div class="mt-7 text-h4" style="white-space: nowrap">
+          </v-card>
+          <v-card class="stat-card">
+            <div class="stat-label">Online Stake</div>
+            <div class="stat-value">
               {{
                 partDetails
                   ? (partDetails.activeStake / 10 ** 6).toLocaleString()
                   : "-"
               }}
             </div>
-            <div>Online Stake</div>
-          </v-col>
-        </template>
-      </v-row>
-    </v-container>
-    <v-container v-if="algodStatus?.catchpoint" fluid>
-      <v-divider />
-      <v-card-title>Fast Catchup</v-card-title>
-      <v-card-text class="pb-0">
-        Block:
-        {{
-          algodStatus.catchpoint.substring(
-            0,
-            algodStatus.catchpoint.indexOf("#")
-          )
-        }}
-      </v-card-text>
-      <v-container :max-width="500">
-        <div class="pb-4" v-for="prog in catchupProgress">
-          {{ prog.name }}
+          </v-card>
+        </div>
+      </section>
+    </div>
+    <section v-if="algodStatus?.catchpoint" class="node-section">
+      <div class="section-head">
+        <span class="section-label">Fast Catchup</span>
+        <span class="ml-auto text-dim font-mono text-caption">
+          Block:
           {{
-            prog.verified > 0
-              ? "(Verifying)"
-              : prog.processed > 0 && prog.processed < 100
-                ? "(Processing)"
-                : ""
+            algodStatus.catchpoint.substring(
+              0,
+              algodStatus.catchpoint.indexOf("#")
+            )
           }}
+        </span>
+      </div>
+      <div class="group">
+        <div class="catchup-row" v-for="prog in catchupProgress">
+          <div class="d-flex">
+            {{ prog.name }}
+            <span class="ml-auto text-muted">
+              {{
+                prog.verified > 0
+                  ? "(Verifying)"
+                  : prog.processed > 0 && prog.processed < 100
+                    ? "(Processing)"
+                    : ""
+              }}
+            </span>
+          </div>
           <v-progress-linear
             v-show="prog.processed != 100"
             :model-value="prog.processed"
             color="warning"
+            rounded
+            height="4"
           />
           <v-progress-linear
             v-show="prog.processed == 100"
             :model-value="prog.verified"
-            color="primary"
+            rounded
+            height="4"
           />
         </div>
-      </v-container>
-    </v-container>
+      </div>
+    </section>
     <Participation
       v-if="algodClient && (algodStatus?.lastRound || 0) > 100"
       :name="name"
@@ -199,14 +212,14 @@
       :name="name"
       :timestamps="blockTimestamps"
     />
-    <v-container
-      class="text-caption text-grey text-center"
+    <p
+      class="footnote text-center mt-8"
       v-show="nodeStatus?.serviceStatus === 'Running'"
     >
       This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
-    </v-container>
-    <v-dialog v-model="showReset" max-width="350" persistent>
+    </p>
+    <v-dialog v-model="showReset" max-width="380" persistent>
       <v-card>
         <v-card-title class="d-flex">
           Count Blocks
@@ -214,13 +227,7 @@
           <v-icon :icon="mdiClose" @click="showReset = false" />
         </v-card-title>
         <v-card-text>
-          <v-radio-group
-            class="pa-1"
-            v-model="mode"
-            color="primary"
-            density="comfortable"
-            hide-details
-          >
+          <v-radio-group v-model="mode" density="compact" hide-details>
             <v-radio value="all" label="All-Time" />
             <v-radio value="year" label="This Year" />
             <v-radio value="month" label="This Month" />
@@ -231,10 +238,8 @@
             :disabled="mode !== 'custom'"
             v-model="date"
             label="Date"
-            variant="outlined"
-            density="compact"
             hide-details
-            class="pt-3"
+            class="font-mono"
             clearable
             persistent-clear
             hint="YYYY-MM-DD"
@@ -244,7 +249,7 @@
           <v-btn
             text="Save"
             color="primary"
-            variant="tonal"
+            variant="flat"
             @click="setResetDate()"
           />
         </v-card-actions>
@@ -295,19 +300,19 @@ const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
 
 const createdColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Unknown"
-    ? "grey"
+    ? "icon"
     : nodeStatus.value?.serviceStatus !== "Not Found"
       ? "success"
-      : "red"
+      : "error"
 );
 
 const runningColor = computed(() =>
-  nodeStatus.value?.serviceStatus === "Running" ? "success" : "red"
+  nodeStatus.value?.serviceStatus === "Running" ? "success" : "error"
 );
 
 const syncedColor = computed(() =>
   algodStatus.value?.lastRound == 0n && !isSyncing.value
-    ? "red"
+    ? "error"
     : isSyncing.value && !generatingKey.value
       ? "warning"
       : runningColor.value
@@ -317,22 +322,22 @@ const participatingColor = computed(() =>
   nodeStatus.value?.serviceStatus !== "Running" ||
   (isSyncing.value && !generatingKey.value) ||
   (partDetails.value && !partDetails.value.activeKeys)
-    ? "red"
+    ? "error"
     : generatingKey.value || !partDetails.value
-      ? "grey"
+      ? "icon"
       : "success"
 );
 
-const retiColor = computed(() => (retiRunning.value ? "success" : "red"));
+const retiColor = computed(() => (retiRunning.value ? "success" : "error"));
 
 // The Valar daemon has no health endpoint; the backend reports exeStatus from
 // recent log activity (null = service up but nothing logged yet, Stopped =
 // service up but the log has gone stale).
 const valarColor = computed(() => {
   const vs = nodeStatus.value?.valarStatus;
-  if (vs?.serviceStatus !== "Running") return "red";
+  if (vs?.serviceStatus !== "Running") return "error";
   if (vs.exeStatus === "Running") return "success";
-  return vs.exeStatus === "Stopped" ? "warning" : "grey";
+  return vs.exeStatus === "Stopped" ? "warning" : "icon";
 });
 
 const telemetryEnabled = computed(() =>
@@ -340,8 +345,8 @@ const telemetryEnabled = computed(() =>
 );
 
 const telemetryColor = computed(() => {
-  if (nodeStatus.value?.serviceStatus !== "Running") return "grey";
-  return telemetryEnabled.value ? "success" : "grey";
+  if (nodeStatus.value?.serviceStatus !== "Running") return "icon";
+  return telemetryEnabled.value ? "success" : "icon";
 });
 
 const telemetryLink = computed(() => {
@@ -763,3 +768,88 @@ function setResetDate() {
   reloadPartDetails();
 }
 </script>
+
+<style scoped>
+.node {
+  position: relative;
+}
+.node-progress {
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+}
+.node-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+}
+.status-row + .status-row {
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+.telemetry-link {
+  display: inline-flex;
+  margin-inline-start: -4px;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.stats-grid .stat-card {
+  padding: 18px 20px 20px;
+  gap: 10px;
+}
+.stats-grid .stat-value {
+  font-size: 30px;
+}
+.reset-btn {
+  --v-btn-height: 22px;
+  font-size: 11px;
+  font-weight: 400;
+  padding-inline: 8px !important;
+  border-radius: 6px;
+}
+.node-section {
+  margin-top: 32px;
+}
+.catchup-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+}
+.catchup-row + .catchup-row {
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+/* Below md the column beside Status is too narrow for 2x2 cards; stacked
+   cards also get compact sizing so the column stays close to Status' height */
+@media (max-width: 959.98px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .stats-grid .stat-card {
+    padding: 14px 16px 16px;
+    gap: 6px;
+  }
+  .stats-grid .stat-value {
+    font-size: 24px;
+  }
+}
+@media (max-width: 599.98px) {
+  .node-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

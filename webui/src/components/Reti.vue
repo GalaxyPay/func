@@ -3,9 +3,12 @@
     <v-card :disabled="loading">
       <v-progress-linear indeterminate v-show="loading" class="mb-n1" />
       <v-card-title class="d-flex">
-        Reti Validator {{ version.current }}
+        Reti Validator
+        <span class="ml-2 text-dim font-mono text-body-2">{{
+          version.current
+        }}</span>
         <v-spacer />
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-form ref="form" @submit.prevent="startValidator()">
         <v-card-text>
@@ -52,7 +55,7 @@
             type="submit"
             text="Start Reti Service"
             color="primary"
-            variant="tonal"
+            variant="flat"
           />
         </v-card-actions>
       </v-form>
