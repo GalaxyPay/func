@@ -15,14 +15,13 @@
             label="Token (Read-Only)"
             readonly
             :model-value="token"
+            class="font-mono"
             :append-inner-icon="mdiContentCopy"
             @click:append-inner="copyVal(token)"
           />
           <v-select
             label="BaseLoggerDebugLevel"
             v-model="baseLoggerDebugLevel"
-            variant="outlined"
-            density="comfortable"
             :items="[...Array(6).keys()]"
             hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
             persistent-hint
@@ -56,8 +55,8 @@
         </v-container>
         <v-card-actions>
           <v-spacer />
-          <v-btn text="Cancel" variant="tonal" @click="show = false" />
-          <v-btn text="Save" color="primary" variant="tonal" type="submit" />
+          <v-btn text="Cancel" variant="outlined" @click="show = false" />
+          <v-btn text="Save" color="primary" variant="flat" type="submit" />
         </v-card-actions>
       </v-form>
     </v-card>

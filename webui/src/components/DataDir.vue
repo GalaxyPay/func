@@ -3,16 +3,18 @@
     <v-card :disabled="loading">
       <v-card-title> Change Data Directory </v-card-title>
       <v-container v-if="dataDir">
-        <v-text-field v-model.number="dataDir" density="comfortable">
-          <template #append-inner> /{{ name.toLowerCase() }} </template>
+        <v-text-field v-model.number="dataDir" class="font-mono">
+          <template #append-inner>
+            <span class="text-dim">/{{ name.toLowerCase() }}</span>
+          </template>
         </v-text-field>
       </v-container>
       <v-card-actions>
-        <v-btn text="Cancel" variant="tonal" @click="show = false" />
+        <v-btn text="Cancel" variant="outlined" @click="show = false" />
         <v-btn
           text="Save"
           color="primary"
-          variant="tonal"
+          variant="flat"
           @click="save()"
           :loading="loading"
         />

@@ -41,7 +41,7 @@
             type="submit"
             :text="setupMode ? 'Set Password' : 'Sign In'"
             color="primary"
-            variant="tonal"
+            variant="flat"
             :loading="loading"
           />
         </v-card-actions>

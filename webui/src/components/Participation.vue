@@ -1,15 +1,13 @@
 <template>
-  <v-container fluid>
-    <v-divider />
-    <v-card-title class="d-flex">
-      Participation Keys
+  <section class="node-section">
+    <div class="section-head">
+      <span class="section-label">Participation Keys</span>
       <span>
         <v-progress-circular
           v-show="loading"
           indeterminate
-          :size="20"
+          :size="14"
           :width="2"
-          class="ml-2"
         />
         <v-tooltip activator="parent" text="Loading Stats..." />
       </span>
@@ -17,35 +15,33 @@
       <v-btn
         :text="!xs && 'Generate Key...'"
         :icon="xs && mdiPlus"
-        variant="tonal"
+        :prepend-icon="!xs ? mdiPlus : undefined"
+        variant="flat"
         color="primary"
+        size="small"
+        class="generate-btn"
+        :aria-label="xs ? 'Generate Key...' : undefined"
         :disabled="status !== 'Running'"
         @click="showGenerateDialog"
       />
-    </v-card-title>
-    <v-container fluid>
+    </div>
+    <div class="group">
       <v-data-table
         :headers="headers"
         :items="keys"
         density="comfortable"
         items-per-page="-1"
         hover
+        class="keys-table"
       >
         <template #no-data>
           <i>No participation keys on this node</i>
         </template>
         <template #bottom />
         <template #[`item.status`]="{ item }">
-          <v-btn variant="flat" size="small">
-            <span>
-              <v-badge
-                floating
-                dot
-                :color="keyStatus(item).color"
-                class="mr-2"
-              />
-              <v-icon :icon="mdiChevronDown" size="large" />
-            </span>
+          <v-btn variant="outlined" size="small" class="status-btn">
+            <span class="status-dot" :class="`bg-${keyStatus(item).color}`" />
+            <v-icon :icon="mdiChevronDown" size="16" />
             <v-tooltip
               activator="parent"
               location="top"
@@ -54,7 +50,7 @@
             <v-menu activator="parent" bottom scrim>
               <v-list density="compact">
                 <div
-                  class="mx-4 text-caption text-grey"
+                  class="menu-hint text-dim"
                   v-show="!isConnected(item)"
                 >
                   Connect wallet for more options
@@ -89,21 +85,21 @@
           </v-btn>
         </template>
         <template #[`item.address`]="{ value }">
-          <span @click="copyVal(value)" class="pointer">
+          <span @click="copyVal(value)" class="pointer font-mono">
             {{ formatAddr(value, 7) }}
             <v-tooltip activator="parent" location="top" :text="value" />
           </span>
         </template>
         <template #[`item.expire`]="{ item }">
-          {{ expireDt(item.key.voteLastValid) }}
+          <span class="text-body">{{ expireDt(item.key.voteLastValid) }}</span>
         </template>
         <template #expanded-row="{ columns, item }">
-          <tr style="background-color: #1acbf712">
+          <tr class="expand-row">
             <td :colspan="columns.length">
-              <v-row class="text-center">
-                <v-col class="text-subtitle-1">
-                  Stake:
-                  <span class="font-weight-bold">
+              <div class="expand-stats">
+                <div>
+                  <span class="text-muted">Stake</span>
+                  <span class="expand-figure">
                     {{
                       (
                         Number(
@@ -114,77 +110,101 @@
                       ).toLocaleString()
                     }}
                   </span>
-                </v-col>
-                <v-col class="text-subtitle-1">
-                  Blocks Created:
-                  <span class="font-weight-bold">
+                </div>
+                <div>
+                  <span class="text-muted">Blocks Created</span>
+                  <span class="expand-figure">
                     {{ partStats[item.address]?.proposals.toLocaleString() }}
                   </span>
-                </v-col>
-              </v-row>
+                </div>
+              </div>
             </td>
           </tr>
-          <tr style="background-color: #1acbf70d" class="text-caption">
+          <tr class="expand-row expand-row--detail">
             <td :colspan="1">
-              <div class="pa-1">
-                <div class="pa-1">
+              <div class="detail-list">
+                <div>
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(item.key.voteFirstValid)"
                   />
-                  First Valid: {{ item.key.voteFirstValid.toLocaleString() }}
+                  <span class="text-muted">First Valid:</span>
+                  <span class="font-mono">{{
+                    item.key.voteFirstValid.toLocaleString()
+                  }}</span>
                 </div>
-                <div class="pa-1">
+                <div>
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(item.key.voteLastValid)"
                   />
-                  Last Valid: {{ item.key.voteLastValid.toLocaleString() }}
+                  <span class="text-muted">Last Valid:</span>
+                  <span class="font-mono">{{
+                    item.key.voteLastValid.toLocaleString()
+                  }}</span>
                 </div>
-                <div class="pa-1">
+                <div>
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(item.key.voteKeyDilution)"
                   />
-                  Key Dilution: {{ item.key.voteKeyDilution.toLocaleString() }}
+                  <span class="text-muted">Key Dilution:</span>
+                  <span class="font-mono">{{
+                    item.key.voteKeyDilution.toLocaleString()
+                  }}</span>
                 </div>
               </div>
             </td>
             <td :colspan="columns.length - 1" style="max-width: 0">
-              <div class="pa-1">
-                <div class="pa-1 ellipsis">
+              <div class="detail-list">
+                <div class="ellipsis">
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(b64(item.key.voteParticipationKey))"
                   />
-                  Vote Key: {{ b64(item.key.voteParticipationKey) }}
+                  <span class="text-muted">Vote Key:</span>
+                  <span class="font-mono">{{
+                    b64(item.key.voteParticipationKey)
+                  }}</span>
                 </div>
-                <div class="pa-1 ellipsis">
+                <div class="ellipsis">
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(b64(item.key.selectionParticipationKey))"
                   />
-                  Selection Key: {{ b64(item.key.selectionParticipationKey) }}
+                  <span class="text-muted">Selection Key:</span>
+                  <span class="font-mono">{{
+                    b64(item.key.selectionParticipationKey)
+                  }}</span>
                 </div>
-                <div class="pa-1 ellipsis">
+                <div class="ellipsis">
                   <v-icon
                     :icon="mdiContentCopy"
-                    size="small"
+                    size="14"
+                    class="clickable"
                     @click="copyVal(b64(item.key.stateProofKey))"
                   />
-                  State Proof Key: {{ b64(item.key.stateProofKey) }}
+                  <span class="text-muted">State Proof Key:</span>
+                  <span class="font-mono">{{
+                    b64(item.key.stateProofKey)
+                  }}</span>
                 </div>
               </div>
             </td>
           </tr>
         </template>
       </v-data-table>
-    </v-container>
+    </div>
     <v-dialog v-model="showGenerate" max-width="600" persistent>
       <v-card :disabled="generating">
         <v-card-title class="d-flex">
@@ -200,7 +220,7 @@
                   v-model="addr"
                   label="Address"
                   :rules="[required, validAddress]"
-                  style="font-family: monospace"
+                  class="font-mono"
                 />
               </v-col>
             </v-row>
@@ -211,6 +231,7 @@
                   type="number"
                   label="First Valid"
                   :rules="[required]"
+                  class="font-mono"
                 />
               </v-col>
               <v-col cols="6" class="pb-0">
@@ -219,6 +240,7 @@
                   type="number"
                   label="Last Valid"
                   :rules="[required]"
+                  class="font-mono"
                 />
               </v-col>
             </v-row>
@@ -229,14 +251,14 @@
               text="Generate"
               type="submit"
               color="primary"
-              variant="tonal"
+              variant="flat"
               :loading="generating"
             />
           </v-card-actions>
         </v-form>
       </v-card>
     </v-dialog>
-  </v-container>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -618,7 +640,7 @@ function incentiveIneligible(addr: string) {
 function keyStatus(item: Participation) {
   const ii = incentiveIneligible(item.address);
   return !isKeyActive(item)
-    ? { text: "Unregistered", color: "red" }
+    ? { text: "Unregistered", color: "error" }
     : ii.val
       ? {
           text: `Ineligible For Incentives${ii.reason ? ": " + ii.reason : ""}`,
@@ -662,9 +684,14 @@ async function showGenerateDialog() {
   }
 }
 
+// When lastRound was read, so expiry estimates are anchored to that moment
+// rather than to render time (the table re-renders on every new block).
+let lastRoundAt = Date.now();
+
 async function getLastRound() {
   const status = await props.algodClient.status().do();
   lastRound.value = status.lastRound;
+  lastRoundAt = Date.now();
 }
 
 async function generateKey() {
@@ -777,7 +804,13 @@ async function calcAvgBlockTime() {
 function expireDt(lastValid: bigint) {
   if (!lastRound.value || !avgBlockTime.value) return undefined;
   const expireMs = Number(lastValid - lastRound.value) * avgBlockTime.value;
-  return new Date(Date.now() + expireMs).toLocaleString();
+  return new Date(lastRoundAt + expireMs).toLocaleString(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function resetAll() {
@@ -911,3 +944,82 @@ async function getStats(addrs: string[]) {
   }
 }
 </script>
+
+<style scoped>
+.node-section {
+  margin-top: 32px;
+}
+.text-body {
+  color: rgb(var(--v-theme-text-body));
+}
+/* Icon-only on xs: match the 32px small buttons instead of a large circle */
+.generate-btn.v-btn--icon {
+  --v-btn-height: 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.generate-btn.v-btn--icon :deep(.v-icon) {
+  font-size: 18px;
+}
+.status-btn {
+  --v-btn-height: 28px;
+  padding-inline: 10px 6px !important;
+  gap: 6px;
+}
+.status-btn :deep(.v-btn__content) {
+  gap: 8px;
+}
+.menu-hint {
+  padding: 6px 10px 4px;
+  font-size: 12px;
+}
+/* Expanded key details: a recessed panel under the row */
+.keys-table :deep(.v-data-table__tr--expanded) > td {
+  border-bottom-color: transparent !important;
+}
+.expand-row > td {
+  background: rgb(var(--v-theme-background));
+  border-bottom: none !important;
+}
+.expand-row--detail > td {
+  border-bottom: 1px solid rgb(var(--v-theme-border)) !important;
+  font-size: 12px;
+  vertical-align: top;
+}
+.expand-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 16px;
+  padding: 14px 0 6px;
+}
+.expand-stats > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+}
+.expand-figure {
+  font: 500 16px var(--font-mono);
+}
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 14px;
+}
+.detail-list > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-list > div.ellipsis {
+  display: block;
+}
+.detail-list > div.ellipsis > * + * {
+  margin-inline-start: 6px;
+}
+.detail-list .font-mono {
+  color: rgb(var(--v-theme-text-body));
+}
+</style>

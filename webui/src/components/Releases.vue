@@ -1,8 +1,8 @@
 <template>
-  <v-btn variant="tonal" :disabled="store.downloading">
+  <v-btn variant="outlined" size="small" :disabled="store.downloading">
     Select
     <template #append>
-      <v-icon :icon="mdiChevronDown" />
+      <v-icon :icon="mdiChevronDown" size="16" />
     </template>
     <v-menu activator="parent" bottom scrim>
       <v-list density="compact">

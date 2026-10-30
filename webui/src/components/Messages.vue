@@ -6,14 +6,14 @@
         <v-spacer />
         <v-btn
           v-if="store.unreadCount > 0"
-          class="mr-2"
+          class="mr-3"
           size="small"
-          variant="tonal"
+          variant="outlined"
           @click="store.markAllRead()"
         >
           Mark all read
         </v-btn>
-        <v-icon color="currentColor" :icon="mdiClose" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-data-table
         :headers
@@ -27,7 +27,7 @@
           <span>
             <v-icon
               :icon="item.read ? mdiEmailOpenOutline : mdiEmail"
-              :color="item.read ? 'grey' : 'primary'"
+              :color="item.read ? 'icon' : 'primary'"
               @click="
                 item.read ? store.markUnread(item.id) : store.markRead(item.id)
               "
@@ -45,7 +45,7 @@
           </span>
         </template>
         <template #item.body="{ item }">
-          <span :class="{ 'text-grey': item.read }">{{ item.body }}</span>
+          <span :class="{ 'text-dim': item.read }">{{ item.body }}</span>
         </template>
       </v-data-table>
     </v-card>

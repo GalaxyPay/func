@@ -1,30 +1,24 @@
 <template>
-  <v-container
-    v-show="store.ready && !store.downloading"
-    fluid
-    :max-width="1000"
-  >
-    <v-card>
-      <v-tabs
-        v-if="store.showNetworks"
-        :model-value="tab"
-        color="primary"
-        @update:model-value="setNetwork"
-      >
-        <v-tab
-          v-for="n in networks"
-          :key="n.id"
-          :text="n.title"
-          :value="n.title"
-        />
-      </v-tabs>
-      <v-window disabled :model-value="tab">
-        <v-window-item v-for="n in networks" :key="n.id" :value="n.title">
-          <Node v-if="tab === n.title" :name="n.title" />
-        </v-window-item>
-      </v-window>
-    </v-card>
-  </v-container>
+  <div v-show="store.ready && !store.downloading" class="page page--max">
+    <v-tabs
+      v-if="store.showNetworks"
+      :model-value="tab"
+      class="network-tabs"
+      @update:model-value="setNetwork"
+    >
+      <v-tab
+        v-for="n in networks"
+        :key="n.id"
+        :text="n.title"
+        :value="n.title"
+      />
+    </v-tabs>
+    <v-window disabled :model-value="tab">
+      <v-window-item v-for="n in networks" :key="n.id" :value="n.title">
+        <Node v-if="tab === n.title" :name="n.title" />
+      </v-window-item>
+    </v-window>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -44,3 +38,12 @@ async function setNetwork(val: any) {
   store.refreshPart++;
 }
 </script>
+
+<style scoped>
+.page {
+  --page-max: 1000px;
+}
+.network-tabs {
+  margin-bottom: 24px;
+}
+</style>
