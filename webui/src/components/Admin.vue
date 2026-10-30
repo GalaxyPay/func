@@ -101,10 +101,7 @@
               label="Address to allow"
               density="compact"
               class="mt-2"
-              :rules="[
-                (v: string) =>
-                  !v || algosdk.isValidAddress(v) || 'Invalid address',
-              ]"
+              :rules="[addressRule]"
               :disabled="!isCreator"
             />
             <v-btn
@@ -187,6 +184,9 @@ const appId = BigInt(import.meta.env.VITE_MESSAGES_APP_ID);
 // This dialog talks to the wallet's configured node, not the local one.
 const adminEndpoint = "the network's algod API";
 const appAddress = algosdk.getApplicationAddress(appId);
+
+const addressRule = (v: string) =>
+  !v || algosdk.isValidAddress(v) || "Invalid address";
 
 const abi = {
   update: algosdk.ABIMethod.fromSignature("updateApplication()void"),

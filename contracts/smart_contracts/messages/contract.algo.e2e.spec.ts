@@ -25,6 +25,8 @@ describe('Messages MBR mechanism (LocalNet e2e)', () => {
       defaultSender: owner,
     })
     const { appClient } = await factory.deploy({
+      createParams: { method: 'createApplication', args: [] },
+      updateParams: { method: 'updateApplication', args: [] },
       onUpdate: 'append',
       onSchemaBreak: 'append',
       suppressLog: true,
@@ -73,7 +75,7 @@ describe('Messages MBR mechanism (LocalNet e2e)', () => {
     })
     const result = await senderClient.send.addMessage({ args: { mbrPayment: payment, message: MESSAGE } })
 
-    // addMessage returns the round the message was stored under.
+    // addMessage returns the id the message was stored under.
     expect(result.return).toBeGreaterThan(0n)
   })
 

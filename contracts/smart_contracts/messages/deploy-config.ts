@@ -13,6 +13,8 @@ export async function deploy() {
   });
 
   const { appClient, result } = await factory.deploy({
+    createParams: { method: "createApplication", args: [] },
+    updateParams: { method: "updateApplication", args: [] },
     onUpdate: "append",
     onSchemaBreak: "append",
   });
