@@ -9,6 +9,18 @@ export interface NodeStatus {
   telemetryStatus?: string;
   retiStatus?: DaemonStatus;
   valarStatus?: DaemonStatus;
+  external?: ExternalNode;
+  detected?: ExternalNode;
+}
+
+// A node installed by apt/rpm, NodeKit, Homebrew or update.sh.
+export interface ExternalNode {
+  manager: string;
+  dataDir: string;
+  binDir: string;
+  service?: string;
+  user?: string;
+  network?: string;
 }
 
 export interface DaemonStatus {
@@ -38,6 +50,7 @@ export interface AuthStatus {
 export interface GoalVersion {
   installed: string;
   latest: string;
+  manager: string;
 }
 
 export interface PartDetails {

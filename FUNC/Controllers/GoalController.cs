@@ -23,7 +23,10 @@ namespace FUNC.Controllers
                 string installed = string.Empty;
                 string latest = string.Empty;
 
-                string algodPath = Path.Combine(Utils.appDataDir, "bin", "algod");
+                // An adopted node's binaries come from its package manager or update.sh.
+                await Node.SyncExternal();
+                ExternalNode? ext = External.Load();
+                string algodPath = Path.Combine(ext?.BinDir ?? Path.Combine(Utils.appDataDir, "bin"), "algod");
                 string version = await Utils.Exec(algodPath, "-v");
                 if (version != string.Empty)
                 {
@@ -54,7 +57,7 @@ namespace FUNC.Controllers
                 }
                 catch { }
 
-                return new GoalVersion() { Installed = installed, Latest = latest };
+                return new GoalVersion() { Installed = installed, Latest = latest, Manager = ext?.Manager ?? "func" };
             }
             catch (Exception ex)
             {
@@ -68,98 +71,111 @@ namespace FUNC.Controllers
         {
             try
             {
-                string? url = null;
-                if (IsWindows())
+                if (External.Load() is { } ext)
                 {
-                    string workspaceName = "GalaxyPay";
-                    string repositoryName = "go-algo-win";
-                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-
-                    Octokit.Release? release = null;
-                    if (model.Name == "latest")
-                    {
-                        release = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                    }
-                    else
-                    {
-                        release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
-                    }
-                    url = release.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
+                    if (model.Name != "latest") throw new Exception("An existing node can only be updated to the latest version");
+                    await External.Update(ext);
                 }
                 else
                 {
-                    string workspaceName = "algorand";
-                    string repositoryName = "go-algorand";
-                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-
-                    Octokit.Release? release = null;
-                    if (model.Name == "latest")
-                    {
-                        release = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                    }
-                    else
-                    {
-                        release = await client.Repository.Release.Get(workspaceName, repositoryName, model.Name);
-                    }
-
-                    if (IsLinux())
-                    {
-                        bool isArm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
-                        url = release.Assets.FirstOrDefault(a =>
-                            a.Name.Contains($"node_stable_linux-{(isArm ? "arm" : "amd")}64")
-                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                    }
-                    else if (IsMacOS())
-                    {
-                        url = release.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin-universal")
-                            && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
-                    }
+                    await Install(model.Name);
                 }
-
-                string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");
-                using var httpClient = new HttpClient();
-                using var s = await httpClient.GetStreamAsync(url);
-                using FileStream fs = new(filePath, System.IO.FileMode.OpenOrCreate);
-                await s.CopyToAsync(fs);
-                fs.Dispose();
-
-                // Get Node Statuses
-                var algorandStatus = await Node.Get("algorand");
-                var voiStatus = await Node.Get("voi");
-
-                // Stop Running Nodes
-                if (algorandStatus.ServiceStatus == "Running")
-                {
-                    await Node.ControlService("algorand", "stop");
-                }
-                if (voiStatus.ServiceStatus == "Running")
-                {
-                    await Node.ControlService("voi", "stop");
-                }
-
-                using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
-                using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
-                await TarFile.ExtractToDirectoryAsync(gz, Utils.appDataDir, true);
-                rfs.Dispose();
-
-                // Restart Running Nodes
-                if (algorandStatus.ServiceStatus == "Running")
-                {
-                    await Node.ControlService("algorand", "start");
-                }
-                if (voiStatus.ServiceStatus == "Running")
-                {
-                    await Node.ControlService("voi", "start");
-                }
-
-                System.IO.File.Delete(filePath);
-
                 return Ok();
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // Download a go-algorand release into FUNC's bin dir, restarting FUNC's nodes around it.
+        public static async Task Install(string name)
+        {
+            string? url = null;
+            if (IsWindows())
+            {
+                string workspaceName = "GalaxyPay";
+                string repositoryName = "go-algo-win";
+                var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+
+                Octokit.Release? release = null;
+                if (name == "latest")
+                {
+                    release = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                }
+                else
+                {
+                    release = await client.Repository.Release.Get(workspaceName, repositoryName, name);
+                }
+                url = release.Assets.FirstOrDefault(a => a.Name == "node.tar.gz")?.BrowserDownloadUrl;
+            }
+            else
+            {
+                string workspaceName = "algorand";
+                string repositoryName = "go-algorand";
+                var client = new GitHubClient(new ProductHeaderValue(repositoryName));
+
+                Octokit.Release? release = null;
+                if (name == "latest")
+                {
+                    release = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
+                }
+                else
+                {
+                    release = await client.Repository.Release.Get(workspaceName, repositoryName, name);
+                }
+
+                if (IsLinux())
+                {
+                    bool isArm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
+                    url = release.Assets.FirstOrDefault(a =>
+                        a.Name.Contains($"node_stable_linux-{(isArm ? "arm" : "amd")}64")
+                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                }
+                else if (IsMacOS())
+                {
+                    url = release.Assets.FirstOrDefault(a => a.Name.Contains("node_stable_darwin-universal")
+                        && a.Name.EndsWith("tar.gz"))?.BrowserDownloadUrl;
+                }
+            }
+
+            string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");
+            using var httpClient = new HttpClient();
+            using var s = await httpClient.GetStreamAsync(url);
+            using FileStream fs = new(filePath, System.IO.FileMode.OpenOrCreate);
+            await s.CopyToAsync(fs);
+            fs.Dispose();
+
+            // Get Node Statuses
+            var algorandStatus = await Node.Get("algorand");
+            var voiStatus = await Node.Get("voi");
+
+            // Stop Running Nodes
+            if (algorandStatus.ServiceStatus == "Running")
+            {
+                await Node.ControlService("algorand", "stop");
+            }
+            if (voiStatus.ServiceStatus == "Running")
+            {
+                await Node.ControlService("voi", "stop");
+            }
+
+            using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
+            using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
+            await TarFile.ExtractToDirectoryAsync(gz, Utils.appDataDir, true);
+            rfs.Dispose();
+
+            // Restart Running Nodes
+            if (algorandStatus.ServiceStatus == "Running")
+            {
+                await Node.ControlService("algorand", "start");
+            }
+            if (voiStatus.ServiceStatus == "Running")
+            {
+                await Node.ControlService("voi", "start");
+            }
+
+            System.IO.File.Delete(filePath);
         }
     }
 }

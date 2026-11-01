@@ -63,13 +63,17 @@
             <div class="set-actions">
               <Releases
                 @release="updateNode"
-                v-if="store.showNodeVersions"
+                v-if="store.showNodeVersions && !externalManager"
               />
               <v-btn
                 :color="store.nodeUpdateAvailable ? 'warning' : ''"
                 :variant="store.nodeUpdateAvailable ? 'flat' : 'outlined'"
                 size="small"
-                :disabled="!store.nodeUpdateAvailable || store.downloading"
+                :disabled="
+                  !store.nodeUpdateAvailable ||
+                  store.downloading ||
+                  externalManager === 'manual'
+                "
                 @click="updateNodeLatest()"
                 v-else
               >
@@ -77,7 +81,10 @@
                 <v-tooltip
                   activator="parent"
                   location="left"
-                  :text="`Update to ${store.goalVersion?.latest}`"
+                  :text="
+                    `Update to ${store.goalVersion?.latest}` +
+                    (externalManager ? ` with ${externalManager}` : '')
+                  "
                 />
               </v-btn>
             </div>
@@ -235,6 +242,13 @@ async function changePassword() {
 }
 const updatingFunc = ref(false);
 let init = false;
+
+// apt, rpm, brew, updater or manual when the node is an adopted existing node;
+// those update only to the latest version, with the node's own installer.
+const externalManager = computed(() => {
+  const manager = store.goalVersion?.manager;
+  return manager && manager !== "func" ? manager : undefined;
+});
 
 onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);

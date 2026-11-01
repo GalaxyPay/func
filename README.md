@@ -136,6 +136,15 @@ sudo apt purge func     # also remove node data and service accounts
 - Deletes all node data, including any participation and KMD keys
 - Only available when Service does not exist
 
+## Existing Nodes (Mac / Linux)
+
+FUNC detects an Algorand node that was installed without it: the `algorand` apt/rpm package (installed by hand or by [NodeKit](https://nodekit.run)), NodeKit's Homebrew install on Mac, or go-algorand's `update.sh`. FUNC won't create its own Algorand service over one. If FUNC doesn't have an Algorand node of its own, it manages an existing mainnet node automatically, where it is. NodeKit and `goal` keep working with it. If the node is later removed outside FUNC (for example `apt remove algorand` or `nodekit uninstall`), FUNC stops managing it.
+
+- **Start / Stop Node** controls the node's existing service: `algorand` on Linux, `com.algorand.algod` on Mac, or `goal node start/stop` if it has no service.
+- **Update** in Settings uses whatever installed the node: `apt`, `dnf`, `brew` or `update.sh`. Only the latest version is offered.
+- **Node Data Directory** moves the data and leaves a link at the old path. The service, NodeKit and `goal` keep finding the node there without changes, including any `-d` or `ALGORAND_DATA` you already use.
+- **Delete Node Data** deletes the node's data, including participation keys, and uninstalls the existing node (for example `apt-get remove algorand`). FUNC can then create its own node.
+
 ## Participating in Consensus
 
 If you want to participate in consensus, you'll need to generate a Participation Key for your account and register that key with account to bring it "online".
@@ -164,6 +173,10 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 - The app is a locally hosted webpage, <http://localhost:3536>. After install, bookmark it for easy access.
 
+- The node will restart automatically if your computer reboots, but you will need to configure your computer to **_not_** go into Sleep mode in order to keep the node running 24/7.
+
+- If you Stop a node and restart your computer, the node will restart automatically. You must remove the service if you want the node to not restart. Removing the service preserves the node data; deleting the data is a separate step.
+
 ### Password
 
 The FUNC service runs with administrator privileges and manages services on your computer, so it asks you to choose a password the first time you open the app. This stops websites you visit and other machines on your network from controlling your node. Choose the password right after installing: until you do, anyone who can reach the app could choose it for you. You can change it later from Settings.
@@ -181,10 +194,6 @@ If you forget the password, delete the file below and restart the FUNC service (
 | Linux   | `/usr/share/func/auth.json`       |
 
 Anyone with the password can control the node services on your machine, so pick a strong one and do not share it.
-
-- The node will restart automatically if your computer reboots, but you will need to configure your computer to **_not_** go into Sleep mode in order to keep the node running 24/7.
-
-- If you Stop a node and restart your computer, the node will restart automatically. You must remove the service if you want the node to not restart. Removing the service preserves the node data; deleting the data is a separate step.
 
 ### Remote Access (Advanced)
 

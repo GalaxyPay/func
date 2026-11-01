@@ -15,8 +15,28 @@ namespace FUNC
         private const string MacNodeUser = "_func-node";
 
         private static string WinService(string name) => $"{Utils.Cap(name)} Node";
-        private static string DataDir(string name) => Path.Combine(Utils.NodeDataParent(name), name);
-        private static readonly string diagcfgPath = Path.Combine(Utils.appDataDir, "bin", "diagcfg");
+        private static string DataDir(string name) => Ext(name)?.DataDir ?? Path.Combine(Utils.NodeDataParent(name), name);
+
+        // The adopted apt/NodeKit/update.sh node standing in as FUNC's algorand node, if any.
+        private static ExternalNode? Ext(string name) => name == "algorand" ? External.Load() : null;
+
+        // Run one of the node's tools (goal, diagcfg): FUNC's own, or an adopted node's
+        // as the node's account so files it writes keep their owner.
+        private static async Task<string> Tool(string name, string tool, params string[] args)
+        {
+            if (Ext(name) is { } ext) return (await External.RunAs(ext.User, Path.Combine(ext.BinDir, tool), args)).Stdout;
+            return await Utils.Exec(Path.Combine(Utils.appDataDir, "bin", tool), args);
+        }
+
+        private static async Task<string> ServiceStatus(string name)
+        {
+            if (Ext(name) is { } ext) return await External.Status(ext);
+            string status = await Utils.ServiceStatus(name, WinService(name));
+            // The algorand package installs a unit with the same name as FUNC's. Don't
+            // report that node as FUNC's; External.Sync adopts it instead.
+            if (IsLinux() && (status is "Running" or "Stopped") && !External.IsFuncUnit(name)) return "Not Found";
+            return status;
+        }
 
         private static async Task ExtractTemplate(string name)
         {
@@ -30,7 +50,8 @@ namespace FUNC
         private static async Task ApplyDirOwnership(string name)
         {
             string dataDir = DataDir(name);
-            if (!Directory.Exists(dataDir)) return;
+            // An adopted node's files belong to its own account, which FUNC leaves alone.
+            if (!Directory.Exists(dataDir) || Ext(name) != null) return;
             if (IsLinux())
             {
                 await Utils.EnsureUnixUser(LinuxNodeUser);
@@ -56,19 +77,25 @@ namespace FUNC
             try { return File.ReadAllText(Path.Combine(DataDir(name), "algod.admin.token")).Trim(); } catch { return string.Empty; }
         }
 
-        // The port algod listens on, from the node's config.json, or 0 if unknown.
+        // The port algod listens on, from the node's config.json, or 0 if unknown. Nodes
+        // installed by apt or NodeKit often don't set one, so algod picks it and records
+        // it in algod.net.
         public static int AlgodPort(string name)
         {
             string? configText = null;
             try { configText = File.ReadAllText(Path.Combine(DataDir(name), "config.json")); } catch { }
-            if (configText == null) return 0;
-            JObject config = JObject.Parse(configText);
-            string endpointAddress = config.GetValue("EndpointAddress")?.Value<string>() ?? ":0";
-            return int.TryParse(endpointAddress[(endpointAddress.IndexOf(':') + 1)..], out int port) ? port : 0;
+            string endpointAddress = ":0";
+            try { endpointAddress = JObject.Parse(configText!).GetValue("EndpointAddress")?.Value<string>() ?? ":0"; } catch { }
+            int port = int.TryParse(endpointAddress[(endpointAddress.LastIndexOf(':') + 1)..], out int p) ? p : 0;
+            if (port != 0) return port;
+            string net = string.Empty;
+            try { net = File.ReadAllText(Path.Combine(DataDir(name), "algod.net")).Trim(); } catch { }
+            return int.TryParse(net[(net.LastIndexOf(':') + 1)..], out p) ? p : 0;
         }
 
         public static async Task<NodeStatus> Get(string name)
         {
+            if (name == "algorand") await SyncExternal();
             string machineName = Environment.MachineName;
             string token = AlgodToken(name);
             int port = AlgodPort(name);
@@ -80,7 +107,8 @@ namespace FUNC
                     Shared.VoiPort = port;
             }
 
-            string serviceStatus = await Utils.ServiceStatus(name, WinService(name));
+            string serviceStatus = await ServiceStatus(name);
+            ExternalNode? ext = Ext(name);
 
             NodeStatus nodeStatus = new()
             {
@@ -89,6 +117,8 @@ namespace FUNC
                 ServiceStatus = serviceStatus,
                 Port = port,
                 Token = token,
+                External = ext,
+                Detected = name == "algorand" && ext == null && serviceStatus == "Not Found" ? await External.Detect() : null,
             };
 
             if (name == "algorand")
@@ -131,7 +161,7 @@ namespace FUNC
                 nodeStatus.ValarStatus = await ValarController.GetStatus();
 
                 // Telemetry Status
-                nodeStatus.TelemetryStatus = await Utils.Exec(diagcfgPath, "-d", DataDir(name), "telemetry", "status");
+                nodeStatus.TelemetryStatus = await Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "status");
             }
 
             return nodeStatus;
@@ -165,8 +195,26 @@ namespace FUNC
         private static Task SetWindowsRecovery(string svc) =>
             Utils.Sc("failure", svc, "reset=", "86400", "actions=", "restart/30000/restart/30000/restart/30000");
 
+        // Adopt or forget an existing apt/NodeKit/update.sh mainnet node (see External.Sync).
+        public static Task SyncExternal() =>
+            External.Sync(async () => await ServiceStatus("algorand") != "Not Found");
+
         public static async Task CreateService(string name)
         {
+            if (name == "algorand" && !IsWindows())
+            {
+                if (Ext(name) != null) throw new Exception("FUNC already manages an existing node");
+                // Never install over a node set up by apt, NodeKit or update.sh: the package
+                // owns a unit with the same name, and two mainnet nodes would compete.
+                ExternalNode? found = await External.Detect();
+                if (found?.Network == "mainnet")
+                    throw new Exception($"An existing Algorand node was found at {found.DataDir}. Use it, or remove it first.");
+                if (found?.Manager is "apt" or "rpm")
+                    throw new Exception($"The algorand package ({found.Network} node at {found.DataDir}) uses the same service name as FUNC's node. Remove it first.");
+                // Adopted nodes bring their own binaries, so FUNC's may not be installed yet.
+                if (!File.Exists(Path.Combine(Utils.appDataDir, "bin", "algod"))) await GoalController.Install("latest");
+            }
+
             if (!Directory.Exists(DataDir(name)))
             {
                 await ExtractTemplate(name);
@@ -206,6 +254,8 @@ namespace FUNC
 
         public static async Task ResetData(string name)
         {
+            // Wiping an adopted node removes it and its install; FUNC's own node replaces it.
+            if (Ext(name) is { } ext) await External.Wipe(ext);
             if (Directory.Exists(DataDir(name)))
             {
                 Directory.Delete(DataDir(name), true);
@@ -216,13 +266,16 @@ namespace FUNC
 
         public static async Task<string> Catchup(string name, Catchup model)
         {
-            string goalPath = Path.Combine(Utils.appDataDir, "bin", "goal");
-            return await Utils.Exec(goalPath, "node", "catchup", $"{model.Round}#{model.Label}", "-d", DataDir(name));
+            return await Tool(name, "goal", "node", "catchup", $"{model.Round}#{model.Label}", "-d", DataDir(name));
         }
 
         public static async Task ControlService(string name, string cmd)
         {
-            if (IsWindows())
+            if (Ext(name) is { } ext)
+            {
+                await External.Control(ext, cmd);
+            }
+            else if (IsWindows())
             {
                 if (cmd == "restart")
                 {
@@ -256,11 +309,13 @@ namespace FUNC
 
         public static async Task<string> GetConfig(string name)
         {
+            string configPath = Path.Combine(DataDir(name), "config.json");
+            // apt and NodeKit data dirs may have no config.json; algod then uses defaults.
+            if (Ext(name) != null) return File.Exists(configPath) ? File.ReadAllText(configPath) : "{}";
             if (!Directory.Exists(DataDir(name)))
             {
                 await ExtractTemplate(name);
             }
-            string configPath = Path.Combine(DataDir(name), "config.json");
             string config = File.ReadAllText(configPath);
             return config;
         }
@@ -293,7 +348,7 @@ namespace FUNC
             },
         };
 
-        public static void SetConfig(string name, Config model)
+        public static async Task SetConfig(string name, Config model)
         {
             string configPath = Path.Combine(DataDir(name), "config.json");
             var loadSettings = new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error };
@@ -316,12 +371,23 @@ namespace FUNC
                 }
             }
 
+            bool created = !File.Exists(configPath);
             File.WriteAllText(configPath, submitted.ToString(Formatting.Indented));
+            if (created && Ext(name) is { User: { } user }) await Utils.Exec("chown", user, configPath);
         }
+
+        // Where the node's data dir lives, as the parent directory the UI edits.
+        public static string DataParent(string name) =>
+            Ext(name) is { } ext ? Path.GetDirectoryName(External.RealDataDir(ext))! : Utils.NodeDataParent(name);
 
         public static async Task SetDir(string name, Dir model)
         {
             string requestParent = Utils.ValidateDataParent(model.Path);
+            if (Ext(name) is { } ext)
+            {
+                await External.Move(ext, requestParent);
+                return;
+            }
             string currentPath = DataDir(name);
             string requestPath = Path.Combine(requestParent, name);
             if (string.Equals(Path.GetFullPath(requestPath), Path.GetFullPath(currentPath), StringComparison.OrdinalIgnoreCase))
@@ -357,15 +423,15 @@ namespace FUNC
         public static async Task EnableTelemetry(string name)
         {
             string dataPath = DataDir(name);
-            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "endpoint", "-e", "https://tel.4160.nodely.io");
-            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "name", "-n", "anon");
-            await Utils.Exec(diagcfgPath, "-d", dataPath, "telemetry", "enable");
+            await Tool(name, "diagcfg", "-d", dataPath, "telemetry", "endpoint", "-e", "https://tel.4160.nodely.io");
+            await Tool(name, "diagcfg", "-d", dataPath, "telemetry", "name", "-n", "anon");
+            await Tool(name, "diagcfg", "-d", dataPath, "telemetry", "enable");
             await ControlService(name, "restart");
         }
 
         public static async Task DisableTelemetry(string name)
         {
-            await Utils.Exec(diagcfgPath, "-d", DataDir(name), "telemetry", "disable");
+            await Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "disable");
             await ControlService(name, "restart");
         }
     }

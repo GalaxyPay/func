@@ -101,8 +101,9 @@ namespace FUNC
         public static Task<string> Launchctl(params string[] args) => Exec("launchctl", args);
 
         // Status of an OS service. `name` is the systemd unit / launchd label suffix
-        // (e.g. "algorand", "reti"); `windowsName` is the Windows service name.
-        public static async Task<string> ServiceStatus(string name, string windowsName)
+        // (e.g. "algorand", "reti"); `windowsName` is the Windows service name;
+        // `macLabel` overrides the "func.<name>" launchd label.
+        public static async Task<string> ServiceStatus(string name, string windowsName, string? macLabel = null)
         {
             if (IsWindows())
             {
@@ -117,7 +118,7 @@ namespace FUNC
                 // `launchctl list` prints "PID Status Label" per loaded job; a PID of "-"
                 // means loaded but not running. Not loaded but plist still on disk =
                 // Stopped; no plist = Not Found.
-                string label = $"func.{name}";
+                string label = macLabel ?? $"func.{name}";
                 string list = await Launchctl("list");
                 string? line = list.Split('\n').FirstOrDefault(l => l.Contains(label, StringComparison.OrdinalIgnoreCase));
                 if (line != null) return line.TrimStart().StartsWith('-') ? "Stopped" : "Running";
