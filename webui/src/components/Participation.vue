@@ -267,6 +267,7 @@ import { DEFAULT_NETWORK, networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
 import {
   b64,
+  copyToClipboard,
   delay,
   effectiveResetDate,
   errorMessage,
@@ -827,8 +828,7 @@ watch(
 
 function copyVal(val: string | number | bigint | undefined) {
   if (!val) return;
-  navigator.clipboard.writeText(val.toString());
-  store.setSnackbar("Copied", "info", 1000);
+  copyToClipboard(val.toString());
 }
 
 const ALGORAND_INDEXERS = [

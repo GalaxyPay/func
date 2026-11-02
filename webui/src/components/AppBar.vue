@@ -73,7 +73,7 @@
                   size="16"
                   class="clickable"
                   :icon="mdiContentCopy"
-                  @click.stop="copyToClipboard()"
+                  @click.stop="copyAddress()"
                 />
               </div>
               <div class="wallet-balance">
@@ -168,7 +168,13 @@
 </template>
 
 <script lang="ts" setup>
-import { errorMessage, formatAddr } from "@/utils";
+import {
+  copyToClipboard,
+  errorMessage,
+  formatAddr,
+  insecureContextHint,
+  walletNeedsSecureContext,
+} from "@/utils";
 import {
   mdiBell,
   mdiCog,
@@ -218,6 +224,13 @@ function walletActionLabel(wallet: Wallet) {
 }
 
 async function walletAction(wallet: Wallet) {
+  if (!wallet.isConnected && walletNeedsSecureContext(wallet.id)) {
+    store.setSnackbar(
+      `${wallet.metadata.name} can't connect: ${insecureContextHint()}`,
+      "error"
+    );
+    return;
+  }
   try {
     wallet.isActive
       ? await wallet.disconnect()
@@ -249,10 +262,9 @@ async function switchAccount(wallet: Wallet, acct: WalletAccount) {
   store.connectMenu = false;
 }
 
-function copyToClipboard() {
+function copyAddress() {
   if (!activeAccount.value) return;
-  navigator.clipboard.writeText(activeAccount.value.address);
-  store.setSnackbar("Address Copied", "info", 1000);
+  copyToClipboard(activeAccount.value.address, "Address Copied");
 }
 
 watch(
