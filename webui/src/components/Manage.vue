@@ -28,7 +28,7 @@
         <v-list-item
           title="Remove Service"
           @click="deleteNode()"
-          v-show="status === 'Stopped'"
+          v-show="status === 'Stopped' && !nodeStatus.external"
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
@@ -39,13 +39,16 @@
         <v-list-item
           title="Node Data Directory"
           @click="showDataDir = true"
-          v-show="status === 'Not Found'"
+          v-show="status === 'Not Found' || nodeStatus.external"
         />
         <v-list-item
           title="Delete Node Data"
           base-color="error"
           @click="resetNode()"
-          v-show="status === 'Not Found'"
+          v-show="
+            status === 'Not Found' ||
+            (nodeStatus.external && status !== 'Running')
+          "
         />
         <template
           v-if="
@@ -312,6 +315,13 @@ async function toggleTelemetry() {
   }
 }
 
+// The node's binaries switch between FUNC's and the existing node's installer.
+async function refreshGoalVersion() {
+  const { data } = await store.api.get("goal/version");
+  store.goalVersion = data;
+  store.nodeUpdateAvailable = !!data?.latest && data.latest !== data.installed;
+}
+
 async function finish(message: string) {
   store.refreshStatus++;
   loading.value = false;
@@ -319,9 +329,14 @@ async function finish(message: string) {
 }
 
 async function resetNode() {
+  const external = props.nodeStatus.external;
   if (
     !confirm(
-      "Are you sure you want to delete all data associated with this node?"
+      external
+        ? `This deletes all data in ${external.dataDir}, including participation keys, ` +
+            `and uninstalls the existing node (${external.manager}). ` +
+            "FUNC will then manage its own node instead. Continue?"
+        : "Are you sure you want to delete all data associated with this node?"
     )
   )
     return;
@@ -329,6 +344,10 @@ async function resetNode() {
     loading.value = true;
     await store.api.post(`${props.name}/reset`);
     store.setSnackbar("Data Deleted", "success");
+    if (external) {
+      await refreshGoalVersion();
+      store.refreshStatus++;
+    }
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, "Delete node data"), "error");

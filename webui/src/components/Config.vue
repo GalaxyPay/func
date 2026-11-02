@@ -65,7 +65,12 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { delay, errorMessage, nodeHostname } from "@/utils";
+import {
+  copyToClipboard,
+  delay,
+  errorMessage,
+  nodeHostname,
+} from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -195,8 +200,7 @@ async function saveConfig() {
 
 function copyVal(val: string | number | bigint | undefined) {
   if (!val) return;
-  navigator.clipboard.writeText(val.toString());
-  store.setSnackbar("Copied", "info", 1000);
+  copyToClipboard(val.toString());
 }
 
 let e2eIsSet: boolean;

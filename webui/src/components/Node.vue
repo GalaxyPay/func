@@ -87,8 +87,13 @@
               v-if="telemetryEnabled"
               class="telemetry-link"
             >
-              <v-icon :icon="mdiOpenInNew" size="14" />
+              <v-icon :icon="mdiOpenInNew" size="18" />
             </a>
+          </div>
+          <div class="status-row text-dim" v-if="externalNote">
+            <span class="ellipsis" :title="externalNote">{{
+              externalNote
+            }}</span>
           </div>
         </div>
         <Manage
@@ -354,6 +359,17 @@ const telemetryLink = computed(() => {
   if (!ts) return undefined;
   const guid = ts.slice(ts.lastIndexOf(" ") + 1);
   return "https://g.nodely.io/d/telemetry?var-GUID=" + guid;
+});
+
+// A node installed by apt, NodeKit or update.sh: managed in place, or found.
+const externalNote = computed(() => {
+  const ext = nodeStatus.value?.external;
+  if (ext) return `Existing ${ext.manager} node: ${ext.dataDir}`;
+  const found = nodeStatus.value?.detected;
+  if (!found) return "";
+  return found.network === "mainnet"
+    ? `Existing node found: ${found.dataDir}`
+    : `Existing ${found.network ?? "unknown"} node found: ${found.dataDir}`;
 });
 
 const status = computed(() =>
@@ -789,7 +805,7 @@ function setResetDate() {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 42px;
+  min-height: 32px;
   padding: 8px 14px;
   font-size: 13.5px;
 }

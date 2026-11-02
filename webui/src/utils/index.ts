@@ -141,6 +141,40 @@ export function errorMessage(
   return `${process} failed: ${errorDetail(err)}`;
 }
 
+// Browsers only expose the Clipboard API and Web Crypto (which WalletConnect
+// relies on) in a secure context: HTTPS or localhost. Opening the web UI from
+// another machine over plain HTTP disables both, so point to the HTTPS port
+// FUNC also serves the UI on (self-signed, so the browser asks to accept it).
+export function insecureContextHint(): string {
+  return `browsers only allow this over HTTPS. Open https://${location.hostname}:3537 instead and accept the self-signed certificate warning.`;
+}
+
+export async function copyToClipboard(text: string, success = "Copied") {
+  const store = useAppStore();
+  try {
+    if (!window.isSecureContext || !navigator.clipboard)
+      throw Error("Clipboard unavailable");
+    await navigator.clipboard.writeText(text);
+    store.setSnackbar(success, "info", 1000);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(
+      window.isSecureContext
+        ? `Copy failed: ${errorDetail(err)}`
+        : `Copy failed: ${insecureContextHint()}`,
+      "error"
+    );
+  }
+}
+
+// Wallets that pair over WalletConnect, and so can't connect from an insecure
+// context.
+const walletConnectWallets = ["pera", "defly", "walletconnect", "biatec"];
+
+export function walletNeedsSecureContext(walletId: string): boolean {
+  return !window.isSecureContext && walletConnectWallets.includes(walletId);
+}
+
 export async function execAtc(
   atc: algosdk.AtomicTransactionComposer,
   algodClient: algosdk.Algodv2,

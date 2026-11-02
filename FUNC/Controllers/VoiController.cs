@@ -129,11 +129,11 @@ namespace FUNC.Controllers
 
         // PUT: voi/config
         [HttpPut("config")]
-        public ActionResult SetNodeConfig(Config model)
+        public async Task<ActionResult> SetNodeConfig(Config model)
         {
             try
             {
-                Node.SetConfig(_name, model);
+                await Node.SetConfig(_name, model);
                 return Ok();
             }
             catch (Exception ex)
