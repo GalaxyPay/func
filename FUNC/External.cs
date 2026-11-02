@@ -105,7 +105,8 @@ namespace FUNC
             {
                 var args = await PlistArgs(plist);
                 int d = Array.IndexOf(args, "-d");
-                if (args.Length > 0 && d >= 0 && d + 1 < args.Length)
+                // `nodekit uninstall` without --force removes algod but leaves the plist.
+                if (args.Length > 0 && d >= 0 && d + 1 < args.Length && File.Exists(args[0]))
                 {
                     string algod = args[0];
                     string binDir = Path.GetDirectoryName(algod)!;
@@ -199,8 +200,15 @@ namespace FUNC
         {
             if (node.Service == null)
                 return !Directory.Exists(node.DataDir) ? "Not Found" : IsAlgodRunning(node) ? "Running" : "Stopped";
-            return await Utils.ServiceStatus(node.Service, string.Empty, node.Service);
+            string status = await Utils.ServiceStatus(node.Service, string.Empty, node.Service);
+            // Removed outside FUNC but its service left behind: `apt remove` masks the unit
+            // (which reads as stopped) and `nodekit uninstall` without --force keeps the plist.
+            // brew briefly unlinks algod while upgrading, so don't count that as removed.
+            if (status != "Running" && !updating && !File.Exists(Path.Combine(node.BinDir, "algod"))) return "Not Found";
+            return status;
         }
+
+        private static volatile bool updating;
 
         public static async Task Control(ExternalNode node, string cmd)
         {
@@ -233,26 +241,31 @@ namespace FUNC
         {
             bool running = await Status(node) == "Running";
             Utils.ProcResult result;
-            switch (node.Manager)
+            updating = true;
+            try
             {
-                case "apt":
-                    await Try("apt-get", ["update"], Noninteractive);
-                    result = await Try("apt-get", ["install", "--only-upgrade", "-y", "algorand"], Noninteractive);
-                    break;
-                case "rpm":
-                    result = await Try("dnf", ["update", "-y", "--refresh", "algorand"]);
-                    break;
-                case "brew":
-                    var (brew, owner) = await Brew(node);
-                    result = await RunAs(owner, brew, "upgrade", "algorand", "--formula");
-                    break;
-                case "updater":
-                    // -n: FUNC restarts the node itself, through its service if it has one.
-                    result = await RunAs(node.User, Path.Combine(node.BinDir, "update.sh"), "-n", "-verify", "-p", node.BinDir, "-d", node.DataDir);
-                    break;
-                default:
-                    throw new Exception("FUNC doesn't know how this node was installed, so it can't update it");
+                switch (node.Manager)
+                {
+                    case "apt":
+                        await Try("apt-get", ["update"], Noninteractive);
+                        result = await Try("apt-get", ["install", "--only-upgrade", "-y", "algorand"], Noninteractive);
+                        break;
+                    case "rpm":
+                        result = await Try("dnf", ["update", "-y", "--refresh", "algorand"]);
+                        break;
+                    case "brew":
+                        var (brew, owner) = await Brew(node);
+                        result = await RunAs(owner, brew, "upgrade", "algorand", "--formula");
+                        break;
+                    case "updater":
+                        // -n: FUNC restarts the node itself, through its service if it has one.
+                        result = await RunAs(node.User, Path.Combine(node.BinDir, "update.sh"), "-n", "-verify", "-p", node.BinDir, "-d", node.DataDir);
+                        break;
+                    default:
+                        throw new Exception("FUNC doesn't know how this node was installed, so it can't update it");
+                }
             }
+            finally { updating = false; }
             if (result.ExitCode != 0) throw new Exception($"Node update failed: {Last(result.Stderr + result.Stdout)}");
             if (running) await Control(node, "restart");
         }
@@ -327,7 +340,8 @@ namespace FUNC
                 string plist = $"/Library/LaunchDaemons/{node.Service}.plist";
                 await Utils.Launchctl("bootout", "system", plist);
                 File.Delete(plist);
-                if (node.Manager == "brew")
+                // Brew() can't locate the install once algod is gone (already uninstalled).
+                if (node.Manager == "brew" && File.Exists(Path.Combine(node.BinDir, "algod")))
                 {
                     var (brew, owner) = await Brew(node);
                     result = await RunAs(owner, brew, "uninstall", "algorand");
