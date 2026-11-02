@@ -303,8 +303,10 @@ namespace FUNC
             Utils.ProcResult result = new(0, "", "");
             if (node.Manager is "apt" or "rpm")
             {
+                // purge, not remove: the deb's postrm masks algorand.service on remove (only
+                // purge unmasks it), which would block FUNC's own unit of the same name.
                 result = node.Manager == "apt"
-                    ? await Try("apt-get", ["remove", "-y", "algorand"], Noninteractive)
+                    ? await Try("apt-get", ["purge", "-y", "algorand"], Noninteractive)
                     : await Try("dnf", ["remove", "-y", "algorand"]);
             }
             else if (node.Service != null && IsLinux())

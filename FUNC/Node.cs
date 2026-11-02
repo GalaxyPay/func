@@ -238,6 +238,8 @@ namespace FUNC
                 string service = template.Replace("__NAME__", name).Replace("__PARENTDIR__", Utils.NodeDataParent(name));
                 File.WriteAllText($"/lib/systemd/system/{name}.service", service);
                 await ApplyDirOwnership(name);
+                // An `apt remove algorand` done outside FUNC leaves algorand.service masked.
+                await Utils.Systemctl("unmask", name);
                 await Utils.Systemctl("daemon-reload");
                 await Utils.Systemctl("enable", name);
             }
