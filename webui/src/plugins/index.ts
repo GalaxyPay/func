@@ -7,8 +7,8 @@
 // Plugins
 import vuetify from "./vuetify";
 import { lute } from "@galaxypay/use-wallet-lute";
+import { pera } from "@perawallet/use-wallet-pera";
 import { defly } from "@txnlab/use-wallet-defly";
-import { pera } from "@txnlab/use-wallet-pera";
 import {
   NetworkConfigBuilder,
   NetworkId,

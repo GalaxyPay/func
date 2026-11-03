@@ -25,12 +25,12 @@ importers:
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
+      '@perawallet/use-wallet-pera':
+        specifier: ^1.0.0
+        version: 1.0.0(@txnlab/use-wallet@5.1.1(algosdk@3.9.0))(algosdk@3.9.0)
       '@txnlab/use-wallet-defly':
         specifier: ^5.1.1
         version: 5.1.1(@txnlab/use-wallet@5.1.1(algosdk@3.9.0))(algosdk@3.9.0)
-      '@txnlab/use-wallet-pera':
-        specifier: ^5.0.1
-        version: 5.0.1(@txnlab/use-wallet@5.1.1(algosdk@3.9.0))(algosdk@3.9.0)
       '@txnlab/use-wallet-vue':
         specifier: ^5.1.1
         version: 5.1.1(algosdk@3.9.0)(vue@3.5.44(typescript@6.0.3))
@@ -406,9 +406,16 @@ packages:
     resolution: {integrity: sha512-7FNeNl8NCE7aINx7WXiKQrPYZWC/hvrTsmk6zmxbI7LTXE7hVek/n8AfVgpe2y82zl3w0HvCHN0bVKMBoJcC0w==}
     engines: {node: '>= 10.0.0'}
 
-  '@perawallet/connect@1.6.1':
-    resolution: {integrity: sha512-i+jMigz1CI0HflpkfMOlGakG4CUJkn6FY5kPu/iJnGM+SlGsxsK1sYDjy21V/TeVmfiMTzMSh3tT4Doy08C00g==}
+  '@perawallet/connect@1.7.0':
+    resolution: {integrity: sha512-qoNOBlWHzUSV6fuot1NR7h+dLQpBXgAAMcfXjcjuY3+obalDpXzfxgdYT3v/mX9HUk9XPUohPtxU58N76uvfJg==}
     peerDependencies:
+      algosdk: ^3.5.2
+
+  '@perawallet/use-wallet-pera@1.0.0':
+    resolution: {integrity: sha512-zrGKaov2RzaSLoMJndvOvNYrbMvsL++QCbCPFykFPan8TN4W/P67/wjarDwr8PbZ0kImsSW4TPHM03huyh0Flg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@txnlab/use-wallet': ^5.0.0
       algosdk: ^3.5.2
 
   '@perawallet/walletconnect@1.0.2':
@@ -688,13 +695,6 @@ packages:
     peerDependencies:
       '@txnlab/use-wallet': ^5.1.1
       algosdk: ^3.0.0
-
-  '@txnlab/use-wallet-pera@5.0.1':
-    resolution: {integrity: sha512-YrUCj8ByviY60BqNF7kysif54A6+yQ3TBOgg+q6XT3HtfenrHiXaaxU/Lwo3sT9PAlvA5u0BTS/GZKco5mZ94Q==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      '@txnlab/use-wallet': ^5.0.0
-      algosdk: ^3.5.2
 
   '@txnlab/use-wallet-vue@5.1.1':
     resolution: {integrity: sha512-HIK9CUJ75oP/NYhjs63U5eSzXHNH07TAOTGxASvLHlvtmU0IgJEjGayBk7ODZRp+mZnkEc2NjsApaTHSb04SwQ==}
@@ -2290,7 +2290,7 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.6.0
     optional: true
 
-  '@perawallet/connect@1.6.1(algosdk@3.9.0)':
+  '@perawallet/connect@1.7.0(algosdk@3.9.0)':
     dependencies:
       '@evanhahn/lottie-web-light': 5.8.1
       '@perawallet/walletconnect': 1.0.2
@@ -2300,6 +2300,12 @@ snapshots:
       qr-code-styling: 1.6.0-rc.1
       tslib: 2.9.1
       tweetnacl-ts: 1.0.3
+
+  '@perawallet/use-wallet-pera@1.0.0(@txnlab/use-wallet@5.1.1(algosdk@3.9.0))(algosdk@3.9.0)':
+    dependencies:
+      '@perawallet/connect': 1.7.0(algosdk@3.9.0)
+      '@txnlab/use-wallet': 5.1.1(algosdk@3.9.0)
+      algosdk: 3.9.0
 
   '@perawallet/walletconnect@1.0.2':
     dependencies:
@@ -2460,12 +2466,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@txnlab/use-wallet-pera@5.0.1(@txnlab/use-wallet@5.1.1(algosdk@3.9.0))(algosdk@3.9.0)':
-    dependencies:
-      '@perawallet/connect': 1.6.1(algosdk@3.9.0)
-      '@txnlab/use-wallet': 5.1.1(algosdk@3.9.0)
-      algosdk: 3.9.0
 
   '@txnlab/use-wallet-vue@5.1.1(algosdk@3.9.0)(vue@3.5.44(typescript@6.0.3))':
     dependencies:
