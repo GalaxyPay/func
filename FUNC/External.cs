@@ -174,7 +174,13 @@ namespace FUNC
 
         private static async Task<(string Algod, string? DataDir, string? User)?> SystemdUnit(string unit)
         {
-            string show = (await Try("systemctl", ["show", unit, "-p", "LoadState", "-p", "ExecStart", "-p", "User", "-p", "Environment"])).Stdout;
+            return ParseSystemdShow((await Try("systemctl", ["show", unit, "-p", "LoadState", "-p", "ExecStart", "-p", "User", "-p", "Environment"])).Stdout);
+        }
+
+        // The algod path, data dir and account from `systemctl show` output, or null if
+        // the unit isn't loaded or doesn't run a command.
+        internal static (string Algod, string? DataDir, string? User)? ParseSystemdShow(string show)
+        {
             var props = show.Split('\n').Select(l => l.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1].Trim());
             if (props.GetValueOrDefault("LoadState") != "loaded") return null;
             var argv = ExecStartArgv().Match(props.GetValueOrDefault("ExecStart") ?? "");

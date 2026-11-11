@@ -7,7 +7,9 @@ namespace FUNC
 {
     public partial class Utils
     {
-        public static readonly string appDataDir = IsMacOS() ? "/usr/local/share/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
+        // FUNC_DATA_DIR relocates all of FUNC's state; the tests point it at a temp directory.
+        public static readonly string appDataDir = GetEnvironmentVariable("FUNC_DATA_DIR") is { Length: > 0 } dir ? dir
+            : IsMacOS() ? "/usr/local/share/func" : Path.Combine(GetFolderPath(SpecialFolder.CommonApplicationData), "func");
 
         public static string NodeDataParent(string name)
         {
