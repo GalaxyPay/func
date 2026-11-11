@@ -49,10 +49,7 @@
             />
             <v-menu activator="parent" bottom scrim>
               <v-list density="compact">
-                <div
-                  class="menu-hint text-dim"
-                  v-show="!isConnected(item)"
-                >
+                <div class="menu-hint text-dim" v-show="!isConnected(item)">
                   Connect wallet for more options
                 </div>
                 <v-list-item
@@ -263,7 +260,7 @@
 
 <script lang="ts" setup>
 import { algodTarget } from "@/clients";
-import { DEFAULT_NETWORK, networks } from "@/data";
+import { networks } from "@/data";
 import { PartDetails, Participation } from "@/types";
 import {
   b64,
@@ -283,7 +280,7 @@ import {
   mdiOpenInNew,
   mdiPlus,
 } from "@mdi/js";
-import { useNetwork, useWallet } from "@txnlab/use-wallet-vue";
+import { useWallet } from "@txnlab/use-wallet-vue";
 import algosdk, { Algodv2, modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 import type { PropType } from "vue";
@@ -304,7 +301,6 @@ const emit = defineEmits(["partDetails", "generatingKey", "blockTimestamps"]);
 
 const store = useAppStore();
 const { activeAccount, transactionSigner } = useWallet();
-const { activeNetwork } = useNetwork();
 const { xs } = useDisplay();
 
 const loading = ref();
@@ -628,8 +624,6 @@ function isKeyActive(item: Participation) {
 }
 
 function incentiveIneligible(addr: string) {
-  if (activeNetwork.value !== DEFAULT_NETWORK)
-    return { val: false, reason: "Not Supported" };
   const acctInfo = acctInfos.value.find((ai) => ai.address === addr);
   if ((acctInfo?.amount || 0) < 3 * 10 ** 10)
     return { val: true, reason: "Balance Too Low" };
