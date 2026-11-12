@@ -1,21 +1,5 @@
 import type { HealthPoint, NodeHealth } from "@/types";
 
-export function formatMs(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  return `${(ms / 1000).toFixed(2)} s`;
-}
-
-export function formatBytes(bytes: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000;
-    unit++;
-  }
-  return `${unit && value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
-}
-
 // A length of time in its two largest units: "3d 4h", "5h 12m", "42m", "30s".
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -32,91 +16,112 @@ export function total(points: HealthPoint[], key: keyof HealthPoint): number {
   return points.reduce((sum, p) => sum + (p[key] ?? 0), 0);
 }
 
-// The average of a per-point average, weighting each point by how many
-// measurements went into it.
-export function average(
-  points: HealthPoint[],
-  key: "roundMs" | "arrivalMs",
-  weight: "rounds" | "blocks"
-): number | undefined {
-  let sum = 0;
-  let count = 0;
-  for (const p of points) {
-    const value = p[key];
-    if (value == null || !p[weight]) continue;
-    sum += value * p[weight];
-    count += p[weight];
-  }
-  return count ? sum / count : undefined;
-}
-
-export interface HealthCheck {
-  title: string;
-  // A theme color for the status dot: success, warning, error or icon (unknown).
+// What the Health row on the dashboard says. It only turns amber or red for
+// something the user can do something about, and then says what.
+export interface HealthStatus {
+  // A theme color for the status dot.
   color: "success" | "warning" | "error" | "icon";
-  detail: string;
+  text: string;
+  detail?: string;
+  hint?: string;
 }
 
-// The headline answers: is FUNC getting data, is the node keeping up with the
-// chain, is it connected, and is it taking part in consensus.
-export function healthChecks(health: NodeHealth, now: Date): HealthCheck[] {
-  const checks: HealthCheck[] = [];
+// The node's online accounts, in microalgos, against all online stake.
+export interface Stake {
+  stake: number;
+  online: number;
+}
 
-  const source: Record<NodeHealth["source"], HealthCheck> = {
-    ok: { title: "Node log", color: "success", detail: "Reading new entries" },
-    stale: {
-      title: "Node log",
-      color: "warning",
-      detail: "Nothing new is being written",
-    },
-    noEvents: {
-      title: "Node log",
-      color: "warning",
-      detail: "No telemetry events in the log",
-    },
-    noLog: { title: "Node log", color: "error", detail: "No node.log found" },
+// Committee sizes for the soft and cert votes each round. An account is picked
+// for each by lottery, weighted by its share of the online stake.
+const committees = [2990, 1500];
+const blockMs = 2800;
+// Silence that can't be the result of the lottery: a run with this many votes
+// expected and none sent is a broken node, not bad luck.
+const missingVotes = 20;
+// New keys only start voting about 320 rounds after they go online.
+const quietMs = 15 * 60 * 1000;
+export const fewPeers = 4;
+
+// How many votes the node's accounts can expect to send per round.
+export function votesPerRound(stake: Stake): number {
+  if (!stake.stake || !stake.online) return 0;
+  const share = Math.min(1, stake.stake / stake.online);
+  return committees.reduce((sum, size) => sum + 1 - Math.exp(-size * share), 0);
+}
+
+function peerCount(health: NodeHealth): number | undefined {
+  if (health.peersIn == null && health.peersOut == null) return undefined;
+  return (health.peersIn ?? 0) + (health.peersOut ?? 0);
+}
+
+const plural = (n: number, noun: string) =>
+  `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
+
+// health: what FUNC has gathered for a running node. stake: its online accounts,
+// once known, and only while the node is synced, since it can't vote before.
+export function healthStatus(
+  health: NodeHealth | undefined,
+  now: Date,
+  stake?: Stake
+): HealthStatus {
+  if (!health) return { color: "icon", text: "Checking..." };
+
+  const unreadable: Record<string, string> = {
+    noLog:
+      "FUNC found no node.log in the node's data directory. Check that the node's LogSizeLimit setting isn't 0.",
+    noEvents:
+      "The node's log has no telemetry events in it. Check that TelemetryToLog isn't set to false in the node's config.json.",
+    stale:
+      "The node isn't writing to its log. Set BaseLoggerDebugLevel to 4 or higher under Manage > Configure.",
   };
-  checks.push(source[health.source]);
+  if (health.source !== "ok")
+    return {
+      color: "warning",
+      text: "Can't read the node's log",
+      hint: unreadable[health.source],
+    };
 
-  if (!health.lastRoundAt) {
-    checks.push({ title: "Blocks", color: "icon", detail: "No rounds seen yet" });
-  } else {
-    const age = (now.getTime() - new Date(health.lastRoundAt).getTime()) / 1000;
-    const round = `Round ${health.lastRound.toLocaleString()}`;
-    checks.push(
-      age < 30
-        ? { title: "Blocks", color: "success", detail: `${round}, keeping up` }
-        : {
-            title: "Blocks",
-            color: "warning",
-            detail: `${round} was ${formatDuration(age)} ago`,
-          }
+  const peers = peerCount(health);
+  if (peers === 0)
+    return {
+      color: "error",
+      text: "Not connected to the network",
+      hint: "The node has no peers. Check this computer's internet connection and firewall.",
+    };
+
+  const perRound = stake ? votesPerRound(stake) : 0;
+  if (perRound) {
+    // Measured from the last vote, or from when the node started if later. The
+    // start of the latest stretch with votes stands in for a last vote FUNC
+    // didn't record, as after updating from a version that didn't.
+    const voted = health.points.filter((p) => p.votes).map((p) => p.t * 1000);
+    const since = Math.max(
+      ...[health.lastVoteAt, health.startedAt].map((t) =>
+        t ? new Date(t).getTime() : 0
+      ),
+      ...voted
     );
+    const silentMs = now.getTime() - since;
+    if (since && silentMs > quietMs && (silentMs / blockMs) * perRound >= missingVotes)
+      return {
+        color: "error",
+        text: "Not voting",
+        hint:
+          `The node hasn't voted for ${formatDuration(silentMs / 1000)} although its accounts are online. ` +
+          "Try restarting it from Manage. If that doesn't help, look for errors under Manage > View Log.",
+      };
   }
 
-  if (health.peersIn == null && health.peersOut == null) {
-    checks.push({ title: "Peers", color: "icon", detail: "Not reported yet" });
-  } else {
-    const peers = (health.peersIn ?? 0) + (health.peersOut ?? 0);
-    checks.push({
-      title: "Peers",
-      color: peers ? "success" : "error",
-      detail: peers
-        ? `Connected to ${peers} ${peers === 1 ? "peer" : "peers"}`
-        : "Not connected to any peers",
-    });
-  }
+  if (peers != null && peers < fewPeers)
+    return {
+      color: "warning",
+      text: `Only ${plural(peers, "peer")}`,
+      hint: `Nodes normally keep at least ${fewPeers} connections. Check this computer's internet connection.`,
+    };
 
-  const votes = total(health.points, "votes");
-  checks.push(
-    votes
-      ? {
-          title: "Consensus",
-          color: "success",
-          detail: `${votes.toLocaleString()} ${votes === 1 ? "vote" : "votes"} sent`,
-        }
-      : { title: "Consensus", color: "icon", detail: "No votes sent in this period" }
-  );
-
-  return checks;
+  const detail = [perRound ? "Voting" : "", peers == null ? "" : plural(peers, "peer")]
+    .filter(Boolean)
+    .join(", ");
+  return { color: "success", text: "Healthy", detail: detail || undefined };
 }

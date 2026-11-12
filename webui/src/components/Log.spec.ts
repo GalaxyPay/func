@@ -157,6 +157,26 @@ describe("Log", () => {
     expect(api.get).toHaveBeenCalledTimes(3);
   });
 
+  it("doesn't follow everything the node writes", async () => {
+    api.get.mockResolvedValue(page({ end: 1000 }));
+    const wrapper = await open();
+    const vm = wrapper.vm as any;
+    const followSwitch = () => input("Follow");
+    const everything = { value: "info", title: "Everything" };
+
+    expect(followSwitch().disabled).toBe(false);
+    vm.follow = true;
+    await flushPromises();
+    expect(vm.levelProps(everything).disabled).toBe(true);
+    expect(vm.levelProps({ value: "error", title: "Errors" }).disabled).toBe(false);
+
+    vm.follow = false;
+    vm.level = "info";
+    await flushPromises();
+    expect(vm.levelProps(everything).disabled).toBe(false);
+    expect(followSwitch().disabled).toBe(true);
+  });
+
   it("starts over when the node begins a new log", async () => {
     api.get.mockResolvedValueOnce(page({ lines: [line(400, "old file")], end: 1000 }));
     const wrapper = await open();

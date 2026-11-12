@@ -23,16 +23,28 @@
           class="log-level"
           label="Show"
           :items="levels"
+          :item-props="levelProps"
           density="compact"
           hide-details
         />
-        <v-switch v-model="follow" label="Follow" hide-details class="log-follow">
+        <!-- A disabled switch shows no tooltip of its own, so the wrapper has it. -->
+        <span class="log-follow">
+          <v-switch
+            v-model="follow"
+            label="Follow"
+            hide-details
+            :disabled="level === everything"
+          />
           <v-tooltip
             activator="parent"
             location="top"
-            text="Add new entries as the node writes them"
+            :text="
+              level === everything
+                ? 'Choose Errors or Warnings to follow new entries. A busy node writes too much to follow everything.'
+                : 'Add new entries as the node writes them'
+            "
           />
-        </v-switch>
+        </span>
         <v-btn
           variant="outlined"
           size="small"
@@ -134,11 +146,22 @@ const show = computed({
   },
 });
 
+const everything = "info";
 const levels = [
   { value: "error", title: "Errors" },
   { value: "warning", title: "Warnings and errors" },
-  { value: "info", title: "Everything" },
+  { value: everything, title: "Everything" },
 ];
+
+// A busy node writes hundreds of entries a second, more than following can keep
+// up with, so following and showing everything rule each other out.
+function levelProps(item: (typeof levels)[number]) {
+  return {
+    title: item.title,
+    value: item.value,
+    disabled: follow.value && item.value === everything,
+  };
+}
 
 // How many entries to ask for at a time, and to keep on the page at most.
 const pageSize = 200;

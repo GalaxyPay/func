@@ -2,7 +2,7 @@ using FUNC.Health;
 
 namespace FUNC.Models
 {
-    // What the Node Health dialog shows for one node over one time range.
+    // What the dashboard shows about one node's health over one time range.
     public class NodeHealth
     {
         // Where the data stands: "ok", "noLog" (no node.log to read), "stale" (the log
@@ -14,6 +14,8 @@ namespace FUNC.Models
         public DateTimeOffset? StartedAt { get; set; }
         public long LastRound { get; set; }
         public DateTimeOffset? LastRoundAt { get; set; }
+        // When the node last sent a vote for one of its participating accounts.
+        public DateTimeOffset? LastVoteAt { get; set; }
         public double? PeersIn { get; set; }
         public double? PeersOut { get; set; }
         // Width of each point, and the points oldest first with no gaps.
@@ -22,7 +24,7 @@ namespace FUNC.Models
         // Connected peers as algod last listed them (about hourly).
         public List<PeerInfo> Peers { get; set; } = [];
         public DateTimeOffset? PeersAt { get; set; }
-        // Recent warnings, errors and connection changes, newest first.
+        // Recent errors from the log, newest first.
         public List<HealthNote> Notes { get; set; } = [];
     }
 

@@ -29,8 +29,8 @@ public class HealthStoreTests : IDisposable
 
     private static HealthEvent Vote(DateTimeOffset time) => new() { Kind = HealthEventKind.VoteSent, Time = time };
 
-    private static HealthEvent Warning(DateTimeOffset time, string text) =>
-        new() { Kind = HealthEventKind.Warning, Time = time, Text = text };
+    private static HealthEvent Error(DateTimeOffset time, string text) =>
+        new() { Kind = HealthEventKind.Error, Time = time, Text = text };
 
     [Fact]
     public void Query_TotalsARealLog()
@@ -83,28 +83,39 @@ public class HealthStoreTests : IDisposable
     }
 
     [Fact]
-    public void Query_ListsRecentEventsNewestFirst()
+    public void Query_CountsWarningsWithoutListingThem()
     {
-        List<HealthNote> notes = FixtureStore().Query("24h").Notes;
+        NodeHealth health = FixtureStore().Query("24h");
 
-        // The 12 warnings; the routine swap of the slowest relay is not listed.
-        Assert.Equal(12, notes.Count);
-        Assert.All(notes, n => Assert.Equal("warning", n.Level));
-        Assert.StartsWith("AssembleBlock: assembled block round did not catch up", notes[0].Text);
-        Assert.Equal(DateTimeOffset.Parse("2026-11-11T16:13:40.629373-07:00"), notes[0].Time);
+        Assert.Equal(12, health.Points.Sum(p => p.Warnings));
+        Assert.Empty(health.Notes);
     }
 
     [Fact]
-    public void Apply_ListsUnexpectedDisconnects()
+    public void Query_ListsErrorsNewestFirst()
     {
         HealthStore store = NewStore();
 
-        store.Apply(new HealthEvent { Kind = HealthEventKind.DisconnectPeer, Time = _now.AddMinutes(-2), Text = "r-x1.example:4160 (LeastPerformingPeer)" });
+        store.Apply(Error(_now.AddMinutes(-2), "first"));
         store.Apply(new HealthEvent { Kind = HealthEventKind.DisconnectPeer, Time = _now.AddMinutes(-1), Text = "r-x2.example:4160 (ReadError)" });
+        store.Apply(Error(_now.AddMinutes(-1), "second"));
 
         NodeHealth health = store.Query("1h");
-        Assert.Equal(2, health.Points.Sum(p => p.Disconnects));
-        Assert.Equal("Peer disconnected: r-x2.example:4160 (ReadError)", Assert.Single(health.Notes).Text);
+        Assert.Equal(1, health.Points.Sum(p => p.Disconnects));
+        Assert.Equal(["second", "first"], health.Notes.Select(n => n.Text));
+        Assert.All(health.Notes, n => Assert.Equal("error", n.Level));
+    }
+
+    [Fact]
+    public void Query_ReportsTheLastVote()
+    {
+        HealthStore store = NewStore();
+        Assert.Null(store.Query("1h").LastVoteAt);
+
+        store.Apply(Vote(_now.AddMinutes(-1)));
+        store.Apply(Vote(_now.AddMinutes(-3)));
+
+        Assert.Equal(_now.AddMinutes(-1), store.Query("1h").LastVoteAt);
     }
 
     [Theory]
@@ -260,11 +271,11 @@ public class HealthStoreTests : IDisposable
         HealthStore store = NewStore();
         DateTimeOffset t = _now.AddMinutes(-10);
 
-        for (int i = 0; i < 500; i++) store.Apply(Warning(t.AddSeconds(i), "disk is slow"));
-        store.Apply(Warning(t.AddSeconds(600), "something else"));
+        for (int i = 0; i < 500; i++) store.Apply(Error(t.AddSeconds(i), "disk is slow"));
+        store.Apply(Error(t.AddSeconds(600), "something else"));
 
         NodeHealth health = store.Query("1h");
-        Assert.Equal(501, health.Points.Sum(p => p.Warnings));
+        Assert.Equal(501, health.Points.Sum(p => p.Errors));
         Assert.Equal(2, health.Notes.Count);
         Assert.Equal(("disk is slow", 500, t.AddSeconds(499)), (health.Notes[1].Text, health.Notes[1].Count, health.Notes[1].Time));
     }
@@ -274,12 +285,12 @@ public class HealthStoreTests : IDisposable
     {
         HealthStore store = NewStore();
 
-        for (int i = 0; i < 250; i++) store.Apply(Warning(_now.AddMinutes(-30).AddSeconds(i), $"warning {i}"));
+        for (int i = 0; i < 250; i++) store.Apply(Error(_now.AddMinutes(-30).AddSeconds(i), $"error {i}"));
 
         List<HealthNote> notes = store.Query("1h").Notes;
         Assert.Equal(200, notes.Count);
-        Assert.Equal("warning 249", notes[0].Text);
-        Assert.Equal("warning 50", notes[^1].Text);
+        Assert.Equal("error 249", notes[0].Text);
+        Assert.Equal("error 50", notes[^1].Text);
     }
 
     private static Dictionary<string, double> Metrics(double peersIn, double peersOut, double received, double sent, double droppedVotes = 0) => new()
@@ -393,6 +404,8 @@ public class HealthStoreTests : IDisposable
     public void Save_RestoresHistoryAndLogPosition()
     {
         HealthStore store = FixtureStore(persisted: true);
+        store.Apply(Error(_now.AddMinutes(-1), "ledger is broken"));
+        store.Apply(Vote(_now.AddMinutes(-1)));
         store.SetLog(true, 123456, "fingerprint", grew: true);
         store.Save();
 
@@ -404,7 +417,8 @@ public class HealthStoreTests : IDisposable
         Assert.Equivalent(before.Points, after.Points, strict: true);
         Assert.Equivalent(before.Notes, after.Notes, strict: true);
         Assert.Equivalent(before.Peers, after.Peers, strict: true);
-        Assert.Equal((before.Version, before.LastRound, before.LastRoundAt), (after.Version, after.LastRound, after.LastRoundAt));
+        Assert.Single(after.Notes);
+        Assert.Equal((before.Version, before.LastRound, before.LastRoundAt, before.LastVoteAt), (after.Version, after.LastRound, after.LastRoundAt, after.LastVoteAt));
         Assert.Equal(49, restored.Query("7d").Points.Sum(p => p.Rounds));
         // What the sources are doing right now is not history.
         Assert.Equal("noLog", after.Source);

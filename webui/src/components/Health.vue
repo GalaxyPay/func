@@ -1,231 +1,91 @@
 <template>
-  <v-dialog v-model="show" max-width="1000" scrollable>
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        Node Health
-        <v-spacer />
-        <v-icon :icon="mdiClose" @click="show = false" />
-      </v-card-title>
-      <v-progress-linear indeterminate v-show="loading" height="2" />
-      <v-card-text class="health-body">
-        <div class="health-bar">
-          <v-btn-toggle
-            v-model="range"
-            mandatory
-            divided
-            density="compact"
-            variant="outlined"
-          >
-            <v-btn v-for="r in ranges" :key="r.value" :value="r.value" size="small">
-              {{ r.title }}
-            </v-btn>
-          </v-btn-toggle>
-          <span class="text-caption text-dim" v-if="health">
-            {{ footer }}
+  <section class="node-section">
+    <div class="section-head">
+      <span class="section-label">Node Health</span>
+      <v-spacer />
+      <span class="text-caption text-dim">{{ footer }}</span>
+    </div>
+    <div class="tiles">
+      <v-card class="stat-card" v-for="tile in tiles" :key="tile.label">
+        <div class="stat-label">{{ tile.label }}</div>
+        <div class="stat-value">{{ tile.value }}</div>
+        <div class="tile-sub">{{ tile.sub }}</div>
+        <Sparkline
+          class="mt-2"
+          :values="tile.values"
+          :times="times"
+          :bucket-seconds="health.bucketSeconds"
+          :bars="tile.bars"
+          :format="tile.format"
+          :label="`${tile.label} over the last 24 hours`"
+        />
+      </v-card>
+    </div>
+    <div class="lists">
+      <div>
+        <div class="section-head">
+          <span class="section-label">Peers</span>
+          <v-spacer />
+          <span class="text-caption text-dim" v-if="health.peersAt">
+            as of {{ when(health.peersAt) }}
           </span>
         </div>
-        <v-alert v-if="hint" type="warning" density="compact" :text="hint" />
-        <template v-if="health">
-          <div class="group checks">
-            <div class="check" v-for="check in checks" :key="check.title">
-              <span class="status-dot" :class="`bg-${check.color}`" />
-              <span class="check-title">{{ check.title }}</span>
-              <span class="check-detail">{{ check.detail }}</span>
-            </div>
+        <div class="group">
+          <div class="row text-dim" v-if="!health.peers.length">
+            The node hasn't listed its peers yet. It does so about once an hour.
           </div>
-          <div class="tiles">
-            <v-card class="stat-card" v-for="tile in tiles" :key="tile.label">
-              <div class="stat-label">{{ tile.label }}</div>
-              <div class="stat-value">{{ tile.value }}</div>
-              <div class="tile-sub">{{ tile.sub }}</div>
-              <Sparkline
-                class="mt-2"
-                :values="tile.values"
-                :times="times"
-                :bucket-seconds="health.bucketSeconds"
-                :bars="tile.bars"
-                :format="tile.format"
-                :label="`${tile.label} over the ${rangeTitle}`"
-              />
-            </v-card>
+          <div class="row" v-for="(peer, i) in health.peers" :key="i">
+            <span class="peer-name ellipsis" :title="peer.host">
+              {{ peer.endpoint || peer.address }}
+            </span>
+            <span class="row-end">
+              {{ peer.incoming ? "Incoming" : "Outgoing" }},
+              {{ formatDuration(peer.connectedSeconds) }}
+            </span>
           </div>
-          <section>
-            <div class="section-head">
-              <span class="section-label">Recent events</span>
-              <v-spacer />
-              <v-btn size="small" text="View log" @click="emit('showLog')" />
-            </div>
-            <div class="group">
-              <div class="note text-dim" v-if="!health.notes.length">
-                No warnings or errors in the node's log.
-              </div>
-              <div class="note" v-for="(note, i) in notes" :key="i">
-                <span class="status-dot" :class="`bg-${noteColor(note.level)}`" />
-                <span class="note-text">
-                  {{ note.text }}
-                  <span class="text-dim" v-if="note.count > 1">
-                    ({{ note.count.toLocaleString() }} times)
-                  </span>
-                </span>
-                <span class="note-time">{{ when(note.time) }}</span>
-              </div>
-              <div class="note" v-if="health.notes.length > notes.length">
-                <v-btn
-                  size="small"
-                  :text="`Show all ${health.notes.length}`"
-                  @click="allNotes = true"
-                />
-              </div>
-            </div>
-          </section>
-          <section v-if="health.peers.length">
-            <div class="section-head">
-              <span class="section-label">Peers</span>
-              <v-spacer />
-              <span class="text-caption text-dim" v-if="health.peersAt">
-                as of {{ when(health.peersAt) }}
+        </div>
+      </div>
+      <div>
+        <div class="section-head">
+          <span class="section-label">Recent Errors</span>
+        </div>
+        <div class="group">
+          <div class="row text-dim" v-if="!errors.length">
+            No errors in the node's log.
+          </div>
+          <div class="row" v-for="(note, i) in errors" :key="i">
+            <span class="note-text" :title="note.text">
+              <span class="text-dim" v-if="note.count > 1">
+                {{ note.count.toLocaleString() }}&times;
               </span>
-            </div>
-            <div class="group">
-              <div class="peer" v-for="(peer, i) in health.peers" :key="i">
-                <span class="peer-name ellipsis">
-                  {{ peer.endpoint || peer.address }}
-                </span>
-                <span class="peer-host ellipsis text-dim">{{ peer.host }}</span>
-                <span class="peer-time">
-                  {{ peer.incoming ? "Incoming" : "Outgoing" }},
-                  {{ formatDuration(peer.connectedSeconds) }}
-                </span>
-              </div>
-            </div>
-          </section>
-        </template>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+              {{ note.text }}
+            </span>
+            <span class="row-end">{{ when(note.time) }}</span>
+          </div>
+        </div>
+        <p class="footnote mt-2">The full log is under Manage > View Log.</p>
+      </div>
+    </div>
+  </section>
 </template>
 
 <script lang="ts" setup>
 import type { NodeHealth } from "@/types";
-import { errorMessage } from "@/utils";
-import {
-  average,
-  formatBytes,
-  formatDuration,
-  formatMs,
-  healthChecks,
-  total,
-} from "@/utils/health";
+import { formatDuration, total } from "@/utils/health";
 import type { Series } from "@/utils/sparkline";
-import { mdiClose } from "@mdi/js";
+import type { PropType } from "vue";
 
 const props = defineProps({
-  visible: { type: Boolean, required: true },
-  name: { type: String, required: true },
-  running: { type: Boolean, required: true },
-});
-const emit = defineEmits(["close", "showLog"]);
-
-const show = computed({
-  get() {
-    return props.visible;
-  },
-  set(val) {
-    if (!val) emit("close");
-  },
+  health: { type: Object as PropType<NodeHealth>, required: true },
+  now: { type: Date, required: true },
 });
 
-const ranges = [
-  { value: "1h", title: "Hour", period: "last hour" },
-  { value: "24h", title: "Day", period: "last 24 hours" },
-  { value: "7d", title: "Week", period: "last 7 days" },
-  { value: "30d", title: "Month", period: "last 30 days" },
-];
+const maxErrors = 5;
 
-const store = useAppStore();
-const range = ref("24h");
-const health = ref<NodeHealth>();
-const loading = ref(false);
-const now = ref(new Date());
-const allNotes = ref(false);
+const times = computed(() => props.health.points.map((p) => p.t));
 
-const rangeTitle = computed(
-  () => ranges.find((r) => r.value === range.value)?.period ?? ""
-);
-
-// FUNC gathers this in the background, so the dialog only reads it: on opening,
-// then every few seconds for as long as it stays open.
-const refreshMs = 10000;
-let timer: ReturnType<typeof setInterval> | undefined;
-let request = 0;
-
-async function refresh(showProgress = false) {
-  const id = ++request;
-  if (showProgress) loading.value = true;
-  try {
-    const resp = await store.api.get(`${props.name}/health`, {
-      params: { range: range.value },
-    });
-    // A slower answer for a range the user has since left is out of date.
-    if (id !== request) return;
-    health.value = resp.data;
-    now.value = new Date();
-  } catch (err: any) {
-    if (id !== request) return;
-    // A failed background refresh keeps what is on screen; the next one retries.
-    if (showProgress || !health.value) {
-      console.error(err);
-      store.setSnackbar(errorMessage(err, "Loading node health"), "error");
-    }
-  } finally {
-    if (id === request) loading.value = false;
-  }
-}
-
-function stop() {
-  clearInterval(timer);
-  timer = undefined;
-  request++;
-}
-
-watch(
-  show,
-  (val) => {
-    stop();
-    if (!val) return;
-    allNotes.value = false;
-    refresh(true);
-    timer = setInterval(() => refresh(), refreshMs);
-  },
-  { immediate: true }
-);
-watch(range, () => {
-  if (show.value) refresh(true);
-});
-onBeforeUnmount(stop);
-
-const checks = computed(() =>
-  health.value ? healthChecks(health.value, now.value) : []
-);
-
-// What to do when the log can't tell us anything. A stopped node not writing to
-// its log is expected, and the page already says the node is stopped.
-const hint = computed(() => {
-  switch (health.value?.source) {
-    case "noLog":
-      return "FUNC found no node.log in this node's data directory, so there is nothing to show yet. Start the node, or check that its LogSizeLimit setting isn't 0.";
-    case "noEvents":
-      return "The node's log has no telemetry events in it, so most of this page stays empty. Check that TelemetryToLog isn't set to false in the node's config.json.";
-    case "stale":
-      return props.running
-        ? "The node is running but isn't writing to its log. Set BaseLoggerDebugLevel to 4 or higher under Manage > Configure to see its health here."
-        : undefined;
-    default:
-      return undefined;
-  }
-});
-
-const times = computed(() => health.value?.points.map((p) => p.t) ?? []);
+const count = (noun: string) => (n: number) =>
+  `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
 
 interface Tile {
   label: string;
@@ -236,52 +96,17 @@ interface Tile {
   format: (value: number) => string;
 }
 
-const count = (noun: string) => (n: number) =>
-  `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
-
 const tiles = computed<Tile[]>(() => {
-  const h = health.value;
-  if (!h) return [];
+  const h = props.health;
   const p = h.points;
-  const max = (key: "roundMsMax" | "arrivalMsMax") =>
-    Math.max(0, ...p.map((x) => x[key]));
-
-  const roundMs = average(p, "roundMs", "rounds");
-  const arrivalMs = average(p, "arrivalMs", "blocks");
-  const recoveries = total(p, "recoveries");
-  const warnings = total(p, "warnings");
-  const errors = total(p, "errors");
+  const proposals = total(p, "proposals");
   const peers =
     h.peersIn == null && h.peersOut == null
       ? undefined
       : (h.peersIn ?? 0) + (h.peersOut ?? 0);
-
-  const list: Tile[] = [
+  return [
     {
-      label: "Time per block",
-      value: roundMs == null ? "-" : formatMs(roundMs),
-      sub:
-        roundMs == null
-          ? "No blocks seen"
-          : `Slowest ${formatMs(max("roundMsMax"))}` +
-            (recoveries ? `, ${count("round")(recoveries)} retried` : ""),
-      values: p.map((x) => x.roundMs),
-      bars: false,
-      format: formatMs,
-    },
-    {
-      label: "Block arrival",
-      value: arrivalMs == null ? "-" : formatMs(arrivalMs),
-      sub:
-        arrivalMs == null
-          ? "No blocks seen"
-          : `After its round began, slowest ${formatMs(max("arrivalMsMax"))}`,
-      values: p.map((x) => x.arrivalMs),
-      bars: false,
-      format: formatMs,
-    },
-    {
-      label: "Votes sent",
+      label: "Votes Sent",
       value: total(p, "votes").toLocaleString(),
       sub: `In ${count("block")(total(p, "rounds"))}`,
       values: p.map((x) => x.votes),
@@ -289,11 +114,11 @@ const tiles = computed<Tile[]>(() => {
       format: count("vote"),
     },
     {
-      label: "Blocks proposed",
-      value: total(p, "proposals").toLocaleString(),
-      sub: total(p, "proposals")
+      label: "Blocks Proposed",
+      value: proposals.toLocaleString(),
+      sub: proposals
         ? `${total(p, "wins").toLocaleString()} chosen by the network`
-        : "Proposals this node put forward",
+        : "None in the last 24 hours",
       values: p.map((x) => x.proposals),
       bars: true,
       format: count("proposal"),
@@ -313,41 +138,10 @@ const tiles = computed<Tile[]>(() => {
       bars: false,
       format: count("peer"),
     },
-    {
-      label: "Warnings and errors",
-      value: (warnings + errors).toLocaleString(),
-      sub: errors ? count("error")(errors) : "No errors",
-      values: p.map((x) => x.warnings + x.errors),
-      bars: true,
-      format: (n) => `${n.toLocaleString()} ${n === 1 ? "entry" : "entries"}`,
-    },
   ];
-
-  // Traffic is only known while algod's metrics endpoint answers.
-  const received = total(p, "bytesIn");
-  if (h.metrics || received > 0) {
-    const dropped = total(p, "dropped");
-    list.splice(5, 0, {
-      label: "Data received",
-      value: formatBytes(received),
-      sub:
-        `Sent ${formatBytes(total(p, "bytesOut"))}` +
-        (dropped ? `, ${count("message")(dropped)} dropped` : ""),
-      values: p.map((x) => x.bytesIn),
-      bars: true,
-      format: formatBytes,
-    });
-  }
-  return list;
 });
 
-const notes = computed(() =>
-  allNotes.value ? health.value!.notes : health.value!.notes.slice(0, 8)
-);
-
-function noteColor(level: string) {
-  return level === "error" ? "error" : level === "warning" ? "warning" : "icon";
-}
+const errors = computed(() => props.health.notes.slice(0, maxErrors));
 
 function when(time: string) {
   const date = new Date(time);
@@ -355,7 +149,7 @@ function when(time: string) {
     hour: "numeric",
     minute: "2-digit",
   });
-  if (date.toDateString() === now.value.toDateString()) return clock;
+  if (date.toDateString() === props.now.toDateString()) return clock;
   const day = date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -364,66 +158,20 @@ function when(time: string) {
 }
 
 const footer = computed(() => {
-  const h = health.value;
-  if (!h) return "";
+  const h = props.health;
   const parts: string[] = [];
   if (h.version) parts.push(`algod ${h.version}`);
   if (h.startedAt) {
-    const up = (now.value.getTime() - new Date(h.startedAt).getTime()) / 1000;
-    parts.push(`running for ${formatDuration(up)}`);
+    const up = (props.now.getTime() - new Date(h.startedAt).getTime()) / 1000;
+    parts.push(`up ${formatDuration(up)}`);
   }
-  return parts.join(", ");
+  return parts.join(" · ");
 });
 </script>
 
 <style scoped>
-.health-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 10px 24px 24px !important;
-}
-/* The body scrolls; its sections keep their height instead of shrinking to fit. */
-.health-body > * {
-  flex: none;
-}
-.health-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.health-body .group,
-.health-body .stat-card {
-  background: rgb(var(--v-theme-background));
-}
-.checks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.check {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 40px;
-  padding: 8px 14px;
-  font-size: 13.5px;
-  border-bottom: 1px solid rgb(var(--v-theme-border));
-}
-.check:nth-last-child(-n + 2) {
-  border-bottom: 0;
-}
-.check:nth-child(odd) {
-  border-right: 1px solid rgb(var(--v-theme-border));
-}
-.check-title {
-  flex: none;
-}
-.check-detail {
-  margin-left: auto;
-  text-align: right;
-  color: rgb(var(--v-theme-text-muted));
+.node-section {
+  margin-top: 32px;
 }
 .tiles {
   display: grid;
@@ -439,8 +187,13 @@ const footer = computed(() => {
   line-height: 1.5;
   color: rgb(var(--v-theme-text-dim));
 }
-.note,
-.peer {
+.lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.row {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -448,19 +201,19 @@ const footer = computed(() => {
   font-size: 13px;
   line-height: 1.45;
 }
-.note + .note,
-.peer + .peer {
+.row + .row {
   border-top: 1px solid rgb(var(--v-theme-border));
-}
-.note .status-dot {
-  align-self: center;
 }
 .note-text {
   min-width: 0;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
-.note-time,
-.peer-time {
+.row-end {
   flex: none;
   margin-left: auto;
   font-size: 12px;
@@ -472,32 +225,10 @@ const footer = computed(() => {
   font-family: var(--font-mono);
   font-size: 12.5px;
 }
-.peer-host {
-  flex: 1 1 0;
-  font-size: 12px;
-}
 @media (max-width: 959.98px) {
-  .tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 599.98px) {
-  .health-body {
-    padding: 8px 14px 16px !important;
-  }
-  .checks,
-  .tiles {
+  .tiles,
+  .lists {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .check {
-    border-right: 0 !important;
-    border-bottom: 1px solid rgb(var(--v-theme-border)) !important;
-  }
-  .check:last-child {
-    border-bottom: 0 !important;
-  }
-  .peer-host {
-    display: none;
   }
 }
 </style>

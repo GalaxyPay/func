@@ -112,6 +112,16 @@
             </div>
           </div>
           <div class="set-row">
+            <div class="set-title">Show Advanced Details</div>
+            <div class="set-desc">Node health charts and peers</div>
+            <div class="set-actions">
+              <v-switch
+                v-model="store.showAdvanced"
+                @click.prevent="setShowAdvanced(!store.showAdvanced)"
+              />
+            </div>
+          </div>
+          <div class="set-row">
             <div class="set-title">Show Alternative Networks</div>
             <div class="set-actions">
               <v-switch
@@ -355,6 +365,11 @@ async function updateNode(release: string, bypass = false) {
     store.setSnackbar(errorMessage(err, `Update node to ${release}`), "error");
   }
   store.downloading = false;
+}
+
+function setShowAdvanced(val: boolean) {
+  store.showAdvanced = val;
+  localStorage.setItem("showAdvanced", val.toString());
 }
 
 async function setShowNetworks(val: boolean) {

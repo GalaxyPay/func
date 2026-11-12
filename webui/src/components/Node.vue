@@ -90,18 +90,22 @@
               <v-icon :icon="mdiOpenInNew" size="18" />
             </a>
           </div>
-          <div
-            class="status-row health-row"
-            v-show="nodeStatus.serviceStatus !== 'Not Found'"
-            role="button"
-            tabindex="0"
-            @click="showHealth = true"
-            @keydown.enter="showHealth = true"
-          >
-            <v-icon :icon="mdiChartLine" size="16" class="health-icon" />
-            Node Health
-            <v-icon :icon="mdiChevronRight" size="18" class="ml-auto" />
-          </div>
+          <template v-if="nodeStatus.serviceStatus === 'Running'">
+            <div class="status-row">
+              <span class="status-dot" :class="`bg-${healthState.color}`" />
+              Node Health
+              <span class="ml-auto text-muted ellipsis health-text">
+                {{
+                  healthState.color === "success"
+                    ? healthState.detail || healthState.text
+                    : healthState.text
+                }}
+              </span>
+            </div>
+            <div class="status-row health-hint" v-if="healthState.hint">
+              {{ healthState.hint }}
+            </div>
+          </template>
           <div class="status-row text-dim" v-if="externalNote">
             <span class="ellipsis" :title="externalNote">{{
               externalNote
@@ -230,6 +234,13 @@
       :name="name"
       :timestamps="blockTimestamps"
     />
+    <Health
+      v-if="
+        store.showAdvanced && health && nodeStatus.serviceStatus === 'Running'
+      "
+      :health="health"
+      :now="healthNow"
+    />
     <p
       class="footnote text-center mt-8"
       v-show="nodeStatus?.serviceStatus === 'Running'"
@@ -237,13 +248,6 @@
       This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
     </p>
-    <Health
-      :visible="showHealth"
-      :name="name"
-      :running="nodeStatus.serviceStatus === 'Running'"
-      @close="showHealth = false"
-      @show-log="showLog = true"
-    />
     <Log :visible="showLog" :name="name" @close="showLog = false" />
     <v-dialog v-model="showReset" max-width="380" persistent>
       <v-card>
@@ -286,14 +290,10 @@
 
 <script setup lang="ts">
 import { AlgodFunc, algodTarget } from "@/clients";
-import { NodeStatus, PartDetails } from "@/types";
+import { NodeHealth, NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay, effectiveResetDate, errorMessage } from "@/utils";
-import {
-  mdiChartLine,
-  mdiChevronRight,
-  mdiClose,
-  mdiOpenInNew,
-} from "@mdi/js";
+import { healthStatus } from "@/utils/health";
+import { mdiClose, mdiOpenInNew } from "@mdi/js";
 import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -303,7 +303,6 @@ const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
-const showHealth = ref(false);
 const showLog = ref(false);
 const retiLatest = ref<string>();
 const valarLatest = ref<string>();
@@ -330,6 +329,66 @@ const valarUpdate = computed(() => {
 });
 
 const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
+
+// What FUNC gathers in the background from the node's log and metrics. Reading
+// it is cheap, so the dashboard checks it every few seconds while the node runs.
+const healthMs = 10000;
+// All online stake changes slowly; it scales how often the node should vote.
+const supplyMs = 10 * 60 * 1000;
+const health = ref<NodeHealth>();
+const healthNow = ref(new Date());
+const onlineStake = ref<number>();
+let supplyAt = 0;
+let healthTimer: ReturnType<typeof setInterval> | undefined;
+
+async function refreshHealth() {
+  if (nodeStatus.value?.serviceStatus !== "Running") {
+    health.value = undefined;
+    return;
+  }
+  const name = props.name;
+  try {
+    const resp = await store.api.get<NodeHealth>(`${name}/health`, {
+      params: { range: "24h" },
+    });
+    if (name !== props.name) return;
+    health.value = resp.data;
+    healthNow.value = new Date();
+  } catch (err) {
+    // The next refresh tries again; the row keeps what it last knew.
+    console.error(err);
+  }
+  if (algodClient.value && Date.now() - supplyAt > supplyMs) {
+    try {
+      const supply = await algodClient.value.supply().do();
+      onlineStake.value = Number(supply.onlineMoney);
+      supplyAt = Date.now();
+    } catch {
+      // Without it the Health row just doesn't judge voting.
+    }
+  }
+}
+
+watch(
+  () => props.name,
+  () => {
+    health.value = undefined;
+    onlineStake.value = undefined;
+    supplyAt = 0;
+    refreshHealth();
+  }
+);
+
+const healthState = computed(() => {
+  const synced =
+    !isSyncing.value && (algodStatus.value?.lastRound ?? 0n) > 0n;
+  const part = partDetails.value;
+  const stake =
+    synced && part?.activeKeys && onlineStake.value
+      ? { stake: part.activeStake, online: onlineStake.value }
+      : undefined;
+  return healthStatus(health.value, healthNow.value, stake);
+});
 
 const createdColor = computed(() =>
   nodeStatus.value?.serviceStatus === "Unknown"
@@ -416,11 +475,14 @@ const algodEndpoint = computed(() => algodTarget(algodClient.value?.baseUrl));
 
 onBeforeMount(async () => {
   await getAllStatus();
+  refreshHealth();
+  healthTimer = setInterval(refreshHealth, healthMs);
 });
 
 onBeforeUnmount(() => {
   refreshing = false;
   awaitingStart = false;
+  clearInterval(healthTimer);
 });
 
 let refreshing = false;
@@ -840,18 +902,20 @@ function setResetDate() {
 .status-row + .status-row {
   border-top: 1px solid rgb(var(--v-theme-border));
 }
-.health-row {
-  cursor: pointer;
+.health-text {
+  min-width: 0;
+  padding-left: 12px;
+  font-size: 13px;
 }
-.health-row:hover,
-.health-row:focus-visible {
-  background: rgb(var(--v-theme-surface-selected));
-  outline: none;
-}
-/* Sits where the other rows have their 10px status dot */
-.health-icon {
-  margin: 0 -3px;
-  color: rgb(var(--v-theme-icon));
+/* What to do about it, under the Node Health row */
+.status-row.health-hint {
+  display: block;
+  border-top: 0;
+  padding-top: 0;
+  padding-left: 36px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgb(var(--v-theme-text-muted));
 }
 .telemetry-link {
   display: inline-flex;

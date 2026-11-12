@@ -74,12 +74,15 @@ export interface NodeHealth {
   startedAt?: string;
   lastRound: number;
   lastRoundAt?: string;
+  // When the node last sent a vote for one of its online accounts.
+  lastVoteAt?: string;
   peersIn?: number;
   peersOut?: number;
   bucketSeconds: number;
   points: HealthPoint[];
   peers: HealthPeer[];
   peersAt?: string;
+  // Recent errors from the log, newest first.
   notes: HealthNote[];
 }
 

@@ -85,6 +85,7 @@ namespace FUNC.Health
             public string? Version { get; set; }
             public long LastRound { get; set; }
             public DateTimeOffset? LastRoundAt { get; set; }
+            public DateTimeOffset? LastVoteAt { get; set; }
             public List<PeerInfo> Peers { get; set; } = [];
             public DateTimeOffset? PeersAt { get; set; }
             public Dictionary<long, List<string>> Proposed { get; set; } = [];
@@ -101,6 +102,7 @@ namespace FUNC.Health
         private string? _version;
         private long _lastRound;
         private DateTimeOffset? _lastRoundAt;
+        private DateTimeOffset? _lastVoteAt;
         private List<PeerInfo> _peers = [];
         private DateTimeOffset? _peersAt;
         // This node's proposals for rounds not yet decided, by round. A round is
@@ -179,6 +181,7 @@ namespace FUNC.Health
                         break;
                     case HealthEventKind.VoteSent:
                         Add(t, now, b => b.Votes++);
+                        if (_lastVoteAt == null || ev.Time > _lastVoteAt) _lastVoteAt = ev.Time;
                         break;
                     case HealthEventKind.BlockProposed:
                         Add(t, now, b => b.Proposals++);
@@ -198,8 +201,6 @@ namespace FUNC.Health
                         break;
                     case HealthEventKind.DisconnectPeer:
                         Add(t, now, b => b.Disconnects++);
-                        // algod swaps out its slowest relay every few minutes; that is routine.
-                        if (ev.Text?.EndsWith("(LeastPerformingPeer)") != true) Note(ev.Time, "info", $"Peer disconnected: {ev.Text}");
                         break;
                     case HealthEventKind.PeerConnections:
                         if (_peersAt == null || ev.Time >= _peersAt)
@@ -211,18 +212,10 @@ namespace FUNC.Health
                     case HealthEventKind.Heartbeat:
                         if (ev.Metrics != null) ApplyMetricsLocked(ev.Time, ev.Metrics, live: false);
                         break;
-                    case HealthEventKind.Startup:
-                        Note(ev.Time, "info", ev.Version == null ? "Node started" : $"Node started (version {ev.Version})");
-                        break;
-                    case HealthEventKind.CatchupStart:
-                        Note(ev.Time, "info", $"Catching up from round {ev.Round}");
-                        break;
-                    case HealthEventKind.CatchupStop:
-                        Note(ev.Time, "info", $"Caught up to round {ev.Round}");
-                        break;
                     case HealthEventKind.Warning:
+                        // Counted, but not listed: algod warns routinely and there is
+                        // nothing for the user to do about it.
                         Add(t, now, b => b.Warnings++);
-                        Note(ev.Time, "warning", ev.Text ?? "");
                         break;
                     case HealthEventKind.Error:
                         Add(t, now, b => b.Errors++);
@@ -374,6 +367,7 @@ namespace FUNC.Health
                     StartedAt = _startedAt,
                     LastRound = _lastRound,
                     LastRoundAt = _lastRoundAt,
+                    LastVoteAt = _lastVoteAt,
                     PeersIn = _peersIn,
                     PeersOut = _peersOut,
                     BucketSeconds = width,
@@ -441,6 +435,7 @@ namespace FUNC.Health
                     Version = _version,
                     LastRound = _lastRound,
                     LastRoundAt = _lastRoundAt,
+                    LastVoteAt = _lastVoteAt,
                     Peers = _peers,
                     PeersAt = _peersAt,
                     // Saved so a win isn't missed when FUNC restarts mid-round.
@@ -463,10 +458,12 @@ namespace FUNC.Health
             LogFingerprint = state.LogFingerprint;
             foreach (Bucket b in state.Minutes) _minutes[b.T] = b;
             foreach (Bucket b in state.Hours) _hours[b.T] = b;
-            _notes.AddRange(state.Notes);
+            // Earlier versions also kept warnings and connection changes.
+            _notes.AddRange(state.Notes.Where(n => n.Level == "error"));
             _version = state.Version;
             _lastRound = state.LastRound;
             _lastRoundAt = state.LastRoundAt;
+            _lastVoteAt = state.LastVoteAt;
             _peers = state.Peers;
             _peersAt = state.PeersAt;
             foreach (var (round, hashes) in state.Proposed) _proposed[round] = [.. hashes];
