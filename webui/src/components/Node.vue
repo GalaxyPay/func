@@ -90,6 +90,18 @@
               <v-icon :icon="mdiOpenInNew" size="18" />
             </a>
           </div>
+          <div
+            class="status-row health-row"
+            v-show="nodeStatus.serviceStatus !== 'Not Found'"
+            role="button"
+            tabindex="0"
+            @click="showHealth = true"
+            @keydown.enter="showHealth = true"
+          >
+            <v-icon :icon="mdiChartLine" size="16" class="health-icon" />
+            Node Health
+            <v-icon :icon="mdiChevronRight" size="18" class="ml-auto" />
+          </div>
           <div class="status-row text-dim" v-if="externalNote">
             <span class="ellipsis" :title="externalNote">{{
               externalNote
@@ -224,6 +236,12 @@
       This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
     </p>
+    <Health
+      :visible="showHealth"
+      :name="name"
+      :running="nodeStatus.serviceStatus === 'Running'"
+      @close="showHealth = false"
+    />
     <v-dialog v-model="showReset" max-width="380" persistent>
       <v-card>
         <v-card-title class="d-flex">
@@ -267,7 +285,12 @@
 import { AlgodFunc, algodTarget } from "@/clients";
 import { NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay, effectiveResetDate, errorMessage } from "@/utils";
-import { mdiClose, mdiOpenInNew } from "@mdi/js";
+import {
+  mdiChartLine,
+  mdiChevronRight,
+  mdiClose,
+  mdiOpenInNew,
+} from "@mdi/js";
 import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -277,6 +300,7 @@ const props = defineProps({ name: { type: String, required: true } });
 const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
+const showHealth = ref(false);
 const retiLatest = ref<string>();
 const valarLatest = ref<string>();
 const partDetails = ref<PartDetails>();
@@ -811,6 +835,19 @@ function setResetDate() {
 }
 .status-row + .status-row {
   border-top: 1px solid rgb(var(--v-theme-border));
+}
+.health-row {
+  cursor: pointer;
+}
+.health-row:hover,
+.health-row:focus-visible {
+  background: rgb(var(--v-theme-surface-selected));
+  outline: none;
+}
+/* Sits where the other rows have their 10px status dot */
+.health-icon {
+  margin: 0 -3px;
+  color: rgb(var(--v-theme-icon));
 }
 .telemetry-link {
   display: inline-flex;

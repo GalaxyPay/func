@@ -64,3 +64,59 @@ export interface Message {
   title: string;
   body: string;
 }
+
+// GET {name}/health: what FUNC has gathered from the node's log and metrics.
+export interface NodeHealth {
+  // "ok", "noLog", "stale" (log not growing) or "noEvents" (no telemetry in it).
+  source: "ok" | "noLog" | "stale" | "noEvents";
+  metrics: boolean;
+  version?: string;
+  startedAt?: string;
+  lastRound: number;
+  lastRoundAt?: string;
+  peersIn?: number;
+  peersOut?: number;
+  bucketSeconds: number;
+  points: HealthPoint[];
+  peers: HealthPeer[];
+  peersAt?: string;
+  notes: HealthNote[];
+}
+
+export interface HealthPoint {
+  t: number;
+  rounds: number;
+  roundMs?: number;
+  roundMsMax: number;
+  votes: number;
+  proposals: number;
+  blocks: number;
+  arrivalMs?: number;
+  arrivalMsMax: number;
+  recoveries: number;
+  connects: number;
+  disconnects: number;
+  connectFails: number;
+  warnings: number;
+  errors: number;
+  peersIn?: number;
+  peersOut?: number;
+  bytesIn: number;
+  bytesOut: number;
+  dropped: number;
+}
+
+export interface HealthPeer {
+  endpoint?: string;
+  address?: string;
+  host?: string;
+  incoming: boolean;
+  connectedSeconds: number;
+}
+
+export interface HealthNote {
+  time: string;
+  level: "info" | "warning" | "error";
+  text: string;
+  count: number;
+}

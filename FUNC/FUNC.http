@@ -11,6 +11,11 @@ Authorization: Bearer {{FUNC_Token}}
 GET {{FUNC_HostAddress}}/algorand/
 Accept: application/json
 
+### Algorand node health (range: 1h, 24h, 7d or 30d)
+GET {{FUNC_HostAddress}}/algorand/health?range=1h
+Accept: application/json
+Authorization: Bearer {{FUNC_Token}}
+
 ### Create Algorand
 POST {{FUNC_HostAddress}}/algorand
 Accept: application/text

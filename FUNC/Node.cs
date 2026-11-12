@@ -15,7 +15,7 @@ namespace FUNC
         private const string MacNodeUser = "_func-node";
 
         private static string WinService(string name) => $"{Utils.Cap(name)} Node";
-        private static string DataDir(string name) => Ext(name)?.DataDir ?? Path.Combine(Utils.NodeDataParent(name), name);
+        internal static string DataDir(string name) => Ext(name)?.DataDir ?? Path.Combine(Utils.NodeDataParent(name), name);
 
         // The adopted apt/NodeKit/update.sh node standing in as FUNC's algorand node, if any.
         private static ExternalNode? Ext(string name) => name == "algorand" ? External.Load() : null;

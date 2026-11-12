@@ -1,3 +1,4 @@
+using FUNC.Health;
 using FUNC.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -164,6 +165,20 @@ namespace FUNC.Controllers
             {
                 await Node.SetDir(_name, model);
                 return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // GET: voi/health?range=24h
+        [HttpGet("health")]
+        public ActionResult<NodeHealth> GetNodeHealth(string? range)
+        {
+            try
+            {
+                return HealthCollector.Store(_name).Query(range);
             }
             catch (Exception ex)
             {

@@ -52,6 +52,7 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.spec.ts"],
+    setupFiles: ["src/test-setup.ts"],
     environment: "happy-dom",
     // The page's own origin is where the UI expects the FUNC service to be.
     environmentOptions: { happyDOM: { url: "http://localhost:3536/" } },
