@@ -8,6 +8,7 @@ export function point(values: Partial<HealthPoint> = {}): HealthPoint {
     roundMsMax: 0,
     votes: 0,
     proposals: 0,
+    wins: 0,
     blocks: 0,
     arrivalMsMax: 0,
     recoveries: 0,

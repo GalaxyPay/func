@@ -59,11 +59,11 @@ namespace FUNC.Health
             switch (msg[(msg.LastIndexOf('/') + 1)..])
             {
                 case "BlockAccepted":
-                    return new HealthEvent { Kind = HealthEventKind.BlockAccepted, Time = time, Round = Long(d, "Round"), ReceivedMs = Long(d, "ReceivedAt") / 1e6, Version = version };
+                    return new HealthEvent { Kind = HealthEventKind.BlockAccepted, Time = time, Round = Long(d, "Round"), Hash = Str(d, "Hash"), ReceivedMs = Long(d, "ReceivedAt") / 1e6, Version = version };
                 case "VoteSent":
                     return new HealthEvent { Kind = HealthEventKind.VoteSent, Time = time, Round = Long(d, "Round"), Period = (int)Long(d, "Period"), Version = version };
                 case "BlockProposed":
-                    return new HealthEvent { Kind = HealthEventKind.BlockProposed, Time = time, Round = Long(d, "Round"), Period = (int)Long(d, "Period"), Version = version };
+                    return new HealthEvent { Kind = HealthEventKind.BlockProposed, Time = time, Round = Long(d, "Round"), Period = (int)Long(d, "Period"), Hash = Str(d, "Hash"), Version = version };
                 case "ConnectPeer":
                     return new HealthEvent { Kind = HealthEventKind.ConnectPeer, Time = time, Text = PeerName(d), Version = version };
                 case "ConnectPeerFail":

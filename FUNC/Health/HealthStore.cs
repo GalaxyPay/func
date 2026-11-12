@@ -27,6 +27,7 @@ namespace FUNC.Health
             public double RoundMsMax { get; set; }
             public int Votes { get; set; }
             public int Proposals { get; set; }
+            public int Wins { get; set; }
             public int Blocks { get; set; }
             public double ArrivalMs { get; set; }
             public double ArrivalMsMax { get; set; }
@@ -52,6 +53,7 @@ namespace FUNC.Health
                 RoundMsMax = Math.Max(RoundMsMax, o.RoundMsMax);
                 Votes += o.Votes;
                 Proposals += o.Proposals;
+                Wins += o.Wins;
                 Blocks += o.Blocks;
                 ArrivalMs += o.ArrivalMs;
                 ArrivalMsMax = Math.Max(ArrivalMsMax, o.ArrivalMsMax);
@@ -85,6 +87,7 @@ namespace FUNC.Health
             public DateTimeOffset? LastRoundAt { get; set; }
             public List<PeerInfo> Peers { get; set; } = [];
             public DateTimeOffset? PeersAt { get; set; }
+            public Dictionary<long, List<string>> Proposed { get; set; } = [];
         }
 
         private readonly object _lock = new();
@@ -100,6 +103,10 @@ namespace FUNC.Health
         private DateTimeOffset? _lastRoundAt;
         private List<PeerInfo> _peers = [];
         private DateTimeOffset? _peersAt;
+        // This node's proposals for rounds not yet decided, by round. A round is
+        // decided within seconds, so this holds a handful of entries at most.
+        private readonly Dictionary<long, HashSet<string>> _proposed = [];
+        private const int ProposalRounds = 20;
 
         // Not persisted: how the sources are doing right now.
         private bool _logFound;
@@ -160,11 +167,14 @@ namespace FUNC.Health
                         });
                         break;
                     case HealthEventKind.BlockAccepted:
+                        // The round is decided: did the network take this node's block?
+                        bool won = _proposed.Remove(ev.Round, out HashSet<string>? offered) && ev.Hash != null && offered.Contains(ev.Hash);
                         Add(t, now, b =>
                         {
                             b.Blocks++;
                             b.ArrivalMs += ev.ReceivedMs;
                             b.ArrivalMsMax = Math.Max(b.ArrivalMsMax, ev.ReceivedMs);
+                            if (won) b.Wins++;
                         });
                         break;
                     case HealthEventKind.VoteSent:
@@ -172,6 +182,13 @@ namespace FUNC.Health
                         break;
                     case HealthEventKind.BlockProposed:
                         Add(t, now, b => b.Proposals++);
+                        if (ev.Hash != null)
+                        {
+                            if (!_proposed.TryGetValue(ev.Round, out HashSet<string>? hashes)) _proposed[ev.Round] = hashes = [];
+                            hashes.Add(ev.Hash);
+                            // Rounds whose outcome never showed up in the log.
+                            foreach (long r in _proposed.Keys.Where(r => r < ev.Round - ProposalRounds).ToList()) _proposed.Remove(r);
+                        }
                         break;
                     case HealthEventKind.ConnectPeer:
                         Add(t, now, b => b.Connects++);
@@ -386,6 +403,7 @@ namespace FUNC.Health
             RoundMsMax = b.RoundMsMax,
             Votes = b.Votes,
             Proposals = b.Proposals,
+            Wins = b.Wins,
             Blocks = b.Blocks,
             ArrivalMs = b.Blocks > 0 ? b.ArrivalMs / b.Blocks : null,
             ArrivalMsMax = b.ArrivalMsMax,
@@ -425,6 +443,8 @@ namespace FUNC.Health
                     LastRoundAt = _lastRoundAt,
                     Peers = _peers,
                     PeersAt = _peersAt,
+                    // Saved so a win isn't missed when FUNC restarts mid-round.
+                    Proposed = _proposed.ToDictionary(p => p.Key, p => p.Value.ToList()),
                 }, Json);
             }
             // Replace the file in one step so a crash can't leave half of it.
@@ -449,6 +469,7 @@ namespace FUNC.Health
             _lastRoundAt = state.LastRoundAt;
             _peers = state.Peers;
             _peersAt = state.PeersAt;
+            foreach (var (round, hashes) in state.Proposed) _proposed[round] = [.. hashes];
             Prune();
         }
 

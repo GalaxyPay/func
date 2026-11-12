@@ -66,7 +66,10 @@ public class LogParserTests
         Assert.Equal("5.0.5", block.Version);
 
         Assert.Equal(66865575, events.First(e => e.Kind == HealthEventKind.VoteSent).Round);
-        Assert.Equal(66865713, events.First(e => e.Kind == HealthEventKind.BlockProposed).Round);
+        HealthEvent proposal = events.First(e => e.Kind == HealthEventKind.BlockProposed);
+        Assert.Equal(66865713, proposal.Round);
+        Assert.Equal("PT4UIWH7RX6J6TPTQ6VS52D7G4DQHE26XNIK6EAVVULFS4ZA6QUQ", proposal.Hash);
+        Assert.Equal("SKP3GH322DILMHL6KX5IT4YHMWDFFJZZFCVZPJ5IOYPJBLEKJFHA", block.Hash);
     }
 
     [Fact]

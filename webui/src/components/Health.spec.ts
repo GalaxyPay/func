@@ -23,7 +23,7 @@ function respond(health: Partial<NodeHealth>) {
       peersOut: 4,
       points: [
         point({ t: 1794439800, rounds: 20, roundMs: 2770, roundMsMax: 2900, votes: 31, blocks: 20, arrivalMs: 71, arrivalMsMax: 350 }),
-        point({ t: 1794440700, rounds: 29, roundMs: 2760, roundMsMax: 3400, votes: 26, proposals: 2, blocks: 29, arrivalMs: 80, arrivalMsMax: 900, warnings: 1 }),
+        point({ t: 1794440700, rounds: 29, roundMs: 2760, roundMsMax: 3400, votes: 26, proposals: 2, wins: 1, blocks: 29, arrivalMs: 80, arrivalMsMax: 900, warnings: 1 }),
       ],
       notes: [
         { time: "2026-11-11T23:13:40Z", level: "warning", text: "dbatomic: tx surpassed expected deadline", count: 6 },
@@ -71,6 +71,7 @@ describe("Health", () => {
     expect(page()).toContain("57 votes sent");
     expect(page()).toContain("2.76 s");
     expect(page()).toContain("Slowest 3.40 s");
+    expect(page()).toContain("1 chosen by the network");
     expect(page()).toContain("dbatomic: tx surpassed expected deadline");
     expect(page()).toContain("(6 times)");
     expect(page()).toContain("r-is.algorand-mainnet.network:4160");

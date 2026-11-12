@@ -25,6 +25,9 @@ namespace FUNC.Health
         public DateTimeOffset Time { get; init; }
         public long Round { get; init; }
         public int Period { get; init; }
+        // BlockProposed: the block this node offered. BlockAccepted: the block the
+        // network agreed on. When the two match for a round, the node won it.
+        public string? Hash { get; init; }
         // BlockAccepted: how long after the round started the block arrived.
         public double ReceivedMs { get; init; }
         // Warning/Error: the message. Peer events: the peer and, on disconnect, why.

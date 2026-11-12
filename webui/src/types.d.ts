@@ -90,6 +90,8 @@ export interface HealthPoint {
   roundMsMax: number;
   votes: number;
   proposals: number;
+  // Proposals the network chose as the round's block.
+  wins: number;
   blocks: number;
   arrivalMs?: number;
   arrivalMsMax: number;

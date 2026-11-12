@@ -36,6 +36,8 @@ namespace FUNC.Models
         public double RoundMsMax { get; set; }
         public int Votes { get; set; }
         public int Proposals { get; set; }
+        // Proposals the network chose as the round's block.
+        public int Wins { get; set; }
         public int Blocks { get; set; }
         // How long after a round started its block arrived; null without blocks.
         public double? ArrivalMs { get; set; }

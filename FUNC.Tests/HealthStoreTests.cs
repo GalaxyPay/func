@@ -42,6 +42,8 @@ public class HealthStoreTests : IDisposable
         Assert.Equal(49, points.Sum(p => p.Blocks));
         Assert.Equal(57, points.Sum(p => p.Votes));
         Assert.Equal(2, points.Sum(p => p.Proposals));
+        // Both went to other proposers' blocks.
+        Assert.Equal(0, points.Sum(p => p.Wins));
         Assert.Equal(12, points.Sum(p => p.Warnings));
         Assert.Equal(0, points.Sum(p => p.Errors));
         Assert.Equal(1, points.Sum(p => p.Connects));
@@ -152,6 +154,74 @@ public class HealthStoreTests : IDisposable
         Assert.Equal(0, store.Query("24h").Points.Sum(p => p.Votes));
         Assert.Equal(1, store.Query("7d").Points.Sum(p => p.Votes));
         Assert.Equal(1, store.Query("30d").Points.Sum(p => p.Votes));
+    }
+
+    private static HealthEvent Proposed(long round, string hash, DateTimeOffset time, int period = 0) =>
+        new() { Kind = HealthEventKind.BlockProposed, Round = round, Hash = hash, Time = time, Period = period };
+
+    private static HealthEvent Accepted(long round, string hash, DateTimeOffset time) =>
+        new() { Kind = HealthEventKind.BlockAccepted, Round = round, Hash = hash, Time = time };
+
+    [Fact]
+    public void Apply_CountsAWinWhenTheNetworkTakesTheProposedBlock()
+    {
+        HealthStore store = NewStore();
+        DateTimeOffset t = _now.AddMinutes(-10);
+
+        store.Apply(Proposed(100, "OURS", t));
+        store.Apply(Accepted(100, "OURS", t.AddSeconds(2)));
+        store.Apply(Proposed(101, "OURS2", t.AddSeconds(3)));
+        store.Apply(Accepted(101, "THEIRS", t.AddSeconds(5)));
+        // Proposed again in a later period of the same round; the second one won.
+        store.Apply(Proposed(102, "FIRST", t.AddSeconds(6)));
+        store.Apply(Proposed(102, "SECOND", t.AddSeconds(12), period: 1));
+        store.Apply(Accepted(102, "SECOND", t.AddSeconds(14)));
+
+        List<HealthPoint> points = store.Query("1h").Points;
+        Assert.Equal(4, points.Sum(p => p.Proposals));
+        Assert.Equal(2, points.Sum(p => p.Wins));
+    }
+
+    [Fact]
+    public void Apply_CountsAWinOnlyOnce()
+    {
+        HealthStore store = NewStore();
+        DateTimeOffset t = _now.AddMinutes(-10);
+
+        store.Apply(Proposed(100, "OURS", t));
+        store.Apply(Accepted(100, "OURS", t.AddSeconds(2)));
+        store.Apply(Accepted(100, "OURS", t.AddSeconds(2)));
+
+        Assert.Equal(1, store.Query("1h").Points.Sum(p => p.Wins));
+    }
+
+    [Fact]
+    public void Apply_ForgetsProposalsWhoseRoundNeverShowedUp()
+    {
+        HealthStore store = NewStore();
+        DateTimeOffset t = _now.AddMinutes(-10);
+
+        // The node went down before round 100 was decided.
+        store.Apply(Proposed(100, "OURS", t));
+        store.Apply(Proposed(500, "LATER", t.AddMinutes(1)));
+        store.Apply(Accepted(100, "OURS", t.AddMinutes(2)));
+
+        Assert.Equal(0, store.Query("1h").Points.Sum(p => p.Wins));
+    }
+
+    [Fact]
+    public void Save_KeepsAProposalThatIsStillUndecided()
+    {
+        HealthStore store = NewStore(persisted: true);
+        DateTimeOffset t = _now.AddMinutes(-10);
+        store.Apply(Proposed(100, "OURS", t));
+        store.Save();
+
+        // FUNC restarted between the proposal and the round's outcome.
+        HealthStore restored = NewStore(persisted: true);
+        restored.Apply(Accepted(100, "OURS", t.AddSeconds(2)));
+
+        Assert.Equal(1, restored.Query("1h").Points.Sum(p => p.Wins));
     }
 
     [Fact]

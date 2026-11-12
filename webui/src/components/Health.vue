@@ -291,7 +291,9 @@ const tiles = computed<Tile[]>(() => {
     {
       label: "Blocks proposed",
       value: total(p, "proposals").toLocaleString(),
-      sub: "Proposals this node put forward",
+      sub: total(p, "proposals")
+        ? `${total(p, "wins").toLocaleString()} chosen by the network`
+        : "Proposals this node put forward",
       values: p.map((x) => x.proposals),
       bars: true,
       format: count("proposal"),
