@@ -134,6 +134,8 @@ import {
 const props = defineProps({
   visible: { type: Boolean, required: true },
   name: { type: String, required: true },
+  // What to show on opening: "error", "warning" or "info".
+  startLevel: { type: String, default: "warning" },
 });
 const emit = defineEmits(["close"]);
 
@@ -176,7 +178,7 @@ const searchDelayMs = 400;
 
 const store = useAppStore();
 const query = ref<string | null>("");
-const level = ref("warning");
+const level = ref(props.startLevel);
 const follow = ref(false);
 const lines = ref<LogLine[]>([]);
 const next = ref<number | null>(null);
@@ -292,7 +294,9 @@ watch(
   show,
   (visible) => {
     if (visible) {
-      load();
+      // A change of level loads by itself.
+      if (level.value !== props.startLevel) level.value = props.startLevel;
+      else load();
     } else {
       // Drop anything still on its way and forget the page.
       request++;

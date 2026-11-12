@@ -146,6 +146,43 @@ public class UtilsTests
     }
 
     [Fact]
+    public void ParseStartType_ReadsScQc()
+    {
+        Assert.True(Utils.ParseStartType("        START_TYPE         : 2   AUTO_START\r\n"));
+        Assert.True(Utils.ParseStartType("        START_TYPE         : 2   AUTO_START  (DELAYED)\r\n"));
+        Assert.False(Utils.ParseStartType("        START_TYPE         : 3   DEMAND_START\r\n"));
+        Assert.False(Utils.ParseStartType("        START_TYPE         : 4   DISABLED\r\n"));
+        Assert.Null(Utils.ParseStartType("[SC] OpenService FAILED 1060:"));
+    }
+
+    [Fact]
+    public void ParseIsEnabled_KeepsOnlyWhatSurvivesAReboot()
+    {
+        Assert.True(Utils.ParseIsEnabled("enabled\n"));
+        Assert.False(Utils.ParseIsEnabled("disabled\n"));
+        Assert.False(Utils.ParseIsEnabled("masked\n"));
+        Assert.False(Utils.ParseIsEnabled("enabled-runtime\n"));
+        Assert.Null(Utils.ParseIsEnabled(string.Empty));
+    }
+
+    [Fact]
+    public void LaunchdStartsAtBoot_NeedsALoadedJobThatRuns()
+    {
+        string runAtLoad = "<key>RunAtLoad</key>\n        <true/>\n        <key>KeepAlive</key>\n        <true/>";
+        string keepAliveDict = "<key>KeepAlive</key>\n<dict>\n<key>SuccessfulExit</key>\n<false/>\n</dict>";
+        string disabled = "disabled services = {\n\t\"func.algorand\" => disabled\n\t\"com.other\" => enabled\n}";
+        string oldDisabled = "disabled services = {\n\t\"func.algorand\" => true\n}";
+        string enabled = "disabled services = {\n\t\"func.algorand\" => enabled\n}";
+
+        Assert.True(Utils.LaunchdStartsAtBoot(runAtLoad, enabled, "func.algorand"));
+        Assert.True(Utils.LaunchdStartsAtBoot(keepAliveDict, string.Empty, "func.algorand"));
+        Assert.False(Utils.LaunchdStartsAtBoot(runAtLoad, disabled, "func.algorand"));
+        Assert.False(Utils.LaunchdStartsAtBoot(runAtLoad, oldDisabled, "func.algorand"));
+        Assert.True(Utils.LaunchdStartsAtBoot(runAtLoad, disabled, "func.voi"));
+        Assert.False(Utils.LaunchdStartsAtBoot("<key>RunAtLoad</key>\n<false/>", enabled, "func.algorand"));
+    }
+
+    [Fact]
     public void Cap_CapitalizesTheNodeName()
     {
         Assert.Equal("Algorand", Utils.Cap("algorand"));

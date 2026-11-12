@@ -4,6 +4,8 @@ export interface NodeStatus {
   machineName: string;
   isWindows: boolean;
   serviceStatus: string;
+  // Whether the service starts again when the computer boots, even if stopped.
+  startsAtBoot?: boolean | null;
   port: number;
   token: string;
   telemetryStatus?: string;

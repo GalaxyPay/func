@@ -129,6 +129,48 @@ namespace FUNC
             return "Unknown";
         }
 
+        // Whether the OS starts the service when the computer boots, even after it was
+        // stopped: null when that can't be told. Same names as ServiceStatus.
+        public static async Task<bool?> StartsAtBoot(string name, string windowsName, string? macLabel = null)
+        {
+            if (IsWindows()) return ParseStartType(await Sc("qc", windowsName));
+            if (IsLinux()) return ParseIsEnabled(await Systemctl("is-enabled", name));
+            if (IsMacOS())
+            {
+                string label = macLabel ?? $"func.{name}";
+                string plist = $"/Library/LaunchDaemons/{label}.plist";
+                if (!File.Exists(plist)) return false;
+                return LaunchdStartsAtBoot(File.ReadAllText(plist), await Launchctl("print-disabled", "system"), label);
+            }
+            return null;
+        }
+
+        // `sc qc`: START_TYPE 2 is AUTO_START (with or without DELAYED); 3 is DEMAND_START
+        // and 4 DISABLED.
+        internal static bool? ParseStartType(string qc)
+        {
+            Match m = Regex.Match(qc, @"START_TYPE\s*:\s*(\d+)");
+            return m.Success ? m.Groups[1].Value == "2" : null;
+        }
+
+        // `systemctl is-enabled`: only "enabled" survives a reboot; "enabled-runtime"
+        // lasts until one.
+        internal static bool? ParseIsEnabled(string state) => state.Trim() switch
+        {
+            "enabled" => true,
+            "disabled" or "masked" or "enabled-runtime" or "static" or "indirect" => false,
+            _ => null,
+        };
+
+        // launchd loads every plist in /Library/LaunchDaemons at boot unless the job was
+        // disabled, and starts it then if it asks to run at load or to be kept alive.
+        internal static bool LaunchdStartsAtBoot(string plist, string printDisabled, string label)
+        {
+            bool disabled = Regex.IsMatch(printDisabled, $@"""{Regex.Escape(label)}""\s*=>\s*(disabled|true)");
+            bool runs = Regex.IsMatch(plist, @"<key>(RunAtLoad|KeepAlive)</key>\s*(<true\s*/>|<dict>)");
+            return runs && !disabled;
+        }
+
         // Ensure a dedicated service account exists. On Linux it is created on demand;
         // on macOS the pkg postinstall creates it. Returns whether the account exists.
         public static async Task<bool> EnsureUnixUser(string user)

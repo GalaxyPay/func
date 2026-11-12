@@ -52,7 +52,7 @@ const dark: ThemeDefinition = {
     "error-text": "#fa7f91", // oklch(0.740 0.150 12)
     "danger-fill": "#c72c53", // oklch(0.550 0.190 12)
     "on-danger-fill": "#fffdff",
-    warning: "#e6b37b", // oklch(0.800 0.093 68)
+    warning: "#fca942", // oklch(0.800 0.150 68), saturated enough for a small dot to catch the eye
     success: "#57ce70", // oklch(0.760 0.170 148), clear of the cyan primary
     info: "#7ed2ee", // oklch(0.820 0.090 221.5)
     "on-error": "#090c0d",

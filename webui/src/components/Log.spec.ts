@@ -24,9 +24,9 @@ function page(values: Partial<LogPage> = {}): { data: LogPage } {
   return { data: { found: true, lines: [], next: null, end: 0, reset: false, ...values } };
 }
 
-async function open() {
+async function open(props: Record<string, unknown> = {}) {
   const wrapper = mount(Log, {
-    props: { visible: true, name: "Algorand" },
+    props: { visible: true, name: "Algorand", ...props },
     global: { plugins: [createVuetify()] },
   });
   await flushPromises();
@@ -155,6 +155,19 @@ describe("Log", () => {
     await wrapper.setProps({ visible: false });
     await vi.advanceTimersByTimeAsync(10000);
     expect(api.get).toHaveBeenCalledTimes(3);
+  });
+
+  it("opens on errors when asked to, once per opening", async () => {
+    api.get.mockResolvedValue(page({ end: 1000 }));
+    const wrapper = await open({ startLevel: "error" });
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(params(0).level).toBe("error");
+
+    await wrapper.setProps({ visible: false });
+    await wrapper.setProps({ visible: true, startLevel: "warning" });
+    await flushPromises();
+    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(params(1).level).toBe("warning");
   });
 
   it("doesn't follow everything the node writes", async () => {

@@ -214,6 +214,10 @@ namespace FUNC
             return status;
         }
 
+        // A node run with goal rather than a service doesn't come back after a reboot.
+        public static async Task<bool?> StartsAtBoot(ExternalNode node) =>
+            node.Service == null ? false : await Utils.StartsAtBoot(node.Service, string.Empty, node.Service);
+
         private static volatile bool updating;
 
         public static async Task Control(ExternalNode node, string cmd)

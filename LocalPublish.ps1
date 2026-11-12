@@ -18,4 +18,5 @@ pnpm install
 pnpm build
 
 Set-Location ..
-iscc FUNC.iss
+$version = (Get-Content webui\package.json -Raw | ConvertFrom-Json).version
+iscc FUNC.iss /DMyAppVersion=$version

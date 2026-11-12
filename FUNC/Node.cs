@@ -38,6 +38,12 @@ namespace FUNC
             return status;
         }
 
+        private static async Task<bool?> StartsAtBoot(string name)
+        {
+            if (Ext(name) is { } ext) return await External.StartsAtBoot(ext);
+            return await Utils.StartsAtBoot(name, WinService(name));
+        }
+
         private static async Task ExtractTemplate(string name)
         {
             string templatePath = Path.Combine(AppContext.BaseDirectory, "Templates", $"{name}.tar");
@@ -115,6 +121,7 @@ namespace FUNC
                 MachineName = machineName,
                 IsWindows = IsWindows(),
                 ServiceStatus = serviceStatus,
+                StartsAtBoot = serviceStatus is "Running" or "Stopped" ? await StartsAtBoot(name) : null,
                 Port = port,
                 Token = token,
                 External = ext,

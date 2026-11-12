@@ -11,27 +11,67 @@
         <div class="section-label">Status</div>
         <div class="group">
           <div class="status-row">
-            <span class="status-dot" :class="`bg-${createdColor}`" />
-            Service Created
+            <span
+              class="status-dot"
+              :class="[
+                `bg-${nodeLightState.color}`,
+                { pulsate: nodeLightState.busy },
+              ]"
+            />
+            Node
+            <span class="status-text ellipsis">{{ nodeLightState.text }}</span>
           </div>
-          <div class="status-row">
-            <span class="status-dot" :class="`bg-${runningColor}`" />
-            Node Running
+          <div class="status-row status-hint" v-if="nodeLightState.hint">
+            {{ nodeLightState.hint }}
+          </div>
+          <div class="status-row status-hint" v-if="running && errorCount">
+            {{ errorCount.toLocaleString() }}
+            {{ errorCount === 1 ? "error" : "errors" }} in the node's log in the
+            last day.
+            <a href="#" class="status-link" @click.prevent="openLog('error')">
+              View log
+            </a>
           </div>
           <div class="status-row">
             <span
               class="status-dot"
-              :class="[
-                `bg-${syncedColor}`,
-                isSyncing && !generatingKey ? 'pulsate' : '',
-              ]"
+              :class="[`bg-${consensus.color}`, { pulsate: consensus.busy }]"
             />
-            Node Synced
+            Consensus
+            <span class="status-text ellipsis">{{ consensus.text }}</span>
           </div>
-          <div class="status-row">
-            <span class="status-dot" :class="`bg-${participatingColor}`" />
-            <span class="ellipsis">Participating in Consensus</span>
+          <div class="status-row status-hint" v-if="consensus.hint">
+            {{ consensus.hint }}
           </div>
+          <template v-if="running">
+            <div
+              class="status-row"
+              :class="{ 'status-toggle': canExpandPeers }"
+              :role="canExpandPeers ? 'button' : undefined"
+              :tabindex="canExpandPeers ? 0 : undefined"
+              :aria-expanded="canExpandPeers ? peersOpen : undefined"
+              @click="togglePeers()"
+              @keydown.enter="togglePeers()"
+            >
+              <span class="status-dot" :class="`bg-${network.color}`" />
+              Network
+              <span class="status-text ellipsis">{{ network.text }}</span>
+              <v-icon
+                v-if="canExpandPeers"
+                :icon="peersOpen ? mdiChevronUp : mdiChevronDown"
+                size="18"
+                class="status-chevron"
+              />
+            </div>
+            <div class="status-row status-hint" v-if="network.hint">
+              {{ network.hint }}
+            </div>
+            <HealthDetails
+              v-if="canExpandPeers && peersOpen"
+              :health="health!"
+              :now="healthNow"
+            />
+          </template>
           <div
             class="status-row"
             v-show="
@@ -78,34 +118,6 @@
               />
             </v-chip>
           </div>
-          <div class="status-row" v-show="nodeStatus.telemetryStatus">
-            <span class="status-dot" :class="`bg-${telemetryColor}`" />
-            Telemetry
-            <a
-              :href="telemetryLink"
-              target="_blank"
-              v-if="telemetryEnabled"
-              class="telemetry-link"
-            >
-              <v-icon :icon="mdiOpenInNew" size="18" />
-            </a>
-          </div>
-          <template v-if="nodeStatus.serviceStatus === 'Running'">
-            <div class="status-row">
-              <span class="status-dot" :class="`bg-${healthState.color}`" />
-              Node Health
-              <span class="ml-auto text-muted ellipsis health-text">
-                {{
-                  healthState.color === "success"
-                    ? healthState.detail || healthState.text
-                    : healthState.text
-                }}
-              </span>
-            </div>
-            <div class="status-row health-hint" v-if="healthState.hint">
-              {{ healthState.hint }}
-            </div>
-          </template>
           <div class="status-row text-dim" v-if="externalNote">
             <span class="ellipsis" :title="externalNote">{{
               externalNote
@@ -119,21 +131,46 @@
           :status="status"
           @await-running="waitForRunning"
           @cancel-await="cancelWait"
-          @show-log="showLog = true"
+          @show-log="openLog('warning')"
         />
       </section>
-      <section v-if="nodeStatus.serviceStatus === 'Running'">
+      <section
+        v-if="nodeStatus.serviceStatus === 'Running' && store.showAdvanced"
+      >
+        <div class="section-label d-flex">
+          Overview
+          <span class="ml-auto overview-info">{{ algodInfo }}</span>
+        </div>
+        <div class="group">
+          <div class="overview-row">
+            <span class="text-muted">Current Block</span>
+            <span class="overview-value">{{ currentBlock }}</span>
+          </div>
+          <div class="overview-row">
+            <span class="text-muted">Blocks Created</span>
+            <v-btn
+              size="x-small"
+              :text="resetLabel"
+              variant="outlined"
+              class="reset-btn"
+              :disabled="!algodStatus"
+              @click="showResetDialog()"
+            />
+            <span class="overview-value">{{ blocksCreated }}</span>
+          </div>
+          <div class="overview-row">
+            <span class="text-muted">Online Stake</span>
+            <span class="overview-value">{{ onlineStakeText }}</span>
+          </div>
+        </div>
+        <Health v-if="health" :health="health" v-model:range="healthRange" />
+      </section>
+      <section v-else-if="nodeStatus.serviceStatus === 'Running'">
         <div class="section-label">Overview</div>
         <div class="stats-grid">
           <v-card class="stat-card">
             <div class="stat-label">Current Block</div>
-            <div class="stat-value">
-              {{
-                algodStatus
-                  ? algodStatus.lastRound.toLocaleString() || "-"
-                  : "-"
-              }}
-            </div>
+            <div class="stat-value">{{ currentBlock }}</div>
           </v-card>
           <v-card class="stat-card">
             <div class="stat-label">
@@ -147,13 +184,7 @@
                 @click="showResetDialog()"
               />
             </div>
-            <div class="stat-value">
-              {{
-                partDetails?.proposals == null
-                  ? "-"
-                  : partDetails.proposals.toLocaleString()
-              }}
-            </div>
+            <div class="stat-value">{{ blocksCreated }}</div>
           </v-card>
           <v-card v-if="!xs" class="stat-card">
             <div class="stat-label">Online Accounts</div>
@@ -163,13 +194,7 @@
           </v-card>
           <v-card class="stat-card">
             <div class="stat-label">Online Stake</div>
-            <div class="stat-value">
-              {{
-                partDetails
-                  ? (partDetails.activeStake / 10 ** 6).toLocaleString()
-                  : "-"
-              }}
-            </div>
+            <div class="stat-value">{{ onlineStakeText }}</div>
           </v-card>
         </div>
       </section>
@@ -234,13 +259,6 @@
       :name="name"
       :timestamps="blockTimestamps"
     />
-    <Health
-      v-if="
-        store.showAdvanced && health && nodeStatus.serviceStatus === 'Running'
-      "
-      :health="health"
-      :now="healthNow"
-    />
     <p
       class="footnote text-center mt-8"
       v-show="nodeStatus?.serviceStatus === 'Running'"
@@ -248,7 +266,12 @@
       This dashboard does NOT need to be open for the node to run. In fact, it
       is more efficient to close it when you are not using it.
     </p>
-    <Log :visible="showLog" :name="name" @close="showLog = false" />
+    <Log
+      :visible="showLog"
+      :name="name"
+      :start-level="logLevel"
+      @close="showLog = false"
+    />
     <v-dialog v-model="showReset" max-width="380" persistent>
       <v-card>
         <v-card-title class="d-flex">
@@ -292,8 +315,14 @@
 import { AlgodFunc, algodTarget } from "@/clients";
 import { NodeHealth, NodeStatus, PartDetails } from "@/types";
 import { checkCatchup, delay, effectiveResetDate, errorMessage } from "@/utils";
-import { healthStatus } from "@/utils/health";
-import { mdiClose, mdiOpenInNew } from "@mdi/js";
+import {
+  consensusLight,
+  formatDuration,
+  networkLight,
+  nodeLight,
+  recentErrors,
+} from "@/utils/health";
+import { mdiChevronDown, mdiChevronUp, mdiClose } from "@mdi/js";
 import { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -304,6 +333,12 @@ const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const showLog = ref(false);
+const logLevel = ref("warning");
+
+function openLog(level: string) {
+  logLevel.value = level;
+  showLog.value = true;
+}
 const retiLatest = ref<string>();
 const valarLatest = ref<string>();
 const partDetails = ref<PartDetails>();
@@ -336,6 +371,8 @@ const healthMs = 10000;
 // All online stake changes slowly; it scales how often the node should vote.
 const supplyMs = 10 * 60 * 1000;
 const health = ref<NodeHealth>();
+// The advanced section's charts: the last day unless the user picks otherwise.
+const healthRange = ref("24h");
 const healthNow = ref(new Date());
 const onlineStake = ref<number>();
 let supplyAt = 0;
@@ -347,11 +384,13 @@ async function refreshHealth() {
     return;
   }
   const name = props.name;
+  const range = healthRange.value;
   try {
     const resp = await store.api.get<NodeHealth>(`${name}/health`, {
-      params: { range: "24h" },
+      params: { range },
     });
-    if (name !== props.name) return;
+    // An answer for a node or range the user has since left is out of date.
+    if (name !== props.name || range !== healthRange.value) return;
     health.value = resp.data;
     healthNow.value = new Date();
   } catch (err) {
@@ -369,6 +408,8 @@ async function refreshHealth() {
   }
 }
 
+watch(healthRange, () => refreshHealth());
+
 watch(
   () => props.name,
   () => {
@@ -379,46 +420,86 @@ watch(
   }
 );
 
-const healthState = computed(() => {
-  const synced =
-    !isSyncing.value && (algodStatus.value?.lastRound ?? 0n) > 0n;
-  const part = partDetails.value;
-  const stake =
-    synced && part?.activeKeys && onlineStake.value
-      ? { stake: part.activeStake, online: onlineStake.value }
-      : undefined;
-  return healthStatus(health.value, healthNow.value, stake);
+const running = computed(() => nodeStatus.value?.serviceStatus === "Running");
+
+// In advanced mode the Network row opens to list the node's peers.
+const peersOpen = ref(false);
+const canExpandPeers = computed(() => !!store.showAdvanced && !!health.value);
+
+function togglePeers() {
+  if (canExpandPeers.value) peersOpen.value = !peersOpen.value;
+}
+
+const errorCount = computed(() =>
+  health.value ? recentErrors(health.value, healthNow.value) : 0
+);
+
+// algod's version and how long it has been running, beside the Overview title.
+const algodInfo = computed(() => {
+  const h = health.value;
+  if (!h) return "";
+  const parts: string[] = [];
+  if (h.version) parts.push(`algod ${h.version}`);
+  if (h.startedAt) {
+    const up = (healthNow.value.getTime() - Date.parse(h.startedAt)) / 1000;
+    parts.push(`up ${formatDuration(up)}`);
+  }
+  return parts.join(" · ");
 });
 
-const createdColor = computed(() =>
-  nodeStatus.value?.serviceStatus === "Unknown"
-    ? "icon"
-    : nodeStatus.value?.serviceStatus !== "Not Found"
-      ? "success"
-      : "error"
+const currentBlock = computed(() =>
+  algodStatus.value ? algodStatus.value.lastRound.toLocaleString() : "-"
+);
+const blocksCreated = computed(() =>
+  partDetails.value?.proposals == null
+    ? "-"
+    : partDetails.value.proposals.toLocaleString()
+);
+const onlineStakeText = computed(() =>
+  partDetails.value
+    ? (partDetails.value.activeStake / 10 ** 6).toLocaleString()
+    : "-"
 );
 
-const runningColor = computed(() =>
-  nodeStatus.value?.serviceStatus === "Running" ? "success" : "error"
+const nodeLightState = computed(() =>
+  nodeLight({
+    serviceStatus: nodeStatus.value?.serviceStatus,
+    startsAtBoot: nodeStatus.value?.startsAtBoot,
+    lastRound: algodStatus.value?.lastRound,
+    syncing: isSyncing.value,
+    generatingKey: generatingKey.value,
+  })
 );
 
-const syncedColor = computed(() =>
-  algodStatus.value?.lastRound == 0n && !isSyncing.value
-    ? "error"
-    : isSyncing.value && !generatingKey.value
-      ? "warning"
-      : runningColor.value
-);
+const consensus = computed(() => {
+  const synced = !isSyncing.value;
+  const part = partDetails.value;
+  // Voting is only judged once the node is synced, as it can't vote before.
+  const stake =
+    synced &&
+    (algodStatus.value?.lastRound ?? 0n) > 0n &&
+    part &&
+    onlineStake.value
+      ? { stake: part.activeStake, online: onlineStake.value }
+      : undefined;
+  return consensusLight(
+    {
+      running: running.value,
+      synced,
+      generatingKey: generatingKey.value,
+      onlineAccounts: part?.activeKeys,
+      stake,
+      health: health.value,
+    },
+    healthNow.value
+  );
+});
 
-const participatingColor = computed(() =>
-  nodeStatus.value?.serviceStatus !== "Running" ||
-  (isSyncing.value && !generatingKey.value) ||
-  (partDetails.value && !partDetails.value.activeKeys)
-    ? "error"
-    : generatingKey.value || !partDetails.value
-      ? "icon"
-      : "success"
-);
+const network = computed(() => {
+  const round = algodStatus.value?.lastRound;
+  const settling = round == null || round === 0n || isSyncing.value;
+  return networkLight(health.value, healthNow.value, settling);
+});
 
 const retiColor = computed(() => (retiRunning.value ? "success" : "error"));
 
@@ -430,22 +511,6 @@ const valarColor = computed(() => {
   if (vs?.serviceStatus !== "Running") return "error";
   if (vs.exeStatus === "Running") return "success";
   return vs.exeStatus === "Stopped" ? "warning" : "icon";
-});
-
-const telemetryEnabled = computed(() =>
-  nodeStatus.value?.telemetryStatus?.includes("enabled")
-);
-
-const telemetryColor = computed(() => {
-  if (nodeStatus.value?.serviceStatus !== "Running") return "icon";
-  return telemetryEnabled.value ? "success" : "icon";
-});
-
-const telemetryLink = computed(() => {
-  const ts = nodeStatus.value?.telemetryStatus;
-  if (!ts) return undefined;
-  const guid = ts.slice(ts.lastIndexOf(" ") + 1);
-  return "https://g.nodely.io/d/telemetry?var-GUID=" + guid;
 });
 
 // A node installed by apt, NodeKit or update.sh: managed in place, or found.
@@ -789,7 +854,12 @@ async function updateValar() {
 
 // Fast catchup needs both a reachable catchpoint host and a reachable node,
 // so report which of the two failed rather than a bare fetch error.
+let catchupAt = 0;
+
 async function startCatchup() {
+  // Both the start-up wait and the status watchers can ask; one request will do.
+  if (Date.now() - catchupAt < 30000) return;
+  catchupAt = Date.now();
   try {
     await checkCatchup(algodStatus.value, props.name);
   } catch (err: any) {
@@ -797,6 +867,15 @@ async function startCatchup() {
     store.setSnackbar(errorMessage(err, "Start fast catchup"), "error");
   }
 }
+
+// A new node starts at block 0. Fast catchup needn't wait for it to find peers
+// and start syncing block by block; this also covers opening the page then.
+watch(
+  () => algodStatus.value?.lastRound === 0n && !algodStatus.value?.catchpoint,
+  (fresh) => {
+    if (fresh) startCatchup();
+  }
+);
 
 watch(
   () => status.value,
@@ -895,20 +974,62 @@ function setResetDate() {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 32px;
+  min-height: 44px;
   padding: 8px 14px;
   font-size: 13.5px;
 }
 .status-row + .status-row {
   border-top: 1px solid rgb(var(--v-theme-border));
 }
-.health-text {
+.status-text {
   min-width: 0;
+  margin-left: auto;
   padding-left: 12px;
   font-size: 13px;
+  color: rgb(var(--v-theme-text-muted));
 }
-/* What to do about it, under the Node Health row */
-.status-row.health-hint {
+.status-toggle {
+  cursor: pointer;
+}
+.status-toggle:hover,
+.status-toggle:focus-visible {
+  background: rgb(var(--v-theme-surface-selected));
+  outline: none;
+}
+.status-chevron {
+  margin: 0 -4px 0 -6px;
+  color: rgb(var(--v-theme-icon));
+}
+.overview-info {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: rgb(var(--v-theme-text-dim));
+}
+.status-link {
+  color: rgb(var(--v-theme-primary));
+  white-space: nowrap;
+}
+.overview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+}
+.overview-row + .overview-row {
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+.overview-value {
+  margin-left: auto;
+  font: 500 18px/1.2 var(--font-mono);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+/* What to do about it, under the row it explains */
+.status-row.status-hint {
   display: block;
   border-top: 0;
   padding-top: 0;
@@ -916,10 +1037,6 @@ function setResetDate() {
   font-size: 12.5px;
   line-height: 1.5;
   color: rgb(var(--v-theme-text-muted));
-}
-.telemetry-link {
-  display: inline-flex;
-  margin-inline-start: -4px;
 }
 .stats-grid {
   display: grid;

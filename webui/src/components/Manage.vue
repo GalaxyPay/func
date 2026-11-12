@@ -37,6 +37,13 @@
           v-show="status !== 'Not Found'"
         />
         <v-list-item
+          title="Open Nodely Telemetry"
+          :href="telemetryLink"
+          target="_blank"
+          :append-icon="mdiOpenInNew"
+          v-show="status === 'Running' && telemetryLink && telemetryEnabled"
+        />
+        <v-list-item
           :title="(telemetryEnabled ? 'Dis' : 'En') + 'able Telemetry'"
           @click="toggleTelemetry()"
           v-show="status === 'Running' && nodeStatus.telemetryStatus"
@@ -169,7 +176,7 @@
 <script setup lang="ts">
 import { NodeStatus } from "@/types";
 import { errorMessage } from "@/utils";
-import { mdiChevronDown } from "@mdi/js";
+import { mdiChevronDown, mdiOpenInNew } from "@mdi/js";
 import { PropType } from "vue";
 
 const store = useAppStore();
@@ -188,6 +195,13 @@ const showDataDir = ref(false);
 const telemetryEnabled = computed(() =>
   props.nodeStatus?.telemetryStatus?.includes("enabled")
 );
+
+// Nodely's dashboard for this node, found by the GUID at the end of the status.
+const telemetryLink = computed(() => {
+  const ts = props.nodeStatus?.telemetryStatus;
+  if (!ts) return undefined;
+  return "https://g.nodely.io/d/telemetry?var-GUID=" + ts.slice(ts.lastIndexOf(" ") + 1);
+});
 
 async function createNode() {
   try {

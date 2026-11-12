@@ -5,6 +5,9 @@
         public required string MachineName { get; set; }
         public required bool IsWindows { get; set; }
         public required string ServiceStatus { get; set; }
+        // Whether the service starts again when the computer boots, even if it was
+        // stopped; null when not installed or unknown.
+        public bool? StartsAtBoot { get; set; }
         public required int Port { get; set; }
         public required string Token { get; set; }
         public string? TelemetryStatus { get; set; }
