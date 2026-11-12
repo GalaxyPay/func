@@ -32,6 +32,11 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
+          title="View Log"
+          @click="emit('showLog')"
+          v-show="status !== 'Not Found'"
+        />
+        <v-list-item
           :title="(telemetryEnabled ? 'Dis' : 'En') + 'able Telemetry'"
           @click="toggleTelemetry()"
           v-show="status === 'Running' && nodeStatus.telemetryStatus"
@@ -173,7 +178,7 @@ const props = defineProps({
   nodeStatus: { type: Object as PropType<NodeStatus>, required: true },
   status: { type: String, required: true },
 });
-const emit = defineEmits(["awaitRunning", "cancelAwait"]);
+const emit = defineEmits(["awaitRunning", "cancelAwait", "showLog"]);
 const loading = ref(false);
 const showReti = ref(false);
 const showValar = ref(false);

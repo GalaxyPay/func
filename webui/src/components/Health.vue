@@ -50,7 +50,11 @@
             </v-card>
           </div>
           <section>
-            <div class="section-label">Recent events</div>
+            <div class="section-head">
+              <span class="section-label">Recent events</span>
+              <v-spacer />
+              <v-btn size="small" text="View log" @click="emit('showLog')" />
+            </div>
             <div class="group">
               <div class="note text-dim" v-if="!health.notes.length">
                 No warnings or errors in the node's log.
@@ -120,7 +124,7 @@ const props = defineProps({
   name: { type: String, required: true },
   running: { type: Boolean, required: true },
 });
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "showLog"]);
 
 const show = computed({
   get() {

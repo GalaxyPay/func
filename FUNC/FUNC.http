@@ -16,6 +16,11 @@ GET {{FUNC_HostAddress}}/algorand/health?range=1h
 Accept: application/json
 Authorization: Bearer {{FUNC_Token}}
 
+### Search the Algorand node log, newest first (level: info, warning or error)
+GET {{FUNC_HostAddress}}/algorand/log?level=warning&q=&limit=50
+Accept: application/json
+Authorization: Bearer {{FUNC_Token}}
+
 ### Create Algorand
 POST {{FUNC_HostAddress}}/algorand
 Accept: application/text

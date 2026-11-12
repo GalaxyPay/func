@@ -172,6 +172,20 @@ namespace FUNC.Controllers
             }
         }
 
+        // GET: voi/log?q=text&level=warning&before=123&limit=200
+        [HttpGet("log")]
+        public ActionResult<LogPage> GetNodeLog(string? q, string? level, long? before, long? after, int limit = 200)
+        {
+            try
+            {
+                return LogSearch.Search(Path.Combine(Node.DataDir(_name), "node.log"), q, level, before, after, limit);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         // GET: voi/health?range=24h
         [HttpGet("health")]
         public ActionResult<NodeHealth> GetNodeHealth(string? range)

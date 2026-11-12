@@ -115,6 +115,7 @@
           :status="status"
           @await-running="waitForRunning"
           @cancel-await="cancelWait"
+          @show-log="showLog = true"
         />
       </section>
       <section v-if="nodeStatus.serviceStatus === 'Running'">
@@ -241,7 +242,9 @@
       :name="name"
       :running="nodeStatus.serviceStatus === 'Running'"
       @close="showHealth = false"
+      @show-log="showLog = true"
     />
+    <Log :visible="showLog" :name="name" @close="showLog = false" />
     <v-dialog v-model="showReset" max-width="380" persistent>
       <v-card>
         <v-card-title class="d-flex">
@@ -301,6 +304,7 @@ const nodeStatus = ref<NodeStatus>();
 const loading = ref(false);
 const algodStatus = ref<modelsv2.NodeStatusResponse>();
 const showHealth = ref(false);
+const showLog = ref(false);
 const retiLatest = ref<string>();
 const valarLatest = ref<string>();
 const partDetails = ref<PartDetails>();

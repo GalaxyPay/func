@@ -119,6 +119,17 @@ describe("Health", () => {
     });
   });
 
+  it("offers the full log next to the recent events", async () => {
+    const wrapper = await open();
+    const viewLog = [...document.body.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "View log"
+    )!;
+
+    viewLog.click();
+
+    expect(wrapper.emitted("showLog")).toHaveLength(1);
+  });
+
   it("shows traffic only when the node's metrics are available", async () => {
     await open();
     expect(page()).not.toContain("Data received");

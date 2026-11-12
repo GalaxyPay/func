@@ -120,3 +120,23 @@ export interface HealthNote {
   text: string;
   count: number;
 }
+
+// GET {name}/log: one page of a search through the node's log, newest first.
+export interface LogPage {
+  found: boolean;
+  lines: LogLine[];
+  // Pass as "before" for older lines; null at the start of the log.
+  next?: number | null;
+  // Pass as "after" for lines added since this page.
+  end: number;
+  // The log was replaced by a new one; start over.
+  reset: boolean;
+}
+
+export interface LogLine {
+  offset: number;
+  time?: string;
+  level: string;
+  msg: string;
+  raw: string;
+}
