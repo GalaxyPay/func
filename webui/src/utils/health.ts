@@ -88,7 +88,7 @@ export function nodeLight(node: NodeState): Light {
     case "Unknown":
       return checking;
     case "Not Found":
-      return { color: "error", text: "Not installed" };
+      return { color: "icon", text: "Not set up" };
     case "Running":
       break;
     case "Stopped":

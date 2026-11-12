@@ -71,7 +71,7 @@ describe("nodeLight", () => {
 
   it("explains a node that isn't running", () => {
     expect(nodeLight({ ...node, serviceStatus: "Unknown" }).color).toBe("icon");
-    expect(nodeLight({ ...node, serviceStatus: "Not Found" }).text).toBe("Not installed");
+    expect(nodeLight({ ...node, serviceStatus: "Not Found" }).text).toBe("Not set up");
     expect(nodeLight({ ...node, serviceStatus: "Stopped" })).toEqual({ color: "error", text: "Stopped" });
   });
 

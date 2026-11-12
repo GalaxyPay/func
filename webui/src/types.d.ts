@@ -56,6 +56,8 @@ export interface GoalVersion {
 }
 
 export interface PartDetails {
+  // Keys on the node, online or not.
+  keys: number;
   activeKeys: number;
   activeStake: number;
   proposals: number | undefined;

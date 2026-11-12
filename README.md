@@ -93,11 +93,47 @@ sudo apt remove func    # remove the app, keep node data
 sudo apt purge func     # also remove node data and service accounts
 ```
 
+## Getting Started
+
+The first time you open the app it asks you to choose a password (see [Password](#password)), then downloads the node software. The dashboard then shows a **Getting Started** checklist that walks you through each step:
+
+1. **Start your node.** Click **Set Up Node**. FUNC creates a background service that runs the node and starts it again whenever the computer restarts.
+2. **Sync with the network.** The node uses fast catchup to download the network's latest state. This usually takes under an hour, and you can close the page while it runs.
+3. **Generate a participation key.** You only need the address of the account you want to participate with. You don't need a wallet for this step.
+4. **Register the key to go online.** Connect your wallet, then register the key (see [Participating in Consensus](#participating-in-consensus)).
+
+The checklist goes away once an account is online. If you only want to run a node without participating, click **Hide**. Every option is still in the **Manage** menu.
+
+## Dashboard
+
+The **Status** panel shows three lights:
+
+- **Node**: whether the node is running and synced. A link to the node's log shows here when it has recent errors.
+- **Consensus**: how many accounts are online, and whether the node is voting for them.
+- **Network**: whether the node is connected to enough peers.
+
+When a light needs attention, a short explanation of what to do appears under it.
+
+The **Overview** shows the current block, how many blocks your accounts have created, and their online stake. Use the button beside **Blocks Created** to count from a chosen date. On Algorand, a calendar of the blocks you created is shown at the bottom.
+
+### Settings
+
+Open Settings with the gear icon. A dot on the icon means an update is available.
+
+- **FUNC Version / Node Version**: the installed versions. An **Update** button appears when a newer version is available.
+- **Manual Node Version Selection**: lets you pick any node release, not just the latest. This also hides new-version alerts.
+- **Show Machine Name**: shows the computer's name in the app bar, which helps when you run more than one node.
+- **Show Advanced Details**: adds node health charts, algod's version and uptime, and a list of peers (click the **Network** row).
+- **Show Alternative Networks**: adds tabs for other networks, such as Voi.
+- **Password**: change it, or sign out.
+
+Announcements about FUNC appear under the bell icon.
+
 ## Manage Node Menu Options
 
 ### Create Service
 
-- Creates and starts a new Service to run the Node
+- Creates and starts a new Service to run the Node (the same as **Set Up Node** in Getting Started)
 - Only available when Service does not exist
 
 ### Start Node
@@ -119,10 +155,16 @@ sudo apt purge func     # also remove node data and service accounts
 
 - Change your node's Port, DNS Bootstrap, BaseLoggerDebugLevel, and P2P Setting
 
+### View Log
+
+- Shows the node's log, filtered to warnings and errors by default
+- Search the log, or follow it as new lines are written
+- Only available when Service exists
+
 ### Enable/Disable Telemetry
 
 - Link your node to [Nodely Telemetry Service](https://nodely.io/docs/telemetry/quickstart/)
-- Once enabled, you'll get a link to your node's dashboard on Nodely
+- Once enabled, **Open Nodely Telemetry** links to your node's dashboard on Nodely
 - Only available on Algorand network when Node is running
 
 ### Node Data Directory
@@ -135,6 +177,12 @@ sudo apt purge func     # also remove node data and service accounts
 
 - Deletes all node data, including any participation and KMD keys
 - Only available when Service does not exist
+
+### Reti / Valar
+
+- Add, start, stop, or remove a [Reti](https://github.com/algorandfoundation/reti) or Valar staking service alongside your node
+- Only available when Node is running
+- When a service is installed, its light shows in the Status panel, along with an **Update** button when a newer version is available
 
 ## Existing Nodes (Mac / Linux)
 
@@ -151,23 +199,24 @@ If you want to participate in consensus, you'll need to generate a Participation
 
 [Read more about how Participation Keys function in the Algorand Consensus Protocol](https://dev.algorand.co/concepts/protocol/overview/#participation-keys)
 
+The Participation Keys section appears once your node has synced.
+
 ### Self-Custody
 
 1. Wait for your node to sync.
-2. Connect your wallet.
-3. Click the "Generate Key..." button in the Participation Keys section.
-4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
-5. Once the key is generated, click on the Status dot to Register the key.
-6. Your account should now be Online, and your Participating in Consensus light should be green.
+2. Click **Generate Key...** (in Getting Started or the Participation Keys section) and enter your account's address.
+3. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
+4. Click **Connect Wallet** at the top right and connect the wallet that holds the account.
+5. Click the key's status button in the Participation Keys section and choose **Register**.
+6. Your account should now be online, and the **Consensus** light should be green.
 
 ### Escrow Account
 
 1. Wait for your node to sync.
-2. Click the "Generate Key..." button in the Participation Keys section.
-3. Enter your escrow account in the Address field.
-4. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
-5. Copy and paste the key info into escrow site and follow their instructions.
-6. Your account should now be Online, and your Participating in Consensus light should be green.
+2. Click **Generate Key...** and enter your escrow account in the Address field.
+3. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
+4. Expand the key's row and use the copy buttons to paste the key info into the escrow site, then follow their instructions.
+5. Your account should now be online, and the **Consensus** light should be green.
 
 ## Notes
 

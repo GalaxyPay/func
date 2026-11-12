@@ -203,6 +203,9 @@ const telemetryLink = computed(() => {
   return "https://g.nodely.io/d/telemetry?var-GUID=" + ts.slice(ts.lastIndexOf(" ") + 1);
 });
 
+// Getting Started offers the first of these as its own buttons.
+defineExpose({ createNode, startNode, loading });
+
 async function createNode() {
   try {
     loading.value = true;

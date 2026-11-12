@@ -125,6 +125,7 @@
           </div>
         </div>
         <Manage
+          ref="manageRef"
           class="mt-3"
           :name="name"
           :node-status="nodeStatus"
@@ -134,8 +135,22 @@
           @show-log="openLog('warning')"
         />
       </section>
+      <GettingStarted
+        v-if="showGettingStarted"
+        :node-status="nodeStatus"
+        :synced="synced"
+        :catching-up="!!algodStatus?.catchpoint"
+        :last-round="algodStatus?.lastRound"
+        :part-details="partDetails"
+        :generating-key="generatingKey"
+        :starting="!!manageRef?.loading"
+        @create="manageRef?.createNode()"
+        @start="manageRef?.startNode()"
+        @generate="partRef?.showGenerateDialog()"
+        @hide="finishGettingStarted()"
+      />
       <section
-        v-if="nodeStatus.serviceStatus === 'Running' && store.showAdvanced"
+        v-else-if="nodeStatus.serviceStatus === 'Running' && store.showAdvanced"
       >
         <div class="section-label d-flex">
           Overview
@@ -243,6 +258,7 @@
       </div>
     </section>
     <Participation
+      ref="partRef"
       v-if="algodClient && (algodStatus?.lastRound || 0) > 100"
       :name="name"
       :port="nodeStatus.port"
@@ -421,6 +437,62 @@ watch(
 );
 
 const running = computed(() => nodeStatus.value?.serviceStatus === "Running");
+
+const manageRef = ref<{
+  createNode: () => void;
+  startNode: () => void;
+  loading: boolean;
+}>();
+const partRef = ref<{ showGenerateDialog: () => void }>();
+
+// Synced far enough that the Participation Keys section shows.
+const synced = computed(
+  () =>
+    running.value &&
+    !isSyncing.value &&
+    !algodStatus.value?.catchpoint &&
+    (algodStatus.value?.lastRound ?? 0n) > 100n
+);
+
+// Getting Started walks a new node through to its first key online, then is
+// gone for good, as it is once the user hides it.
+const gettingStartedKey = computed(() => `gettingStartedDone:${props.name}`);
+const gettingStartedDone = ref(false);
+
+function readGettingStartedDone() {
+  try {
+    gettingStartedDone.value = !!localStorage.getItem(gettingStartedKey.value);
+  } catch {
+    gettingStartedDone.value = false;
+  }
+}
+readGettingStartedDone();
+watch(gettingStartedKey, readGettingStartedDone);
+
+function finishGettingStarted() {
+  gettingStartedDone.value = true;
+  try {
+    localStorage.setItem(gettingStartedKey.value, "true");
+  } catch {
+    // Without storage it just shows again next visit.
+  }
+}
+
+watch(
+  () => partDetails.value?.activeKeys,
+  (active) => {
+    if (active) finishGettingStarted();
+  }
+);
+
+const showGettingStarted = computed(() => {
+  if (gettingStartedDone.value || !nodeStatus.value) return false;
+  if (nodeStatus.value.serviceStatus === "Unknown") return false;
+  // A synced node's keys are still loading: don't flash the steps at a node
+  // that may already be online.
+  if (synced.value && !partDetails.value) return false;
+  return !partDetails.value?.activeKeys;
+});
 
 // In advanced mode the Network row opens to list the node's peers.
 const peersOpen = ref(false);
