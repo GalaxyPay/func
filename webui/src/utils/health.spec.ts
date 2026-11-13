@@ -200,10 +200,22 @@ describe("networkLight", () => {
   });
 
   it("doesn't worry anyone while the node starts or syncs", () => {
-    expect(light({ peersOut: 3 }, true)).toEqual({ color: "icon", text: "3 peers" });
+    expect(light({ peersOut: 3 }, true)).toMatchObject({ color: "icon", text: "3 peers", busy: true });
+    expect(light({ peersOut: 3 }, true).hint).toMatch(/finding peers/);
     expect(light({ peersOut: 0 }, true)).toMatchObject({ color: "icon", text: "Connecting..." });
     expect(networkLight(undefined, now, true).text).toBe("Connecting...");
-    const justStarted = { startedAt: "2026-11-11T23:25:00Z", peersOut: 2 };
-    expect(networkLight(nodeHealth(justStarted), now)).toEqual({ color: "icon", text: "2 peers" });
+    const justStarted = { startedAt: "2026-11-11T23:29:00Z", peersOut: 2 };
+    expect(networkLight(nodeHealth(justStarted), now)).toMatchObject({ color: "icon", text: "2 peers" });
+  });
+
+  it("shows enough peers as good even while the node starts or syncs", () => {
+    expect(light({ peersOut: 4 }, true)).toEqual({ color: "success", text: "4 peers" });
+    const justStarted = { startedAt: "2026-11-11T23:29:50Z", peersOut: 4 };
+    expect(networkLight(nodeHealth(justStarted), now)).toEqual({ color: "success", text: "4 peers" });
+  });
+
+  it("flags few peers once the node has had time to find them", () => {
+    const started = { startedAt: "2026-11-11T23:28:00Z", peersOut: 2 };
+    expect(networkLight(nodeHealth(started), now)).toMatchObject({ color: "warning", text: "Only 2 peers" });
   });
 });

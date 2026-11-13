@@ -23,7 +23,7 @@
             label="BaseLoggerDebugLevel"
             v-model="baseLoggerDebugLevel"
             :items="[...Array(6).keys()]"
-            hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
+            hint="Keep at 4 (the default) or higher. FUNC's health status and Nodely telemetry read the node log, and need it."
             persistent-hint
             class="pb-2"
           />
@@ -65,12 +65,7 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import {
-  copyToClipboard,
-  delay,
-  errorMessage,
-  nodeHostname,
-} from "@/utils";
+import { copyToClipboard, delay, errorMessage, nodeHostname } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -208,11 +203,20 @@ let hybridIsSet: boolean;
 
 watch(show, async (val) => {
   if (val) {
+    debugConfig.value = undefined;
     try {
       const resp = await store.api.get(`${props.name}/config`);
       config.value = resp.data;
       e2eIsSet = config.value.EnableP2P != null;
       hybridIsSet = config.value.EnableP2PHybridMode != null;
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(errorMessage(err, "Load node config"), "error");
+      return;
+    }
+    // Effective (default-merged) settings are only available from a running node
+    if (!props.running) return;
+    try {
       const debugHostname = nodeHostname();
       const debugPort =
         location.protocol === "https:"
@@ -225,8 +229,8 @@ watch(show, async (val) => {
       const { data } = await debugClient.get("/settings/config");
       debugConfig.value = data;
     } catch (err: any) {
+      // Non-fatal: P2P radio falls back to explicit config values
       console.error(err);
-      store.setSnackbar(errorMessage(err, "Load node config"), "error");
     }
   }
 });

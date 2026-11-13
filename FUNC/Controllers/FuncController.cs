@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
 using static System.OperatingSystem;
@@ -9,9 +12,16 @@ namespace FUNC.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class FuncController(ILogger<FuncController> logger) : ControllerBase
+    public class FuncController(ILogger<FuncController> logger, IConfiguration configuration) : ControllerBase
     {
         private readonly ILogger<FuncController> _logger = logger;
+
+        private static readonly JsonSerializerOptions DiagnosticsJson = new(JsonSerializerDefaults.Web)
+        {
+            WriteIndented = true,
+            // Served as application/json, never HTML, so keep <, > and quotes readable when pasted.
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        };
 
         private static async Task<string> DownloadLatestInstaller(string pattern)
         {
@@ -70,6 +80,28 @@ namespace FUNC.Controllers
         {
             using var p = Process.GetCurrentProcess();
             return p.StartTime.ToUniversalTime().ToString("O");
+        }
+
+        // GET: func/diagnostics
+        // A support snapshot with nothing secret in it. Open to anyone on the node
+        // machine itself, so a user who can't sign in can still open it in a browser
+        // there; from anywhere else it needs a session, as the dashboard has.
+        [AllowAnonymous]
+        [HttpGet("diagnostics")]
+        public async Task<ActionResult> GetDiagnostics()
+        {
+            if (!Diagnostics.Allowed(Request))
+            {
+                return new ContentResult
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Content = "Sign in required. On the node's own computer, open http://localhost:3536/func/diagnostics instead.",
+                    ContentType = "text/plain",
+                };
+            }
+            bool cors = configuration.GetSection("Cors:Origins").Get<string[]>() is { Length: > 0 };
+            var report = await Diagnostics.Collect(cors);
+            return Content(JsonSerializer.Serialize(report, DiagnosticsJson), "application/json");
         }
 
         // POST: func/update

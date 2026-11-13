@@ -35,8 +35,8 @@ namespace FUNC.Health
     {
         public const int MaxLimit = 1000;
         public const int MaxQueryLength = 200;
-        private const int ChunkBytes = 4 * 1024 * 1024;
-        private const long ScanBytes = 64 * 1024 * 1024;
+        internal const int ChunkBytes = 4 * 1024 * 1024;
+        internal const long ScanBytes = 64 * 1024 * 1024;
         private const int MaxLineBytes = 16 * 1024 * 1024;
         private const int MaxRawChars = 20_000;
         private const int MaxMsgChars = 500;
@@ -72,6 +72,28 @@ namespace FUNC.Health
                 return new LogPage { Found = true, Reset = true };
             }
             return page;
+        }
+
+        // The time on the line starting at offset, such as a search's Next cursor.
+        public static DateTimeOffset? TimeAt(string path, long offset)
+        {
+            try
+            {
+                using FileStream file = LogTailer.Open(path);
+                if (offset < 0 || offset >= file.Length) return null;
+                file.Seek(offset, SeekOrigin.Begin);
+                byte[] buffer = new byte[(int)Math.Min(64 * 1024, file.Length - offset)];
+                int n = file.Read(buffer, 0, buffer.Length);
+                int newline = buffer.AsSpan(0, n).IndexOf((byte)'\n');
+                using JsonDocument doc = JsonDocument.Parse(buffer.AsMemory(0, newline < 0 ? n : newline));
+                return doc.RootElement.TryGetProperty("time", out JsonElement time) && time.ValueKind == JsonValueKind.String
+                    && DateTimeOffset.TryParse(time.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset parsed)
+                    ? parsed : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static void Scan(FileStream file, LogPage page, string? query, int minRank, long? before, long? after, int limit, int chunkBytes, long scanBytes)

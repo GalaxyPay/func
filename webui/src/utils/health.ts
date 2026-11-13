@@ -183,8 +183,10 @@ const unreadable: Record<string, string> = {
     "The node isn't writing to its log. Set BaseLoggerDebugLevel to 4 or higher under Manage > Configure.",
 };
 
-// After starting, a node takes a while to settle on its full set of peers.
-const settleMs = 10 * 60 * 1000;
+// A node usually finds its peers within seconds of starting. This allows for a
+// slow relay lookup and for FUNC sampling the count only every 15 seconds.
+const settleMs = 90 * 1000;
+const findingPeers = "The node is still finding peers. This usually takes under a minute.";
 
 // Network: connected to enough peers. settling: the node is starting or
 // syncing, when few peers are normal and nothing to worry a user about.
@@ -196,22 +198,24 @@ export function networkLight(
   if (!health || (health.peersIn == null && health.peersOut == null))
     return settling ? { color: "icon", text: "Connecting...", busy: true } : checking;
   const peers = (health.peersIn ?? 0) + (health.peersOut ?? 0);
+  if (peers >= fewPeers) return { color: "success", text: plural(peers, "peer") };
   const justStarted = !!health.startedAt && now.getTime() - Date.parse(health.startedAt) < settleMs;
   if (settling || justStarted)
-    return peers
-      ? { color: "icon", text: plural(peers, "peer") }
-      : { color: "icon", text: "Connecting...", busy: true };
+    return {
+      color: "icon",
+      text: peers ? plural(peers, "peer") : "Connecting...",
+      hint: findingPeers,
+      busy: true,
+    };
   if (!peers)
     return {
       color: "error",
       text: "No peers",
       hint: "The node isn't connected to the network. Check this computer's internet connection and firewall.",
     };
-  if (peers < fewPeers)
-    return {
-      color: "warning",
-      text: `Only ${plural(peers, "peer")}`,
-      hint: `Nodes normally keep at least ${fewPeers} connections. Check this computer's internet connection.`,
-    };
-  return { color: "success", text: plural(peers, "peer") };
+  return {
+    color: "warning",
+    text: `Only ${plural(peers, "peer")}`,
+    hint: `Nodes normally keep at least ${fewPeers} connections. Check this computer's internet connection.`,
+  };
 }

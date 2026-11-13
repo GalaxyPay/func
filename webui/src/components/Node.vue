@@ -53,7 +53,10 @@
               @click="togglePeers()"
               @keydown.enter="togglePeers()"
             >
-              <span class="status-dot" :class="`bg-${network.color}`" />
+              <span
+                class="status-dot"
+                :class="[`bg-${network.color}`, { pulsate: network.busy }]"
+              />
               Network
               <span class="status-text ellipsis">{{ network.text }}</span>
               <v-icon

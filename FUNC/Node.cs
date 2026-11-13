@@ -28,7 +28,7 @@ namespace FUNC
             return await Utils.Exec(Path.Combine(Utils.appDataDir, "bin", tool), args);
         }
 
-        private static async Task<string> ServiceStatus(string name)
+        internal static async Task<string> ServiceStatus(string name)
         {
             if (Ext(name) is { } ext) return await External.Status(ext);
             string status = await Utils.ServiceStatus(name, WinService(name));
@@ -38,7 +38,7 @@ namespace FUNC
             return status;
         }
 
-        private static async Task<bool?> StartsAtBoot(string name)
+        internal static async Task<bool?> StartsAtBoot(string name)
         {
             if (Ext(name) is { } ext) return await External.StartsAtBoot(ext);
             return await Utils.StartsAtBoot(name, WinService(name));
@@ -99,6 +99,44 @@ namespace FUNC
             return int.TryParse(net[(net.LastIndexOf(':') + 1)..], out p) ? p : 0;
         }
 
+        // Raw `diagcfg telemetry status` output. It includes the telemetry GUID.
+        internal static Task<string> TelemetryStatus(string name) =>
+            Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "status");
+
+        internal static async Task<DaemonStatus> RetiStatus()
+        {
+            string exePath = Path.Combine(Utils.appDataDir, "reti", IsWindows() ? "reti.exe" : "reti");
+            string retiServiceStatus = await Utils.ServiceStatus("reti", "Reti Validator");
+
+            string? version = null;
+            if (File.Exists(exePath))
+            {
+                version = await Utils.Exec(exePath, "--version");
+            }
+
+            string? exeStatus = null;
+            if (retiServiceStatus == "Running")
+            {
+                try
+                {
+                    using HttpClient client = new();
+                    var ready = await client.GetAsync("http://localhost:6260/ready");
+                    exeStatus = ready.IsSuccessStatusCode ? "Running" : "Stopped";
+                }
+                catch
+                {
+                    exeStatus = "Stopped";
+                }
+            }
+
+            return new DaemonStatus
+            {
+                ServiceStatus = retiServiceStatus,
+                Version = version,
+                ExeStatus = exeStatus,
+            };
+        }
+
         public static async Task<NodeStatus> Get(string name)
         {
             if (name == "algorand") await SyncExternal();
@@ -130,45 +168,13 @@ namespace FUNC
 
             if (name == "algorand")
             {
-                // Reti Status
-                string exePath = Path.Combine(Utils.appDataDir, "reti", IsWindows() ? "reti.exe" : "reti");
-                string retiServiceStatus = await Utils.ServiceStatus("reti", "Reti Validator");
-
-                string? version = null;
-                if (File.Exists(exePath))
-                {
-                    version = await Utils.Exec(exePath, "--version");
-                }
-
-                string? exeStatus = null;
-                if (retiServiceStatus == "Running")
-                {
-                    try
-                    {
-                        using HttpClient client = new();
-                        var ready = await client.GetAsync("http://localhost:6260/ready");
-                        exeStatus = ready.IsSuccessStatusCode ? "Running" : "Stopped";
-                    }
-                    catch
-                    {
-                        exeStatus = "Stopped";
-                    }
-                }
-
-                DaemonStatus retiStatus = new()
-                {
-                    ServiceStatus = retiServiceStatus,
-                    Version = version,
-                    ExeStatus = exeStatus,
-                };
-
-                nodeStatus.RetiStatus = retiStatus;
+                nodeStatus.RetiStatus = await RetiStatus();
 
                 // Valar Status
                 nodeStatus.ValarStatus = await ValarController.GetStatus();
 
                 // Telemetry Status
-                nodeStatus.TelemetryStatus = await Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "status");
+                nodeStatus.TelemetryStatus = await TelemetryStatus(name);
             }
 
             return nodeStatus;

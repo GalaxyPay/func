@@ -2,6 +2,10 @@
 # Session token from POST {{FUNC_HostAddress}}/auth/login {"password": "..."}
 @FUNC_Token = paste-session-token-here
 
+### Support diagnostics (no session needed from the node machine itself)
+GET {{FUNC_HostAddress}}/func/diagnostics
+Accept: application/json
+
 ### GOAL
 GET {{FUNC_HostAddress}}/goal/version
 Accept: application/text
