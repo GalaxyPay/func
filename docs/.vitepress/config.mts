@@ -4,7 +4,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "FUNC",
   description:
-    "Funk's Ultimate Node Controller: run an Algorand or Voi node and participate in consensus, without the command line.",
+    "Funk's Ultimate Node Controller: run an Algorand node and participate in consensus, without the command line.",
   lang: "en-US",
   cleanUrls: true,
   lastUpdated: true,
@@ -52,7 +52,9 @@ export default defineConfig({
         ],
       },
     ],
-    socialLinks: [{ icon: "github", link: "https://github.com/GalaxyPay/func" }],
+    socialLinks: [
+      { icon: "github", link: "https://github.com/GalaxyPay/func" },
+    ],
     search: { provider: "local" },
     editLink: {
       pattern: "https://github.com/GalaxyPay/func/edit/main/docs/:path",

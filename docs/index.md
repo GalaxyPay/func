@@ -4,7 +4,7 @@ layout: home
 hero:
   name: FUNC
   text: Funk's Ultimate Node Controller
-  tagline: Run an Algorand or Voi node and participate in consensus, without the command line.
+  tagline: Run an Algorand node and participate in consensus, without the command line.
   image:
     src: /icon.svg
     alt: FUNC
