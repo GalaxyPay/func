@@ -30,7 +30,7 @@ Shows the node's log, filtered to warnings and errors by default. You can search
 
 ### Enable / Disable Telemetry
 
-Links your node to the [Nodely Telemetry Service](https://nodely.io/docs/telemetry/quickstart/). Once enabled, **Open Nodely Telemetry** opens your node's dashboard on Nodely. Only available on Algorand while the node is running.
+Links your node to the [Nodely Telemetry](/telemetry) service. Once enabled, **Open Nodely Telemetry** opens your node's dashboard on Nodely. Only available on Algorand while the node is running.
 
 ### Node Data Directory
 
@@ -42,6 +42,6 @@ Deletes all of the node's data, **including participation and KMD keys**. Only a
 
 ## Reti / Valar
 
-Adds, starts, stops or removes a [Reti](https://github.com/algorandfoundation/reti) or Valar staking service alongside your node. Adding one is only available while the node is running.
+Adds, starts, stops or removes a [Reti](/reti) or [Valar](/valar) staking service alongside your node. Adding one is only available on Algorand while the node is running.
 
 Once a service is installed, its light shows in the Status panel, with an **Update** button when a newer version is available.

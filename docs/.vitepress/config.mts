@@ -87,6 +87,14 @@ export default defineConfig({
         ],
       },
       {
+        text: "Integrations",
+        items: [
+          { text: "Nodely Telemetry", link: "/telemetry" },
+          { text: "Reti", link: "/reti" },
+          { text: "Valar", link: "/valar" },
+        ],
+      },
+      {
         text: "Advanced",
         items: [
           { text: "Password", link: "/password" },
