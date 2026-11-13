@@ -51,6 +51,9 @@ export const useAppStore = defineStore("app", {
     downloading: false,
     stoppingReti: false,
     goalVersion: undefined as GoalVersion | undefined,
+    showAdvanced: (localStorage.getItem("showAdvanced") === "true") as
+      | boolean
+      | null,
     showNetworks: (localStorage.getItem("showNetworks") === "true") as
       | boolean
       | null,

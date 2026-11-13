@@ -28,29 +28,28 @@
             <div class="set-title">FUNC Version</div>
             <div class="set-desc">
               <span class="font-mono">{{ appVersion }}</span>
-              {{ !store.funcUpdateAvailable ? "(latest)" : "" }}
+              <span class="ver-sep">·</span>
+              <span v-if="updatingFunc">Updating…</span>
+              <span v-else-if="funcCheckFailed">Couldn't check for updates</span>
+              <span v-else-if="!funcLatest">Checking for updates…</span>
+              <span v-else-if="store.funcUpdateAvailable" class="text-warning">
+                <span class="font-mono">{{ funcLatest }}</span> available
+              </span>
+              <span v-else class="ver-ok">
+                <v-icon :icon="mdiCheckCircle" size="12" color="success" />
+                Up to date
+              </span>
             </div>
             <div class="set-actions">
               <v-btn
-                :color="
-                  store.funcUpdateAvailable && !updatingFunc ? 'warning' : ''
-                "
-                :variant="
-                  store.funcUpdateAvailable && !updatingFunc
-                    ? 'flat'
-                    : 'outlined'
-                "
+                v-if="store.funcUpdateAvailable || updatingFunc"
+                color="warning"
+                variant="flat"
                 size="small"
-                :disabled="!store.funcUpdateAvailable || updatingFunc"
                 :loading="updatingFunc"
                 @click="updateFunc()"
               >
                 Update
-                <v-tooltip
-                  activator="parent"
-                  location="left"
-                  :text="`Update to ${funcLatest}`"
-                />
               </v-btn>
             </div>
           </div>
@@ -58,7 +57,27 @@
             <div class="set-title">Node Version</div>
             <div class="set-desc">
               <span class="font-mono">{{ store.goalVersion?.installed }}</span>
-              {{ !store.nodeUpdateAvailable ? "(latest)" : "" }}
+              <template v-if="store.goalVersion?.latest">
+                <span class="ver-sep">·</span>
+                <span v-if="store.downloading">Updating…</span>
+                <span
+                  v-else-if="store.nodeUpdateAvailable"
+                  class="text-warning"
+                >
+                  <span class="font-mono">{{ store.goalVersion.latest }}</span>
+                  available{{
+                    externalManager === "manual"
+                      ? " (update manually)"
+                      : externalManager
+                        ? ` via ${externalManager}`
+                        : ""
+                  }}
+                </span>
+                <span v-else class="ver-ok">
+                  <v-icon :icon="mdiCheckCircle" size="12" color="success" />
+                  Up to date
+                </span>
+              </template>
             </div>
             <div class="set-actions">
               <Releases
@@ -66,26 +85,17 @@
                 v-if="store.showNodeVersions && !externalManager"
               />
               <v-btn
-                :color="store.nodeUpdateAvailable ? 'warning' : ''"
-                :variant="store.nodeUpdateAvailable ? 'flat' : 'outlined'"
-                size="small"
-                :disabled="
-                  !store.nodeUpdateAvailable ||
-                  store.downloading ||
-                  externalManager === 'manual'
+                v-else-if="
+                  (store.nodeUpdateAvailable && externalManager !== 'manual') ||
+                  store.downloading
                 "
+                color="warning"
+                variant="flat"
+                size="small"
+                :loading="store.downloading"
                 @click="updateNodeLatest()"
-                v-else
               >
                 Update
-                <v-tooltip
-                  activator="parent"
-                  location="left"
-                  :text="
-                    `Update to ${store.goalVersion?.latest}` +
-                    (externalManager ? ` with ${externalManager}` : '')
-                  "
-                />
               </v-btn>
             </div>
           </div>
@@ -108,6 +118,16 @@
               <v-switch
                 v-model="store.showMachineName"
                 @click.prevent="setShowMachineName(!store.showMachineName)"
+              />
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-title">Show Advanced Details</div>
+            <div class="set-desc">Node health charts and peers</div>
+            <div class="set-actions">
+              <v-switch
+                v-model="store.showAdvanced"
+                @click.prevent="setShowAdvanced(!store.showAdvanced)"
               />
             </div>
           </div>
@@ -181,7 +201,7 @@
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
 import { errorMessage } from "@/utils";
-import { mdiClose } from "@mdi/js";
+import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
 const props = defineProps({ visible: { type: Boolean, required: true } });
@@ -203,6 +223,7 @@ const show = computed({
 
 const appVersion = __APP_VERSION__;
 const funcLatest = ref();
+const funcCheckFailed = ref(false);
 
 const showPassword = ref(false);
 const passwordForm = ref();
@@ -267,6 +288,7 @@ async function getVersion() {
       store.funcUpdateAvailable = funcLatest.value !== appVersion;
     }
   } catch (err: any) {
+    funcCheckFailed.value = true;
     console.error(err);
     store.setSnackbar(errorMessage(err, "Check for FUNC updates"), "error");
   }
@@ -357,6 +379,11 @@ async function updateNode(release: string, bypass = false) {
   store.downloading = false;
 }
 
+function setShowAdvanced(val: boolean) {
+  store.showAdvanced = val;
+  localStorage.setItem("showAdvanced", val.toString());
+}
+
 async function setShowNetworks(val: boolean) {
   store.showNetworks = val;
   localStorage.setItem("showNetworks", val.toString());
@@ -418,6 +445,14 @@ async function setShowNodeVersions(val: boolean) {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+.ver-sep {
+  margin: 0 6px;
+}
+.ver-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .set-actions :deep(.v-switch) {
   flex: none;

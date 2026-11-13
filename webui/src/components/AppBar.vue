@@ -51,7 +51,7 @@
         <v-tooltip text="Settings" activator="parent" location="bottom" />
       </v-btn>
       <v-btn
-        :variant="activeAccount ? 'outlined' : 'flat'"
+        variant="outlined"
         :icon="xs"
         :size="xs ? 'small' : undefined"
         class="wallet-btn"

@@ -15,7 +15,7 @@ namespace FUNC
         private const string MacNodeUser = "_func-node";
 
         private static string WinService(string name) => $"{Utils.Cap(name)} Node";
-        private static string DataDir(string name) => Ext(name)?.DataDir ?? Path.Combine(Utils.NodeDataParent(name), name);
+        internal static string DataDir(string name) => Ext(name)?.DataDir ?? Path.Combine(Utils.NodeDataParent(name), name);
 
         // The adopted apt/NodeKit/update.sh node standing in as FUNC's algorand node, if any.
         private static ExternalNode? Ext(string name) => name == "algorand" ? External.Load() : null;
@@ -36,6 +36,12 @@ namespace FUNC
             // report that node as FUNC's; External.Sync adopts it instead.
             if (IsLinux() && (status is "Running" or "Stopped") && !External.IsFuncUnit(name)) return "Not Found";
             return status;
+        }
+
+        private static async Task<bool?> StartsAtBoot(string name)
+        {
+            if (Ext(name) is { } ext) return await External.StartsAtBoot(ext);
+            return await Utils.StartsAtBoot(name, WinService(name));
         }
 
         private static async Task ExtractTemplate(string name)
@@ -115,6 +121,7 @@ namespace FUNC
                 MachineName = machineName,
                 IsWindows = IsWindows(),
                 ServiceStatus = serviceStatus,
+                StartsAtBoot = serviceStatus is "Running" or "Stopped" ? await StartsAtBoot(name) : null,
                 Port = port,
                 Token = token,
                 External = ext,

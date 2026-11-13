@@ -36,6 +36,15 @@
           />
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            :text="setupMode ? 'Help' : 'Forgot password?'"
+            :prepend-icon="mdiHelpCircleOutline"
+            href="https://github.com/GalaxyPay/func#password"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="text"
+            class="text-none"
+          />
           <v-spacer />
           <v-btn
             type="submit"
@@ -51,7 +60,7 @@
 </template>
 
 <script lang="ts" setup>
-import { mdiEye, mdiEyeOff } from "@mdi/js";
+import { mdiEye, mdiEyeOff, mdiHelpCircleOutline } from "@mdi/js";
 
 const store = useAppStore();
 const form = ref();

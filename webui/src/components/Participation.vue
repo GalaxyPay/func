@@ -427,6 +427,7 @@ async function refreshPartData() {
     // Emit what algod alone can tell us right away; the proposal count
     // depends on a (potentially slow) stats fetch and follows separately.
     const details: PartDetails = {
+      keys: tempKeys?.length ?? 0,
       activeKeys: activeKeys.length,
       activeStake,
       proposals: undefined,
@@ -664,6 +665,9 @@ If the key was previously registered, you should wait 320 rounds after unregiste
     }
   }
 }
+
+// Getting Started opens the dialog from its own button.
+defineExpose({ showGenerateDialog });
 
 async function showGenerateDialog() {
   try {

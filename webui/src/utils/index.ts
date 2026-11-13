@@ -200,7 +200,9 @@ export async function checkCatchup(
   algodStatus: modelsv2.NodeStatusResponse | undefined,
   name: string
 ) {
-  if (algodStatus?.catchupTime) {
+  // A node reporting catchup time is behind. One still at block 0 is new: it
+  // needn't first find peers and start syncing block by block.
+  if (algodStatus && (algodStatus.catchupTime || algodStatus.lastRound === 0n)) {
     const store = useAppStore();
     const catchpoint = await getCatchpoint(name);
     if (!catchpoint) throw Error("Invald Catchpoint");

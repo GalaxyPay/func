@@ -3,15 +3,19 @@ on:
   push:
     branches: [main]
 
-env:
-  VERSION: "5.2.1"
-
+# The release version comes from webui/package.json, the one place it is set.
 jobs:
   webui:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Read version
+        id: version
+        run: echo "version=$(jq -r .version webui/package.json)" >> "$GITHUB_OUTPUT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -43,6 +47,8 @@ jobs:
   darwin-amd64-package:
     runs-on: macos-latest
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -77,6 +83,8 @@ jobs:
   darwin-arm64-package:
     runs-on: macos-latest
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -111,6 +119,8 @@ jobs:
   linux-amd64-package:
     runs-on: ubuntu-latest
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -145,6 +155,8 @@ jobs:
   linux-arm64-package:
     runs-on: ubuntu-latest
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -179,6 +191,8 @@ jobs:
   windows-amd64-setup:
     runs-on: windows-latest
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -234,6 +248,8 @@ jobs:
   windows-arm64-setup:
     runs-on: windows-11-arm
     needs: webui
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -290,6 +306,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       [
+        webui,
         darwin-amd64-package,
         darwin-arm64-package,
         linux-amd64-package,
@@ -297,6 +314,8 @@ jobs:
         windows-amd64-setup,
         windows-arm64-setup,
       ]
+    env:
+      VERSION: ${{ needs.webui.outputs.version }}
     steps:
       - name: Download darwin-amd64 Artifact
         uses: actions/download-artifact@v8

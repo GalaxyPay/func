@@ -1,5 +1,6 @@
 using FUNC;
 using FUNC.Controllers;
+using FUNC.Health;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms;
 
@@ -15,6 +16,7 @@ Auth.Load();
 builder.Services.AddControllers(options => options.Filters.Add<SessionFilter>());
 builder.Services.AddWindowsService();
 builder.Services.AddSystemd();
+builder.Services.AddHostedService<HealthCollector>();
 
 string[] corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 

@@ -7,7 +7,7 @@ import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.mts";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 // Utilities
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import { fileURLToPath, URL } from "node:url";
 
 const vuetifySettings = fileURLToPath(
@@ -49,6 +49,15 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+  },
+  test: {
+    include: ["src/**/*.spec.ts"],
+    setupFiles: ["src/test-setup.ts"],
+    environment: "happy-dom",
+    // The page's own origin is where the UI expects the FUNC service to be.
+    environmentOptions: { happyDOM: { url: "http://localhost:3536/" } },
+    // Vuetify's components import their own CSS, which Node can't load.
+    server: { deps: { inline: ["vuetify"] } },
   },
   build: {
     outDir: "../publish/wwwroot",

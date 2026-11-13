@@ -452,6 +452,23 @@ pre {
   font-size: 13.5px;
   line-height: 1.5;
 }
+/* Vuetify fades the top of a textarea so scrolled text tucks under a floating
+   label, sized from its own paddings. Here labels sit above the field and text
+   starts 9px down, so its fade covered the first line. Fade only that 9px edge,
+   which scrolled text passes through, and leave the scrollbar unfaded as Vuetify
+   does. More specific than Vuetify's rule, which loads with the component and
+   may come after this file. */
+.v-textarea .v-field .v-field__input {
+  --func-textarea-fade: linear-gradient(to bottom, transparent, black 9px),
+    linear-gradient(
+      to right,
+      transparent,
+      transparent calc(100% - var(--v-textarea-scroll-bar-width, 16px)),
+      black calc(100% - var(--v-textarea-scroll-bar-width, 16px))
+    );
+  -webkit-mask-image: var(--func-textarea-fade);
+  mask-image: var(--func-textarea-fade);
+}
 /* iOS zooms into focused fields under 16px and stays zoomed after blur. */
 @media (pointer: coarse) {
   input,

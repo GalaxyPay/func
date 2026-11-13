@@ -32,6 +32,18 @@
         />
         <v-list-item title="Configure" @click="showConfig = true" />
         <v-list-item
+          title="View Log"
+          @click="emit('showLog')"
+          v-show="status !== 'Not Found'"
+        />
+        <v-list-item
+          title="Open Nodely Telemetry"
+          :href="telemetryLink"
+          target="_blank"
+          :append-icon="mdiOpenInNew"
+          v-show="status === 'Running' && telemetryLink && telemetryEnabled"
+        />
+        <v-list-item
           :title="(telemetryEnabled ? 'Dis' : 'En') + 'able Telemetry'"
           @click="toggleTelemetry()"
           v-show="status === 'Running' && nodeStatus.telemetryStatus"
@@ -164,7 +176,7 @@
 <script setup lang="ts">
 import { NodeStatus } from "@/types";
 import { errorMessage } from "@/utils";
-import { mdiChevronDown } from "@mdi/js";
+import { mdiChevronDown, mdiOpenInNew } from "@mdi/js";
 import { PropType } from "vue";
 
 const store = useAppStore();
@@ -173,7 +185,7 @@ const props = defineProps({
   nodeStatus: { type: Object as PropType<NodeStatus>, required: true },
   status: { type: String, required: true },
 });
-const emit = defineEmits(["awaitRunning", "cancelAwait"]);
+const emit = defineEmits(["awaitRunning", "cancelAwait", "showLog"]);
 const loading = ref(false);
 const showReti = ref(false);
 const showValar = ref(false);
@@ -183,6 +195,16 @@ const showDataDir = ref(false);
 const telemetryEnabled = computed(() =>
   props.nodeStatus?.telemetryStatus?.includes("enabled")
 );
+
+// Nodely's dashboard for this node, found by the GUID at the end of the status.
+const telemetryLink = computed(() => {
+  const ts = props.nodeStatus?.telemetryStatus;
+  if (!ts) return undefined;
+  return "https://g.nodely.io/d/telemetry?var-GUID=" + ts.slice(ts.lastIndexOf(" ") + 1);
+});
+
+// Getting Started offers the first of these as its own buttons.
+defineExpose({ createNode, startNode, loading });
 
 async function createNode() {
   try {
