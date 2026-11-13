@@ -28,7 +28,8 @@ namespace FUNC
 
         private const int MaxMessages = 25;
         private const int LogSearchLimit = 1000;
-        // Each search reads at most 64 MB back; a busy node logs more than that in a day.
+        // Each search reads at most 64 MB back. A busy node logs that much in minutes, so
+        // the warnings cover a shorter window there.
         private const int MaxLogSearches = 4;
         private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
 
@@ -107,7 +108,8 @@ namespace FUNC
             await Probe(node, "config", () => node.Config = ConfigSummary(Path.Combine(dataDir, "config.json")));
             await Probe(node, "algod", async () => node.Algod = await AlgodInfo(name, node.ServiceStatus == "Running", node.Errors));
             await Probe(node, "health", () => node.Health = HealthInfo(name));
-            await Probe(node, "recentLog", () => node.RecentLog = RecentLog(Path.Combine(dataDir, "node.log"), DateTimeOffset.UtcNow));
+            await Probe(node, "recentErrors", () => node.RecentErrors = RecentErrors(HealthCollector.Store(name).Query("24h").Notes, DateTimeOffset.UtcNow));
+            await Probe(node, "recentWarnings", () => node.RecentWarnings = RecentWarnings(Path.Combine(dataDir, "node.log"), DateTimeOffset.UtcNow));
 
             if (name == "algorand")
             {
@@ -245,49 +247,67 @@ namespace FUNC
             };
         }
 
-        // Distinct warnings and errors from the last 24 hours, most important first. Only
-        // each line's message is used, redacted; the rest of a log line is where peer
-        // addresses and hosts live.
-        internal static RecentLogDiagnostics RecentLog(string logPath, DateTimeOffset now, int maxSearches = MaxLogSearches,
+        // Distinct errors from the last 24 hours, newest first. They come from the health
+        // history, which follows the log continuously, so they cover the whole day even
+        // though a busy node rotates node.log every few hours.
+        internal static RecentMessages RecentErrors(IEnumerable<HealthNote> notes, DateTimeOffset now)
+        {
+            DateTimeOffset since = now - TimeSpan.FromHours(24);
+            RecentMessages recent = new() { Since = since };
+            foreach (HealthNote note in notes.Where(n => n.Level == "error" && n.Time.ToUniversalTime() >= since).OrderBy(n => n.Time))
+            {
+                // A note is a run of one message; its Time is the latest in the run.
+                recent.Count += note.Count;
+                Tally(recent, Redact(note.Text), note.Time.ToUniversalTime(), note.Count);
+            }
+            Finish(recent);
+            return recent;
+        }
+
+        // Distinct warnings from node.log, newest first. Warnings aren't kept in the health
+        // history, and a busy node writes more log than can be read back quickly, so Since
+        // says how far back this got: 24 hours ago at most.
+        internal static RecentMessages RecentWarnings(string logPath, DateTimeOffset now, int maxSearches = MaxLogSearches,
             int chunkBytes = LogSearch.ChunkBytes, long scanBytes = LogSearch.ScanBytes)
         {
             DateTimeOffset since = now - TimeSpan.FromHours(24);
+            RecentMessages recent = new();
+            if (!File.Exists(logPath)) return recent;
             List<LogLine> lines = [];
-            LogPage page = new();
             long? before = null;
-            bool reachedSince = false;
-            for (int i = 0; i < maxSearches && !reachedSince; i++)
+            bool done = false;
+            for (int i = 0; i < maxSearches && !done; i++)
             {
-                page = LogSearch.Search(logPath, null, "warning", before, null, LogSearchLimit, chunkBytes, scanBytes);
+                LogPage page = LogSearch.Search(logPath, null, "warning", before, null, LogSearchLimit, chunkBytes, scanBytes);
                 lines.AddRange(page.Lines);
-                reachedSince = page.Next == null || page.Lines.Any(l => l.Time?.ToUniversalTime() < since);
                 before = page.Next;
-                if (!page.Found) break;
+                done = page.Next == null || page.Lines.Any(l => l.Time?.ToUniversalTime() < since);
             }
+            // Out of searches: the window starts at the line the search stopped at.
+            recent.Since = done ? since : LogSearch.TimeAt(logPath, before!.Value)?.ToUniversalTime() ?? since;
+            if (recent.Since < since) recent.Since = since;
 
-            RecentLogDiagnostics recent = new() { Found = page.Found };
-            // How far back the search got: the whole 24 hours, or only to the oldest line it reached.
-            recent.Since = reachedSince ? since : lines.Select(l => l.Time?.ToUniversalTime()).Min();
-            Dictionary<(string, string), LogSummary> groups = [];
-            foreach (LogLine line in lines)
+            foreach (LogLine line in Enumerable.Reverse(lines))
             {
-                if (line.Time?.ToUniversalTime() is not { } time || time < since) continue;
-                string level = line.Level;
-                if (level == "warning") recent.Warnings++; else recent.Errors++;
-                string msg = Redact(line.Msg);
-                if (!groups.TryGetValue((level, msg), out LogSummary? summary))
-                    groups[(level, msg)] = summary = new LogSummary { Level = level, Msg = msg };
-                summary.Count++;
-                // Lines come newest first.
-                summary.LastAt ??= time;
-                summary.FirstAt = time;
+                if (line.Level != "warning" || line.Time?.ToUniversalTime() is not { } time || time < recent.Since) continue;
+                recent.Count++;
+                Tally(recent, Redact(line.Msg), time, 1);
             }
-            recent.Messages = [.. groups.Values
-                .OrderBy(s => s.Level == "warning" ? 1 : 0)
-                .ThenByDescending(s => s.LastAt)
-                .Take(MaxMessages)];
+            Finish(recent);
             return recent;
         }
+
+        // Adds occurrences of a message, given oldest first.
+        private static void Tally(RecentMessages recent, string msg, DateTimeOffset time, int count)
+        {
+            LogSummary? summary = recent.Messages.FirstOrDefault(m => m.Msg == msg);
+            if (summary == null) recent.Messages.Add(summary = new LogSummary { Msg = msg, FirstAt = time });
+            summary.Count += count;
+            summary.LastAt = time;
+        }
+
+        private static void Finish(RecentMessages recent) =>
+            recent.Messages = [.. recent.Messages.OrderByDescending(m => m.LastAt).Take(MaxMessages)];
 
         // `diagcfg telemetry status` prints e.g. "Remote logging is enabled.  Node = x, Guid = ...".
         internal static bool? TelemetryEnabled(string status)

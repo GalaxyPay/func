@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using FUNC.Health;
 using FUNC.Models;
 using Microsoft.AspNetCore.Http;
 
@@ -91,27 +92,26 @@ public class DiagnosticsTests : IDisposable
         JsonSerializer.Serialize(new { file = "x.go", level, msg, time = time.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ") });
 
     [Fact]
-    public void RecentLog_GroupsRedactsAndPutsErrorsFirst()
+    public void RecentWarnings_GroupsAndRedactsNewestFirst()
     {
         DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
         string path = Path.Combine(_dir, "node.log");
         File.WriteAllLines(path,
         [
-            Entry(now.AddHours(-30), "error", "too old to count"),
+            Entry(now.AddHours(-30), "warning", "too old to count"),
             Entry(now.AddHours(-3), "warning", "peer 203.0.113.7:4160 slow"),
-            Entry(now.AddHours(-2), "error", "ledger fell behind"),
+            Entry(now.AddHours(-2), "error", "errors come from the health history"),
             Entry(now.AddHours(-1), "warning", "peer 198.51.100.9:4160 slow"),
             Entry(now.AddMinutes(-30), "info", "just chatter"),
             Entry(now.AddMinutes(-10), "warning", "newest warning"),
         ]);
 
-        RecentLogDiagnostics recent = Diagnostics.RecentLog(path, now);
+        RecentMessages recent = Diagnostics.RecentWarnings(path, now);
 
-        Assert.True(recent.Found);
-        Assert.Equal(3, recent.Warnings);
-        Assert.Equal(1, recent.Errors);
-        Assert.Equal(["ledger fell behind", "newest warning", "peer <ip>:4160 slow"], recent.Messages.Select(m => m.Msg));
-        LogSummary slow = recent.Messages[2];
+        Assert.Equal(now.AddHours(-24), recent.Since);
+        Assert.Equal(3, recent.Count);
+        Assert.Equal(["newest warning", "peer <ip>:4160 slow"], recent.Messages.Select(m => m.Msg));
+        LogSummary slow = recent.Messages[1];
         Assert.Equal(2, slow.Count);
         Assert.Equal(now.AddHours(-3), slow.FirstAt);
         Assert.Equal(now.AddHours(-1), slow.LastAt);
@@ -132,28 +132,63 @@ public class DiagnosticsTests : IDisposable
     }
 
     [Fact]
-    public void RecentLog_SearchesBackAFullDay()
+    public void RecentWarnings_SearchesBackAFullDay()
     {
         DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
         string path = BusyLog(now);
 
         // Each search reads only ~20 KB, so covering the day takes several.
-        RecentLogDiagnostics recent = Diagnostics.RecentLog(path, now, maxSearches: 100, chunkBytes: 4096, scanBytes: 20_000);
+        RecentMessages recent = Diagnostics.RecentWarnings(path, now, maxSearches: 100, chunkBytes: 4096, scanBytes: 20_000);
 
-        Assert.Equal(24, recent.Warnings);
+        Assert.Equal(24, recent.Count);
         Assert.Equal(now.AddHours(-24), recent.Since);
     }
 
     [Fact]
-    public void RecentLog_SaysHowFarItGotWhenTheLogIsTooBusy()
+    public void RecentWarnings_SinceIsWhereTheSearchStopped()
     {
         DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
         string path = BusyLog(now);
 
-        RecentLogDiagnostics recent = Diagnostics.RecentLog(path, now, maxSearches: 2, chunkBytes: 4096, scanBytes: 20_000);
+        RecentMessages recent = Diagnostics.RecentWarnings(path, now, maxSearches: 2, chunkBytes: 4096, scanBytes: 20_000);
 
-        Assert.InRange(recent.Warnings, 1, 23);
-        Assert.Equal(now.AddHours(-recent.Warnings), recent.Since);
+        // Where the search stopped, which is usually between warnings, not on one.
+        Assert.NotNull(recent.Since);
+        Assert.InRange(recent.Since!.Value, now.AddHours(-23), now.AddHours(-1));
+        Assert.NotEqual(0, recent.Since.Value.Minute);
+        Assert.Equal((int)(now - recent.Since.Value).TotalHours, recent.Count);
+    }
+
+    [Fact]
+    public void RecentWarnings_IsEmptyWithoutALog()
+    {
+        RecentMessages recent = Diagnostics.RecentWarnings(Path.Combine(_dir, "node.log"), DateTimeOffset.UtcNow);
+
+        Assert.Null(recent.Since);
+        Assert.Equal(0, recent.Count);
+        Assert.Empty(recent.Messages);
+    }
+
+    [Fact]
+    public void RecentErrors_CoverTheDayFromHealthNotes()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        List<HealthNote> notes =
+        [
+            new() { Time = now.AddHours(-30), Level = "error", Text = "too old" },
+            new() { Time = now.AddHours(-20), Level = "error", Text = "dial 203.0.113.7:4160 failed", Count = 3 },
+            new() { Time = now.AddHours(-5), Level = "error", Text = "disk nearly full" },
+            new() { Time = now.AddHours(-2), Level = "error", Text = "dial 198.51.100.9:4160 failed" },
+        ];
+
+        RecentMessages recent = Diagnostics.RecentErrors(notes, now);
+
+        Assert.Equal(now.AddHours(-24), recent.Since);
+        Assert.Equal(5, recent.Count);
+        Assert.Equal(["dial <ip>:4160 failed", "disk nearly full"], recent.Messages.Select(m => m.Msg));
+        Assert.Equal(4, recent.Messages[0].Count);
+        Assert.Equal(now.AddHours(-20), recent.Messages[0].FirstAt);
+        Assert.Equal(now.AddHours(-2), recent.Messages[0].LastAt);
     }
 
     [Fact]
@@ -169,15 +204,6 @@ public class DiagnosticsTests : IDisposable
         Assert.Equal(0, result["catchup-time-ms"]!.GetValue<long>());
         Assert.False(result.ContainsKey("time-since-last-round"));
         Assert.Equal(5, result["last-round"]!.GetValue<int>());
-    }
-
-    [Fact]
-    public void RecentLog_ReportsAMissingLog()
-    {
-        RecentLogDiagnostics recent = Diagnostics.RecentLog(Path.Combine(_dir, "node.log"), DateTimeOffset.UtcNow);
-
-        Assert.False(recent.Found);
-        Assert.Empty(recent.Messages);
     }
 
     // ---- Data dir ----

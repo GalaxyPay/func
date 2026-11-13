@@ -54,7 +54,7 @@ Diagnostics are made to be safe to share. They include:
   - a few settings from `config.json`
   - free disk space
   - Reti and Valar status
-- **Recent problems:** distinct warnings and errors from the last 24 hours of the node log, with how many times each appeared.
+- **Recent problems:** distinct errors and warnings from the node log, with how many times each appeared. Errors cover the last 24 hours. Warnings cover as much of that as could be read quickly, which on a busy node may be only the last half hour or so.
 
 They leave out or hide anything private:
 

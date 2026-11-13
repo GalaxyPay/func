@@ -39,7 +39,8 @@ namespace FUNC.Models
         public HealthDiagnostics? Health { get; set; }
         public Dictionary<string, JsonNode?>? Config { get; set; }
         public DataDirDiagnostics? DataDir { get; set; }
-        public RecentLogDiagnostics? RecentLog { get; set; }
+        public RecentMessages? RecentErrors { get; set; }
+        public RecentMessages? RecentWarnings { get; set; }
         public DaemonStatus? Reti { get; set; }
         public DaemonStatus? Valar { get; set; }
         // A probe that failed, as "<section>: <message>". The rest of the report still fills in.
@@ -83,22 +84,20 @@ namespace FUNC.Models
         public DateTimeOffset? NodeLogModifiedAt { get; set; }
     }
 
-    public class RecentLogDiagnostics
+    // Distinct log messages of one level, newest first.
+    public class RecentMessages
     {
-        public bool Found { get; set; }
-        // How far back the search reached: 24 hours ago, or later when the log was too busy
-        // to read that far.
+        // The start of the window covered: 24 hours ago, or later when the log was too
+        // busy to read back that far. Null when there is no log.
         public DateTimeOffset? Since { get; set; }
-        // Warnings and errors since then.
-        public int Warnings { get; set; }
-        public int Errors { get; set; }
+        // Every occurrence in the window, including messages beyond those listed.
+        public int Count { get; set; }
         public List<LogSummary> Messages { get; set; } = [];
     }
 
-    // One distinct warning or error message, with how often it appeared.
+    // One distinct message, with how often it appeared.
     public class LogSummary
     {
-        public required string Level { get; set; }
         public required string Msg { get; set; }
         public int Count { get; set; }
         public DateTimeOffset? FirstAt { get; set; }

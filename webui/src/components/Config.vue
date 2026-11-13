@@ -23,7 +23,7 @@
             label="BaseLoggerDebugLevel"
             v-model="baseLoggerDebugLevel"
             :items="[...Array(6).keys()]"
-            hint="Must be 4 or greater for telemetry to work. For best performance, set to 0."
+            hint="Keep at 4 (the default) or higher. FUNC's health status and Nodely telemetry read the node log, and need it."
             persistent-hint
             class="pb-2"
           />
@@ -65,12 +65,7 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import {
-  copyToClipboard,
-  delay,
-  errorMessage,
-  nodeHostname,
-} from "@/utils";
+import { copyToClipboard, delay, errorMessage, nodeHostname } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
