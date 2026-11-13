@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+  <!-- The docs' tab icon: FUNC's node icon inverted on a cyan tile, so it
+       can't be mistaken for the dashboard's tab. Thicker lines than icon.svg
+       keep it legible at 16px. -->
+  <rect width="220" height="220" rx="48" fill="#1acbf7" />
+  <g transform="translate(15 15) translate(-19.507345 -49.564215)" fill="#090c0d" stroke="#090c0d" stroke-width="11" stroke-linecap="round">
+    <path fill="none" d="M185.7 104.1v82.1M114.6 62.9l71.1 41.2M43.4 103.9l71.2-41v164.3M43.3 186.1v-82.2M114.4 227.2l-71.1-41.1M185.6 186.2l-71.2 41M43.3 186.1l142.4-82M43.4 103.9l142.2 82.3" />
+    <g stroke="none">
+      <circle cx="43.3" cy="103.9" r="17" />
+      <circle cx="185.7" cy="104.1" r="17" />
+      <circle cx="43.3" cy="186.1" r="17" />
+      <circle cx="185.7" cy="186.2" r="17" />
+      <circle cx="114.5" cy="225.2" r="17" />
+      <circle cx="114.5" cy="63.9" r="17" />
+      <circle cx="114.5" cy="145.1" r="20" />
+    </g>
+  </g>
+</svg>

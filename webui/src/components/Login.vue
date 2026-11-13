@@ -39,7 +39,7 @@
           <v-btn
             :text="setupMode ? 'Help' : 'Forgot password?'"
             :prepend-icon="mdiHelpCircleOutline"
-            href="https://github.com/GalaxyPay/func#password"
+            href="https://func.algo.xyz/password"
             target="_blank"
             rel="noopener noreferrer"
             variant="text"

@@ -2,7 +2,9 @@ import { defineConfig } from "vitepress";
 
 // Served at https://func.algo.xyz (see public/CNAME), so no base path.
 export default defineConfig({
-  title: "FUNC",
+  // "FUNC Docs" in browser tabs, so they aren't mistaken for the dashboard's
+  // "FUNC" tab; the nav bar still says FUNC (siteTitle below).
+  title: "FUNC Docs",
   description:
     "Funk's Ultimate Node Controller: run an Algorand node and participate in consensus, without the command line.",
   lang: "en-US",
@@ -11,10 +13,11 @@ export default defineConfig({
   // The app itself, on the reader's own computer.
   ignoreDeadLinks: [/^https?:\/\/localhost/],
   head: [
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/icon.svg" }],
-    ["link", { rel: "icon", type: "image/png", href: "/icon.png" }],
+    // Its own tab icon too, distinct from the dashboard's.
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/favicon-docs.svg" }],
   ],
   themeConfig: {
+    siteTitle: "FUNC",
     logo: "/icon.svg",
     nav: [
       { text: "Install", link: "/install" },
