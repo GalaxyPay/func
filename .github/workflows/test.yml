@@ -1,8 +1,10 @@
 name: Test
+# main is tested by Publish & Release, which calls this before it builds.
 on:
   push:
-    branches: [main, dev]
+    branches: [dev]
   pull_request:
+  workflow_call:
 
 jobs:
   backend:

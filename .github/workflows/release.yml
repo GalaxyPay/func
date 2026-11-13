@@ -2,10 +2,22 @@ name: Publish & Release
 on:
   push:
     branches: [main]
+    # A merge that only changes documentation doesn't rebuild or re-upload the
+    # release; the Docs workflow publishes it.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "assets/screenshot.png"
+      - ".github/workflows/docs.yml"
 
 # The release version comes from webui/package.json, the one place it is set.
 jobs:
+  # Nothing is built or released unless the tests pass.
+  test:
+    uses: ./.github/workflows/test.yml
+
   webui:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
