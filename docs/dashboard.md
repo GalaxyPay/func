@@ -8,7 +8,7 @@ The **Status** panel shows three lights. Green means all is well. When a light n
 - **Consensus**: how many of your accounts are online, and whether the node is voting for them.
 - **Network**: whether the node is connected to enough peers.
 
-If you run [Reti or Valar](/manage#reti-valar), they get a light here too.
+If you run [Reti](/reti) or [Valar](/valar), they get a light here too.
 
 Below the lights, the **Manage** button opens the [Manage menu](/manage).
 

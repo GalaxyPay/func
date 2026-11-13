@@ -21,6 +21,10 @@ Use this if the account is in a wallet you control, such as Pera, Defly or Lute.
 
 Use this if a service holds the account for you.
 
+::: tip
+To run staking for other people instead, see [Reti](/reti) and [Valar](/valar).
+:::
+
 1. Wait for your node to sync.
 2. Click **Generate Key...** and enter the escrow account's address.
 3. Click **Generate** and wait. It takes a few minutes for your node to generate the key.
