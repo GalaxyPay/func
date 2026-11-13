@@ -1,18 +1,12 @@
 # ![icon](assets/icon.png) Funk's Ultimate Node Controller (FUNC)
 
-FUNC is a Cross-platform Service that makes it easy to spin up a node for Algorand or Voi and start participating in consensus.
+FUNC is a cross-platform service that makes it easy to spin up an Algorand node and start participating in consensus.
+
+**📖 Documentation: [func.algo.xyz](https://func.algo.xyz)**
 
 ![screenshot](assets/screenshot.png)
 
-## Installation
-
-The easiest way to install is with the one-line script for your OS. It detects your OS/architecture, downloads the latest release, and installs it for you.
-
-### Mac / Linux
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/GalaxyPay/func/main/install.sh | sudo sh
-```
+## Install
 
 ### Windows
 
@@ -22,240 +16,15 @@ Open PowerShell and run:
 irm https://raw.githubusercontent.com/GalaxyPay/func/main/install.ps1 | iex
 ```
 
-That's it. Once installed, visit the [locally hosted webpage](http://localhost:3536) and bookmark it for easy access.
-
-The installer does not include the node software. It is automatically downloaded from [this open-source repo](https://github.com/GalaxyPay/go-algo-win) (Windows) or [the official Algorand repo](https://github.com/algorand/go-algorand) (Mac/Linux) the first time you open the app. This separation allows the node software to be updated without needing to update this app.
-
-> The scripts are open-source ([install.sh](install.sh), [install.ps1](install.ps1)) so you can review them yourself or have a trusted friend do so.
-
-### Manual Installation
-
-If you'd rather not use the script, head over to the [releases page](https://github.com/GalaxyPay/func/releases) and download the install file for your OS.
-
-#### Windows (Manual)
-
-In order to run it, you'll need to click "More info" on the "Windows protected your PC" dialog.
-Then click the "Run Anyway" button.
-
-When updating a previous installation, the installer will recommend to let it automatically close applications and restart them after install. You should allow it to do this.
-
-#### MacOS (Manual)
-
-After downloading the `.pkg` file to your machine, run
+### Mac / Linux
 
 ```sh
-sudo installer -target / -pkg <path to .pkg file>
+curl -fsSL https://raw.githubusercontent.com/GalaxyPay/func/main/install.sh | sudo sh
 ```
 
-If instead you wish to install the package by double-clicking the `.pkg` file , you will have to follow [these instructions](https://support.apple.com/guide/mac-help/apple-cant-check-app-for-malicious-software-mchleab3a043/mac) for bypassing unsigned packages:
+Then open <http://localhost:3536> and follow [Getting Started](https://func.algo.xyz/getting-started).
 
-1. On your Mac, choose Apple menu > System Settings, then click Privacy & Security in the sidebar. (You may need to scroll down.)
-2. Go to Security, then click Open.
-3. Click Open Anyway. (This button is available for about an hour after you try to open the app.)
-4. Enter your login password, then click OK.
-
-#### Linux (Manual)
-
-After downloading the `.deb` file to your machine, run
-
-```sh
-sudo dpkg -i <path to .deb file>
-```
-
-Alternatively, some distros (like modern Ubuntu) allow for installation by simply double-clicking the `.deb` file.
-
-Then visit the locally hosted webpage at <http://localhost:3536> (for remote access see notes below)
-
-## Uninstall
-
-The app is a **Node Service Manager** - uninstalling it will **_not_** remove node data by default. To also remove your node data (participation and KMD keys), use the "purge" option noted for your OS below.
-
-### Windows (Uninstall)
-
-- To purge everything, use the app to Remove Services and even Delete Node Data before the next step
-- Settings > Apps > Installed apps > Search: FUNC > Uninstall
-
-### Mac (Uninstall)
-
-An uninstall script is bundled with the app:
-
-```sh
-sudo /opt/func/uninstall.sh           # remove the app, keep node data
-sudo /opt/func/uninstall.sh --purge   # also remove node data and service accounts
-```
-
-### Linux (Uninstall)
-
-The `.deb` is a standard package, so use your package manager:
-
-```sh
-sudo apt remove func    # remove the app, keep node data
-sudo apt purge func     # also remove node data and service accounts
-```
-
-## Getting Started
-
-The first time you open the app it asks you to choose a password (see [Password](#password)), then downloads the node software. The dashboard then shows a **Getting Started** checklist that walks you through each step:
-
-1. **Start your node.** Click **Set Up Node**. FUNC creates a background service that runs the node and starts it again whenever the computer restarts.
-2. **Sync with the network.** The node uses fast catchup to download the network's latest state. This usually takes under an hour, and you can close the page while it runs.
-3. **Generate a participation key.** You only need the address of the account you want to participate with. You don't need a wallet for this step.
-4. **Register the key to go online.** Connect your wallet, then register the key (see [Participating in Consensus](#participating-in-consensus)).
-
-The checklist goes away once an account is online. If you only want to run a node without participating, click **Hide**. Every option is still in the **Manage** menu.
-
-## Dashboard
-
-The **Status** panel shows three lights:
-
-- **Node**: whether the node is running and synced. A link to the node's log shows here when it has recent errors.
-- **Consensus**: how many accounts are online, and whether the node is voting for them.
-- **Network**: whether the node is connected to enough peers.
-
-When a light needs attention, a short explanation of what to do appears under it.
-
-The **Overview** shows the current block, how many blocks your accounts have created, and their online stake. Use the button beside **Blocks Created** to count from a chosen date. On Algorand, a calendar of the blocks you created is shown at the bottom.
-
-### Settings
-
-Open Settings with the gear icon. A dot on the icon means an update is available.
-
-- **FUNC Version / Node Version**: the installed versions. An **Update** button appears when a newer version is available.
-- **Manual Node Version Selection**: lets you pick any node release, not just the latest. This also hides new-version alerts.
-- **Show Machine Name**: shows the computer's name in the app bar, which helps when you run more than one node.
-- **Show Advanced Details**: adds node health charts, algod's version and uptime, and a list of peers (click the **Network** row).
-- **Show Alternative Networks**: adds tabs for other networks, such as Voi.
-- **Password**: change it, or sign out.
-
-Announcements about FUNC appear under the bell icon.
-
-## Manage Node Menu Options
-
-### Create Service
-
-- Creates and starts a new Service to run the Node (the same as **Set Up Node** in Getting Started)
-- Only available when Service does not exist
-
-### Start Node
-
-- Starts Service that runs the Node
-- Only available when Node is stopped
-
-### Stop Node
-
-- Stops Service that runs the Node
-- Only available when Node is running
-
-### Remove Service
-
-- Removes Service that runs the Node
-- Only available when Node is stopped
-
-### Configure
-
-- Change your node's Port, DNS Bootstrap, BaseLoggerDebugLevel, and P2P Setting
-
-### View Log
-
-- Shows the node's log, filtered to warnings and errors by default
-- Search the log, or follow it as new lines are written
-- Only available when Service exists
-
-### Enable/Disable Telemetry
-
-- Link your node to [Nodely Telemetry Service](https://nodely.io/docs/telemetry/quickstart/)
-- Once enabled, **Open Nodely Telemetry** links to your node's dashboard on Nodely
-- Only available on Algorand network when Node is running
-
-### Node Data Directory
-
-- Configure the directory for your node data
-- You will need write permission to the new path
-- Only available when Service does not exist
-
-### Delete Node Data
-
-- Deletes all node data, including any participation and KMD keys
-- Only available when Service does not exist
-
-### Reti / Valar
-
-- Add, start, stop, or remove a [Reti](https://github.com/algorandfoundation/reti) or Valar staking service alongside your node
-- Only available when Node is running
-- When a service is installed, its light shows in the Status panel, along with an **Update** button when a newer version is available
-
-## Existing Nodes (Mac / Linux)
-
-FUNC detects an Algorand node that was installed without it: the `algorand` apt/rpm package (installed by hand or by [NodeKit](https://nodekit.run)), NodeKit's Homebrew install on Mac, or go-algorand's `update.sh`. FUNC won't create its own Algorand service over one. If FUNC doesn't have an Algorand node of its own, it manages an existing mainnet node automatically, where it is. NodeKit and `goal` keep working with it. If the node is later removed outside FUNC (for example `apt remove algorand` or `nodekit uninstall`), FUNC stops managing it.
-
-- **Start / Stop Node** controls the node's existing service: `algorand` on Linux, `com.algorand.algod` on Mac, or `goal node start/stop` if it has no service.
-- **Update** in Settings uses whatever installed the node: `apt`, `dnf`, `brew` or `update.sh`. Only the latest version is offered.
-- **Node Data Directory** moves the data and leaves a link at the old path. The service, NodeKit and `goal` keep finding the node there without changes, including any `-d` or `ALGORAND_DATA` you already use.
-- **Delete Node Data** deletes the node's data, including participation keys, and uninstalls the existing node (for example `apt-get remove algorand`). FUNC can then create its own node.
-
-## Participating in Consensus
-
-If you want to participate in consensus, you'll need to generate a Participation Key for your account and register that key with account to bring it "online".
-
-[Read more about how Participation Keys function in the Algorand Consensus Protocol](https://dev.algorand.co/concepts/protocol/overview/#participation-keys)
-
-The Participation Keys section appears once your node has synced.
-
-### Self-Custody
-
-1. Wait for your node to sync.
-2. Click **Generate Key...** (in Getting Started or the Participation Keys section) and enter your account's address.
-3. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
-4. Click **Connect Wallet** at the top right and connect the wallet that holds the account.
-5. Click the key's status button in the Participation Keys section and choose **Register**.
-6. Your account should now be online, and the **Consensus** light should be green.
-
-### Escrow Account
-
-1. Wait for your node to sync.
-2. Click **Generate Key...** and enter your escrow account in the Address field.
-3. Click Generate and wait. It takes a few minutes for your node to generate the Participation Key.
-4. Expand the key's row and use the copy buttons to paste the key info into the escrow site, then follow their instructions.
-5. Your account should now be online, and the **Consensus** light should be green.
-
-## Notes
-
-- The app is a locally hosted webpage, <http://localhost:3536>. After install, bookmark it for easy access.
-
-- The node will restart automatically if your computer reboots, but you will need to configure your computer to **_not_** go into Sleep mode in order to keep the node running 24/7.
-
-- If you Stop a node and restart your computer, the node will restart automatically. You must remove the service if you want the node to not restart. Removing the service preserves the node data; deleting the data is a separate step.
-
-### Password
-
-The FUNC service runs with administrator privileges and manages services on your computer, so it asks you to choose a password the first time you open the app. This stops websites you visit and other machines on your network from controlling your node. Choose the password right after installing: until you do, anyone who can reach the app could choose it for you. You can change it later from Settings.
-
-The app can be opened from any device that can reach the computer (see Remote Access below), so a headless machine is set up by opening `http://<its address>:3536` from another computer. Signing in keeps you signed in on that browser for 30 days. Changing the password signs out every other browser and device.
-
-Sign-in attempts are rate limited: after five failures from one address, that address must wait 30 seconds, doubling with each further failure, and the whole network is limited to ten failures per ten minutes. Attempts made on the computer itself are never limited by the network-wide cap, so you can always sign in there.
-
-If you forget the password, delete the file below and restart the FUNC service (or reboot). The app then asks you to choose a new password.
-
-| OS      | Password file                     |
-| ------- | --------------------------------- |
-| Windows | `C:\ProgramData\func\auth.json`   |
-| macOS   | `/usr/local/share/func/auth.json` |
-| Linux   | `/usr/share/func/auth.json`       |
-
-Anyone with the password can control the node services on your machine, so pick a strong one and do not share it.
-
-### Remote Access (Advanced)
-
-- The app can be used from your phone or another computer on your network with the same password. To reach it, you will need to open the following ports:
-  - 3536 AND 3537 - FUNC UI and API
-  - 8081 - Algorand algod
-  - 8082 AND 3538 - Voi algod
-
-- The `algod` ports are configurable through the UI, and you only need to open the ones for the networks you use
-
-- This should **ONLY** be done on a local network - **DO NOT** open these ports to the internet
-
-- Prefer port 3537 when accessing the site remotely: it serves the site with a self-signed cert over HTTPS, so your password is not sent in the clear. It is also required for WalletConnect wallets (e.g. Defly, Pera) and the "copy to clipboard" buttons.
+Manual installs, uninstalling, remote access and everything else are covered in the [documentation](https://func.algo.xyz).
 
 ## Build (for Developers)
 
@@ -286,3 +55,13 @@ Note the `create-package` scripts take arguments of version and architecure (`am
 ```
 
 Dependencies include .NET Core 8, Node.js, pnpm, and Inno Setup.
+
+### Documentation
+
+The docs site lives in [docs/](docs) and is built with [VitePress](https://vitepress.dev). Pushing changes under `docs/` to `main` publishes it to [func.algo.xyz](https://func.algo.xyz). To preview it locally:
+
+```sh
+cd docs
+pnpm install
+pnpm dev
+```

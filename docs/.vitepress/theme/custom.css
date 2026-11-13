@@ -1,0 +1,50 @@
+/* The app's cyan in place of VitePress' indigo. Light mode uses darker shades
+   so links stay readable on white. */
+:root {
+  --vp-c-brand-1: #0a7ea4;
+  --vp-c-brand-2: #0b6d8d;
+  --vp-c-brand-3: #0a7ea4;
+  --vp-c-brand-soft: rgba(26, 203, 247, 0.14);
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-home-hero-name-color: var(--vp-c-brand-1);
+}
+.dark {
+  --vp-c-brand-1: #1acbf7;
+  --vp-c-brand-2: #5ad8f9;
+  --vp-c-brand-3: #1acbf7;
+  --vp-c-brand-soft: rgba(26, 203, 247, 0.16);
+  --vp-button-brand-text: #090c0d;
+  --vp-button-brand-hover-text: #090c0d;
+  --vp-button-brand-active-text: #090c0d;
+}
+
+/* The home page's icon: as large as the hero text beside it, not a thumbnail. */
+:root {
+  --vp-home-hero-image-filter: blur(56px);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgba(26, 203, 247, 0.35) 50%,
+    rgba(26, 203, 247, 0.15) 50%
+  );
+}
+
+.VPHero .image-src {
+  max-width: 220px;
+  max-height: 220px;
+}
+
+@media (min-width: 640px) {
+  .VPHero .image-src {
+    max-width: 280px;
+    max-height: 280px;
+  }
+}
+
+@media (min-width: 960px) {
+  .VPHero .image-src {
+    max-width: 360px;
+    max-height: 360px;
+  }
+}
