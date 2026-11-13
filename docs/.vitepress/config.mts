@@ -84,6 +84,7 @@ export default defineConfig({
           { text: "Settings", link: "/settings" },
           { text: "Manage Menu", link: "/manage" },
           { text: "Keeping Your Node Running", link: "/running" },
+          { text: "Getting Help", link: "/support" },
         ],
       },
       {

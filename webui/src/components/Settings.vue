@@ -99,6 +99,32 @@
               </v-btn>
             </div>
           </div>
+          <div class="set-row">
+            <div class="set-title">Diagnostics</div>
+            <div class="set-desc">
+              Troubleshooting info to share with support
+            </div>
+            <div class="set-actions">
+              <v-btn
+                variant="outlined"
+                size="small"
+                :loading="loadingDiagnostics === 'copy'"
+                :disabled="!!loadingDiagnostics"
+                @click="copyDiagnostics()"
+              >
+                Copy
+              </v-btn>
+              <v-btn
+                variant="outlined"
+                size="small"
+                :loading="loadingDiagnostics === 'download'"
+                :disabled="!!loadingDiagnostics"
+                @click="downloadDiagnostics()"
+              >
+                Download
+              </v-btn>
+            </div>
+          </div>
         </div>
         <div class="group">
           <div class="set-row">
@@ -200,7 +226,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
-import { errorMessage } from "@/utils";
+import { copyToClipboard, errorMessage } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
@@ -261,6 +287,44 @@ async function changePassword() {
   }
   changingPassword.value = false;
 }
+// The service's support snapshot, plus what only the browser knows: the UI
+// version it is running (a stale cached UI shows up here) and the browser.
+const loadingDiagnostics = ref<"copy" | "download">();
+
+async function fetchDiagnostics(action: "copy" | "download") {
+  loadingDiagnostics.value = action;
+  try {
+    const { data } = await store.api.get("func/diagnostics");
+    const report = {
+      ui: { version: appVersion, userAgent: navigator.userAgent },
+      ...data,
+    };
+    return JSON.stringify(report, null, 2);
+  } catch (err: any) {
+    store.setSnackbar(errorMessage(err, "Getting diagnostics"), "error");
+  } finally {
+    loadingDiagnostics.value = undefined;
+  }
+}
+
+async function copyDiagnostics() {
+  const text = await fetchDiagnostics("copy");
+  if (text) await copyToClipboard(text, "Diagnostics copied");
+}
+
+async function downloadDiagnostics() {
+  const text = await fetchDiagnostics("download");
+  if (!text) return;
+  const url = URL.createObjectURL(
+    new Blob([text + "\n"], { type: "application/json" })
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `func-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const updatingFunc = ref(false);
 let init = false;
 

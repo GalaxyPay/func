@@ -26,6 +26,8 @@ Then open <http://localhost:3536> and follow [Getting Started](https://func.algo
 
 Manual installs, uninstalling, remote access and everything else are covered in the [documentation](https://func.algo.xyz).
 
+Need help? See [Getting Help](https://func.algo.xyz/support).
+
 ## Build (for Developers)
 
 You can fork the repo and let Github Actions do the build for you, or you can run:

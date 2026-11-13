@@ -1,0 +1,312 @@
+using System.Diagnostics;
+using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using FUNC.Controllers;
+using FUNC.Health;
+using FUNC.Models;
+using Microsoft.AspNetCore.Http;
+using static System.OperatingSystem;
+
+namespace FUNC
+{
+    // Builds the support snapshot served at GET func/diagnostics. It has to work when
+    // things are broken, so each probe is isolated: one that fails records an error and
+    // the rest of the report still fills in.
+    public static partial class Diagnostics
+    {
+        // config.json keys worth seeing when troubleshooting. Anything else in the file
+        // is left out, even if it looks harmless.
+        internal static readonly string[] ConfigKeys =
+        [
+            "Version", "EndpointAddress", "BaseLoggerDebugLevel", "Archival", "EnableFollowMode",
+            "EnableP2P", "EnableP2PHybridMode", "DNSBootstrapID", "CatchupParallelBlocks",
+            "EnableDeveloperAPI", "IsIndexerActive",
+        ];
+
+        private const int MaxMessages = 25;
+        private const int LogSearchLimit = 1000;
+        private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
+
+        public static async Task<DiagnosticsReport> Collect(bool corsConfigured)
+        {
+            DiagnosticsReport report = new() { Func = FuncInfo(corsConfigured) };
+
+            // Adopting an apt/NodeKit node changes where the algorand node lives.
+            try { await Node.SyncExternal(); } catch { }
+
+            report.Nodes["algorand"] = await CollectNode("algorand");
+            // A Voi entry for a node that was never installed only muddies Algorand troubleshooting.
+            string voiStatus = await Safe(() => Node.ServiceStatus("voi"), "Unknown");
+            if (voiStatus != "Not Found") report.Nodes["voi"] = await CollectNode("voi", voiStatus);
+            return report;
+        }
+
+        // Whether the caller may read the report: anyone on the node machine itself, so a
+        // user locked out of the dashboard can still open it in a browser there, or anyone
+        // signed in. A reverse proxy on the same machine makes every visitor look local,
+        // so a forwarded request counts as remote.
+        public static bool Allowed(HttpRequest request)
+        {
+            bool forwarded = request.Headers.ContainsKey("X-Forwarded-For")
+                || request.Headers.ContainsKey("Forwarded")
+                || request.Headers.ContainsKey("X-Real-IP");
+            if (!forwarded && Auth.IsLoopback(request.HttpContext.Connection.RemoteIpAddress)) return true;
+            return Auth.ValidateSession(Auth.BearerToken(request));
+        }
+
+        private static FuncDiagnostics FuncInfo(bool corsConfigured)
+        {
+            FuncDiagnostics info = new()
+            {
+                Os = RuntimeInformation.OSDescription,
+                Arch = RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant(),
+                Dotnet = RuntimeInformation.FrameworkDescription,
+                PasswordSet = Auth.HasPassword,
+                CorsConfigured = corsConfigured,
+                AppDataDir = Redact(Utils.appDataDir),
+            };
+            try
+            {
+                // Release builds take their version from webui/package.json (CI's VERSION).
+                string? version = Assembly.GetEntryAssembly()?
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+                info.Version = version?.Split('+')[0];
+            }
+            catch { }
+            try
+            {
+                using Process p = Process.GetCurrentProcess();
+                info.StartedAt = p.StartTime.ToUniversalTime();
+            }
+            catch { }
+            return info;
+        }
+
+        private static async Task<NodeDiagnostics> CollectNode(string name, string? serviceStatus = null)
+        {
+            NodeDiagnostics node = new();
+
+            await Probe(node, "service", async () =>
+            {
+                node.ServiceStatus = serviceStatus ?? await Node.ServiceStatus(name);
+                if (node.ServiceStatus is "Running" or "Stopped") node.StartsAtBoot = await Node.StartsAtBoot(name);
+                ExternalNode? ext = name == "algorand" ? External.Load() : null;
+                node.ManagedBy = ext?.Manager ?? "func";
+                node.Network = ext?.Network;
+                if (name == "algorand" && ext == null && node.ServiceStatus == "Not Found")
+                    node.DetectedExternal = (await External.Detect())?.Manager;
+            });
+
+            string dataDir = Node.DataDir(name);
+            await Probe(node, "dataDir", () => node.DataDir = DataDirInfo(dataDir));
+            await Probe(node, "config", () => node.Config = ConfigSummary(Path.Combine(dataDir, "config.json")));
+            await Probe(node, "algod", async () => node.Algod = await AlgodInfo(name, node.ServiceStatus == "Running", node.Errors));
+            await Probe(node, "health", () => node.Health = HealthInfo(name));
+            await Probe(node, "recentLog", () => node.RecentLog = RecentLog(Path.Combine(dataDir, "node.log"), DateTimeOffset.UtcNow));
+
+            if (name == "algorand")
+            {
+                await Probe(node, "telemetry", async () =>
+                {
+                    if (Directory.Exists(dataDir)) node.TelemetryEnabled = TelemetryEnabled(await Node.TelemetryStatus(name));
+                });
+                await Probe(node, "reti", async () => node.Reti = await Node.RetiStatus());
+                await Probe(node, "valar", async () => node.Valar = await ValarController.GetStatus());
+            }
+            return node;
+        }
+
+        private static async Task Probe(NodeDiagnostics node, string section, Func<Task> probe)
+        {
+            try { await probe(); }
+            catch (Exception ex) { node.Errors.Add($"{section}: {Redact(ex.Message)}"); }
+        }
+
+        private static Task Probe(NodeDiagnostics node, string section, Action probe) =>
+            Probe(node, section, () => { probe(); return Task.CompletedTask; });
+
+        private static async Task<T> Safe<T>(Func<Task<T>> f, T fallback)
+        {
+            try { return await f(); } catch { return fallback; }
+        }
+
+        internal static DataDirDiagnostics DataDirInfo(string dataDir)
+        {
+            DataDirDiagnostics info = new() { Path = Redact(dataDir), Exists = Directory.Exists(dataDir) };
+            // Disk space of the volume the data dir is on (or would be on).
+            string? existing = dataDir;
+            while (existing != null && !Directory.Exists(existing)) existing = Path.GetDirectoryName(existing);
+            if (existing != null)
+            {
+                try
+                {
+                    DriveInfo drive = new(IsWindows() ? Path.GetPathRoot(existing)! : existing);
+                    info.FreeBytes = drive.AvailableFreeSpace;
+                    info.TotalBytes = drive.TotalSize;
+                }
+                catch { }
+            }
+            FileInfo log = new(Path.Combine(dataDir, "node.log"));
+            if (log.Exists)
+            {
+                info.NodeLogBytes = log.Length;
+                info.NodeLogModifiedAt = log.LastWriteTimeUtc;
+            }
+            return info;
+        }
+
+        // The allowlisted settings from config.json; null when there is no file.
+        internal static Dictionary<string, JsonNode?>? ConfigSummary(string configPath)
+        {
+            if (!File.Exists(configPath)) return null;
+            JsonObject config = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject
+                ?? throw new Exception("config.json is not a JSON object");
+            Dictionary<string, JsonNode?> summary = [];
+            foreach (string key in ConfigKeys)
+            {
+                if (!config.TryGetPropertyValue(key, out JsonNode? value)) continue;
+                summary[key] = value is JsonValue v && v.TryGetValue(out string? s) ? JsonValue.Create(Redact(s)) : value?.DeepClone();
+            }
+            return summary;
+        }
+
+        // algod is only asked when its service runs; a stopped node would just time out.
+        // Each request that fails is recorded on its own.
+        private static async Task<AlgodDiagnostics> AlgodInfo(string name, bool running, List<string> errors)
+        {
+            AlgodDiagnostics info = new() { Port = Node.AlgodPort(name) };
+            string token = Node.AlgodToken(name);
+            info.TokenPresent = token.Length > 0;
+            if (info.Port == 0 || !running) return info;
+
+            using HttpClient http = new() { Timeout = ProbeTimeout };
+            try
+            {
+                JsonObject? versions = await AlgodGet(http, info.Port, "/versions", null);
+                if (versions?["build"] is JsonObject build)
+                {
+                    info.Version = $"{build["major"]}.{build["minor"]}.{build["build_number"]}";
+                    info.Channel = build["channel"]?.ToString();
+                }
+                info.GenesisId = versions?["genesis_id"]?.ToString();
+            }
+            catch (Exception ex) { errors.Add($"algod /versions: {Redact(ex.Message)}"); }
+            if (token.Length == 0) return info;
+            try { info.Status = await AlgodGet(http, info.Port, "/v2/status", token); }
+            catch (Exception ex) { errors.Add($"algod /v2/status: {Redact(ex.Message)}"); }
+            return info;
+        }
+
+        private static async Task<JsonObject?> AlgodGet(HttpClient http, int port, string path, string? token)
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, $"http://127.0.0.1:{port}{path}");
+            if (token != null) request.Headers.Add("X-Algo-Api-Token", token);
+            using HttpResponseMessage response = await http.SendAsync(request);
+            string body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) throw new Exception($"{path} returned {(int)response.StatusCode}: {Redact(body.Trim())}");
+            return JsonNode.Parse(body) as JsonObject;
+        }
+
+        private static HealthDiagnostics HealthInfo(string name)
+        {
+            NodeHealth health = HealthCollector.Store(name).Query("24h");
+            return new HealthDiagnostics
+            {
+                Source = health.Source,
+                Metrics = health.Metrics,
+                StartedAt = health.StartedAt,
+                LastRound = health.LastRound,
+                LastRoundAt = health.LastRoundAt,
+                LastVoteAt = health.LastVoteAt,
+                PeersIn = health.PeersIn,
+                PeersOut = health.PeersOut,
+                Warnings24h = health.Points.Sum(p => p.Warnings),
+                Errors24h = health.Points.Sum(p => p.Errors),
+            };
+        }
+
+        // Distinct warnings and errors from the last 24 hours, most important first. Only
+        // each line's message is used, redacted; the rest of a log line is where peer
+        // addresses and hosts live.
+        internal static RecentLogDiagnostics RecentLog(string logPath, DateTimeOffset now)
+        {
+            LogPage page = LogSearch.Search(logPath, null, "warning", null, null, LogSearchLimit);
+            RecentLogDiagnostics recent = new() { Found = page.Found };
+            DateTimeOffset since = now - TimeSpan.FromHours(24);
+            Dictionary<(string, string), LogSummary> groups = [];
+            foreach (LogLine line in page.Lines)
+            {
+                if (line.Time?.ToUniversalTime() is not { } time || time < since) continue;
+                string level = line.Level;
+                if (level == "warning") recent.Warnings++; else recent.Errors++;
+                string msg = Redact(line.Msg);
+                if (!groups.TryGetValue((level, msg), out LogSummary? summary))
+                    groups[(level, msg)] = summary = new LogSummary { Level = level, Msg = msg };
+                summary.Count++;
+                // Lines come newest first.
+                summary.LastAt ??= time;
+                summary.FirstAt = time;
+            }
+            recent.Messages = [.. groups.Values
+                .OrderBy(s => s.Level == "warning" ? 1 : 0)
+                .ThenByDescending(s => s.LastAt)
+                .Take(MaxMessages)];
+            return recent;
+        }
+
+        // `diagcfg telemetry status` prints e.g. "Remote logging is enabled.  Node = x, Guid = ...".
+        internal static bool? TelemetryEnabled(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return null;
+            if (status.Contains("disabled", StringComparison.OrdinalIgnoreCase)) return false;
+            if (status.Contains("enabled", StringComparison.OrdinalIgnoreCase)) return true;
+            return null;
+        }
+
+        // ---- Redaction ----
+
+        // A user's home folder, which names them: C:\Users\<name>, /home/<name>, /Users/<name>.
+        [GeneratedRegex(@"(?i)(?:\b[A-Z]:[\\/]Users[\\/]|(?<![\w.])/home/|(?<![\w.])/Users/)[^\\/\s""']+")]
+        private static partial Regex HomeDir();
+
+        [GeneratedRegex(@"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?!\w|\.\d)")]
+        private static partial Regex Ipv4();
+
+        // Bracketed IPv6, full IPv6, or compressed IPv6 (with "::").
+        [GeneratedRegex(@"\[[0-9A-Fa-f.]*:[0-9A-Fa-f.]*:[0-9A-Fa-f:.%\w]*\]|(?<![\w:])(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}(?![\w:])|(?<![\w:])(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?::(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?(?![\w:])")]
+        private static partial Regex Ipv6();
+
+        [GeneratedRegex(@"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")]
+        private static partial Regex GuidPattern();
+
+        [GeneratedRegex(@"\b[A-Z2-7]{58}\b")]
+        private static partial Regex AlgorandAddress();
+
+        // Strips what could identify the user or their peers from text going into the
+        // report. Loopback and unspecified addresses stay: whether algod binds to
+        // 127.0.0.1 or 0.0.0.0 matters when troubleshooting and identifies no one.
+        public static string Redact(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            text = HomeDir().Replace(text, "~");
+            text = GuidPattern().Replace(text, "<guid>");
+            text = Ipv6().Replace(text, m => KeepIp(m.Value.Trim('[', ']')) ? m.Value : "<ip>");
+            text = Ipv4().Replace(text, m => KeepIp(m.Value) ? m.Value : "<ip>");
+            text = AlgorandAddress().Replace(text, m => $"{m.Value[..4]}…{m.Value[^4..]}");
+            return text;
+        }
+
+        private static bool KeepIp(string ip)
+        {
+            int zone = ip.IndexOf('%');
+            if (zone >= 0) ip = ip[..zone];
+            // Not an address after all (or a bare "::"): leave it.
+            if (ip.Length < 3 || !IPAddress.TryParse(ip, out IPAddress? address)) return true;
+            if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+            return IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any);
+        }
+    }
+}
