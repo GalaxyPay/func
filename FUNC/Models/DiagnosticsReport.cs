@@ -54,7 +54,8 @@ namespace FUNC.Models
         public string? Version { get; set; }
         public string? Channel { get; set; }
         public string? GenesisId { get; set; }
-        // algod's GET /v2/status (rounds, catchup and protocol state; nothing secret).
+        // algod's GET /v2/status (rounds, catchup and protocol state; nothing secret), with
+        // its nanosecond durations turned into milliseconds ("-ms" keys).
         public JsonObject? Status { get; set; }
     }
 
@@ -85,7 +86,10 @@ namespace FUNC.Models
     public class RecentLogDiagnostics
     {
         public bool Found { get; set; }
-        // Warnings and errors in the last 24 hours (of those searched).
+        // How far back the search reached: 24 hours ago, or later when the log was too busy
+        // to read that far.
+        public DateTimeOffset? Since { get; set; }
+        // Warnings and errors since then.
         public int Warnings { get; set; }
         public int Errors { get; set; }
         public List<LogSummary> Messages { get; set; } = [];

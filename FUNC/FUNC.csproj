@@ -9,6 +9,11 @@
 		<DebugType Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">none</DebugType>
 	</PropertyGroup>
 
+	<!-- The version is set in one place, webui/package.json, so every build (local or CI) reports it. -->
+	<PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)..\webui\package.json')">
+		<Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\webui\package.json')), '(?&lt;="version":\s*")[^"]+').Value)</Version>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<InternalsVisibleTo Include="FUNC.Tests" />
 	</ItemGroup>

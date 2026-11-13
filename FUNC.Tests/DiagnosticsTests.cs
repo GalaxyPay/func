@@ -117,6 +117,60 @@ public class DiagnosticsTests : IDisposable
         Assert.Equal(now.AddHours(-1), slow.LastAt);
     }
 
+    // A day of busy logging: one warning an hour, with plenty of info lines between.
+    private string BusyLog(DateTimeOffset now)
+    {
+        string path = Path.Combine(_dir, "node.log");
+        List<string> lines = [];
+        for (int h = 30; h >= 1; h--)
+        {
+            lines.Add(Entry(now.AddHours(-h), "warning", "hourly warning"));
+            for (int i = 0; i < 20; i++) lines.Add(Entry(now.AddHours(-h).AddMinutes(i), "info", new string('x', 100)));
+        }
+        File.WriteAllLines(path, lines);
+        return path;
+    }
+
+    [Fact]
+    public void RecentLog_SearchesBackAFullDay()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        string path = BusyLog(now);
+
+        // Each search reads only ~20 KB, so covering the day takes several.
+        RecentLogDiagnostics recent = Diagnostics.RecentLog(path, now, maxSearches: 100, chunkBytes: 4096, scanBytes: 20_000);
+
+        Assert.Equal(24, recent.Warnings);
+        Assert.Equal(now.AddHours(-24), recent.Since);
+    }
+
+    [Fact]
+    public void RecentLog_SaysHowFarItGotWhenTheLogIsTooBusy()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        string path = BusyLog(now);
+
+        RecentLogDiagnostics recent = Diagnostics.RecentLog(path, now, maxSearches: 2, chunkBytes: 4096, scanBytes: 20_000);
+
+        Assert.InRange(recent.Warnings, 1, 23);
+        Assert.Equal(now.AddHours(-recent.Warnings), recent.Since);
+    }
+
+    [Fact]
+    public void MillisecondStatus_ConvertsAlgodDurations()
+    {
+        var status = System.Text.Json.Nodes.JsonNode.Parse("""
+            { "last-round": 5, "time-since-last-round": 1793125500, "catchup-time": 0 }
+            """)!.AsObject();
+
+        var result = Diagnostics.MillisecondStatus(status)!;
+
+        Assert.Equal(1793, result["time-since-last-round-ms"]!.GetValue<long>());
+        Assert.Equal(0, result["catchup-time-ms"]!.GetValue<long>());
+        Assert.False(result.ContainsKey("time-since-last-round"));
+        Assert.Equal(5, result["last-round"]!.GetValue<int>());
+    }
+
     [Fact]
     public void RecentLog_ReportsAMissingLog()
     {

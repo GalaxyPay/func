@@ -28,6 +28,8 @@ namespace FUNC
 
         private const int MaxMessages = 25;
         private const int LogSearchLimit = 1000;
+        // Each search reads at most 64 MB back; a busy node logs more than that in a day.
+        private const int MaxLogSearches = 4;
         private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
 
         public static async Task<DiagnosticsReport> Collect(bool corsConfigured)
@@ -195,9 +197,24 @@ namespace FUNC
             }
             catch (Exception ex) { errors.Add($"algod /versions: {Redact(ex.Message)}"); }
             if (token.Length == 0) return info;
-            try { info.Status = await AlgodGet(http, info.Port, "/v2/status", token); }
+            try { info.Status = MillisecondStatus(await AlgodGet(http, info.Port, "/v2/status", token)); }
             catch (Exception ex) { errors.Add($"algod /v2/status: {Redact(ex.Message)}"); }
             return info;
+        }
+
+        // algod reports durations in nanoseconds; milliseconds are easier to read at a glance.
+        internal static JsonObject? MillisecondStatus(JsonObject? status)
+        {
+            if (status == null) return null;
+            foreach (string key in new[] { "time-since-last-round", "catchup-time" })
+            {
+                if (status[key] is JsonValue v && v.TryGetValue(out long ns))
+                {
+                    status.Remove(key);
+                    status[$"{key}-ms"] = ns / 1_000_000;
+                }
+            }
+            return status;
         }
 
         private static async Task<JsonObject?> AlgodGet(HttpClient http, int port, string path, string? token)
@@ -217,10 +234,10 @@ namespace FUNC
             {
                 Source = health.Source,
                 Metrics = health.Metrics,
-                StartedAt = health.StartedAt,
+                StartedAt = health.StartedAt?.ToUniversalTime(),
                 LastRound = health.LastRound,
-                LastRoundAt = health.LastRoundAt,
-                LastVoteAt = health.LastVoteAt,
+                LastRoundAt = health.LastRoundAt?.ToUniversalTime(),
+                LastVoteAt = health.LastVoteAt?.ToUniversalTime(),
                 PeersIn = health.PeersIn,
                 PeersOut = health.PeersOut,
                 Warnings24h = health.Points.Sum(p => p.Warnings),
@@ -231,13 +248,28 @@ namespace FUNC
         // Distinct warnings and errors from the last 24 hours, most important first. Only
         // each line's message is used, redacted; the rest of a log line is where peer
         // addresses and hosts live.
-        internal static RecentLogDiagnostics RecentLog(string logPath, DateTimeOffset now)
+        internal static RecentLogDiagnostics RecentLog(string logPath, DateTimeOffset now, int maxSearches = MaxLogSearches,
+            int chunkBytes = LogSearch.ChunkBytes, long scanBytes = LogSearch.ScanBytes)
         {
-            LogPage page = LogSearch.Search(logPath, null, "warning", null, null, LogSearchLimit);
-            RecentLogDiagnostics recent = new() { Found = page.Found };
             DateTimeOffset since = now - TimeSpan.FromHours(24);
+            List<LogLine> lines = [];
+            LogPage page = new();
+            long? before = null;
+            bool reachedSince = false;
+            for (int i = 0; i < maxSearches && !reachedSince; i++)
+            {
+                page = LogSearch.Search(logPath, null, "warning", before, null, LogSearchLimit, chunkBytes, scanBytes);
+                lines.AddRange(page.Lines);
+                reachedSince = page.Next == null || page.Lines.Any(l => l.Time?.ToUniversalTime() < since);
+                before = page.Next;
+                if (!page.Found) break;
+            }
+
+            RecentLogDiagnostics recent = new() { Found = page.Found };
+            // How far back the search got: the whole 24 hours, or only to the oldest line it reached.
+            recent.Since = reachedSince ? since : lines.Select(l => l.Time?.ToUniversalTime()).Min();
             Dictionary<(string, string), LogSummary> groups = [];
-            foreach (LogLine line in page.Lines)
+            foreach (LogLine line in lines)
             {
                 if (line.Time?.ToUniversalTime() is not { } time || time < since) continue;
                 string level = line.Level;

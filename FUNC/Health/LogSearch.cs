@@ -35,8 +35,8 @@ namespace FUNC.Health
     {
         public const int MaxLimit = 1000;
         public const int MaxQueryLength = 200;
-        private const int ChunkBytes = 4 * 1024 * 1024;
-        private const long ScanBytes = 64 * 1024 * 1024;
+        internal const int ChunkBytes = 4 * 1024 * 1024;
+        internal const long ScanBytes = 64 * 1024 * 1024;
         private const int MaxLineBytes = 16 * 1024 * 1024;
         private const int MaxRawChars = 20_000;
         private const int MaxMsgChars = 500;
