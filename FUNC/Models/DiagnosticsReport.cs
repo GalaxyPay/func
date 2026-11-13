@@ -87,9 +87,11 @@ namespace FUNC.Models
     // Distinct log messages of one level, newest first.
     public class RecentMessages
     {
-        // The start of the window covered: 24 hours ago, or later when the log was too
-        // busy to read back that far. Null when there is no log.
+        // The window covered. Until is when the node last wrote its log (about now while
+        // it runs); Since is 24 hours before that, or later when the log was too busy to
+        // read back that far. Both null when there is no log.
         public DateTimeOffset? Since { get; set; }
+        public DateTimeOffset? Until { get; set; }
         // Every occurrence in the window, including messages beyond those listed.
         public int Count { get; set; }
         public List<LogSummary> Messages { get; set; } = [];

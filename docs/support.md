@@ -29,7 +29,7 @@ Browsers only allow copying over HTTPS. If you opened the app from another compu
 
 On the computer FUNC is installed on, open this address in a browser:
 
-```
+```text
 http://localhost:3536/func/diagnostics
 ```
 
@@ -54,7 +54,7 @@ Diagnostics are made to be safe to share. They include:
   - a few settings from `config.json`
   - free disk space
   - Reti and Valar status
-- **Recent problems:** distinct errors and warnings from the node log, with how many times each appeared. Errors cover the last 24 hours. Warnings cover as much of that as could be read quickly, which on a busy node may be only the last half hour or so.
+- **Recent problems:** distinct errors and warnings from the node log, with how many times each appeared. Errors cover the node's last 24 hours of logging, which for a stopped node is the day before it stopped. Warnings cover as much of that as could be read quickly, which on a busy node may be only the last hour or two.
 
 They leave out or hide anything private:
 

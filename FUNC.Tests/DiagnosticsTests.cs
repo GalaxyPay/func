@@ -160,6 +160,73 @@ public class DiagnosticsTests : IDisposable
     }
 
     [Fact]
+    public void RecentWarnings_ContinuesIntoTheArchivedLog()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        // algod rotated the log 10 minutes ago; the archive holds the 3 hours before that.
+        File.WriteAllLines(Path.Combine(_dir, "node.archive.log"),
+        [
+            Entry(now.AddHours(-3), "info", "archive starts"),
+            Entry(now.AddHours(-2), "warning", "older warning"),
+        ]);
+        string path = Path.Combine(_dir, "node.log");
+        File.WriteAllLines(path,
+        [
+            Entry(now.AddMinutes(-10), "info", "log starts"),
+            Entry(now.AddMinutes(-5), "warning", "newer warning"),
+        ]);
+
+        RecentMessages recent = Diagnostics.RecentWarnings(path, now);
+
+        Assert.Equal(now.AddHours(-3), recent.Since);
+        Assert.Equal(["newer warning", "older warning"], recent.Messages.Select(m => m.Msg));
+    }
+
+    [Fact]
+    public void RecentWarnings_SinceIsTheLogStartAfterRotation()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        string path = Path.Combine(_dir, "node.log");
+        File.WriteAllLines(path,
+        [
+            Entry(now.AddMinutes(-12), "info", "log starts"),
+            Entry(now.AddMinutes(-5), "info", "chatter"),
+        ]);
+
+        RecentMessages recent = Diagnostics.RecentWarnings(path, now);
+
+        // Not "24 hours ago": the log only goes back 12 minutes.
+        Assert.Equal(now.AddMinutes(-12), recent.Since);
+        Assert.Equal(0, recent.Count);
+    }
+
+    [Fact]
+    public void RecentWarnings_StoppedNodeShowsTheDayBeforeItStopped()
+    {
+        DateTimeOffset now = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
+        DateTimeOffset stopped = now.AddDays(-3);
+        string path = Path.Combine(_dir, "node.log");
+        File.WriteAllLines(path,
+        [
+            Entry(stopped.AddHours(-30), "warning", "too old to count"),
+            Entry(stopped.AddHours(-1), "warning", "ledger write failed"),
+            Entry(stopped, "info", "last line"),
+        ]);
+        File.SetLastWriteTimeUtc(path, stopped.UtcDateTime);
+
+        DateTimeOffset until = Diagnostics.LogEnd(path, now);
+        RecentMessages recent = Diagnostics.RecentWarnings(path, until);
+
+        Assert.Equal(stopped, recent.Until);
+        Assert.Equal(stopped.AddHours(-24), recent.Since);
+        Assert.Equal(["ledger write failed"], recent.Messages.Select(m => m.Msg));
+    }
+
+    [Fact]
+    public void LogEnd_IsNowWithoutALog() =>
+        Assert.Equal(DateTimeOffset.UnixEpoch, Diagnostics.LogEnd(Path.Combine(_dir, "node.log"), DateTimeOffset.UnixEpoch));
+
+    [Fact]
     public void RecentWarnings_IsEmptyWithoutALog()
     {
         RecentMessages recent = Diagnostics.RecentWarnings(Path.Combine(_dir, "node.log"), DateTimeOffset.UtcNow);

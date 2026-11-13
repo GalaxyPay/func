@@ -108,8 +108,12 @@ namespace FUNC
             await Probe(node, "config", () => node.Config = ConfigSummary(Path.Combine(dataDir, "config.json")));
             await Probe(node, "algod", async () => node.Algod = await AlgodInfo(name, node.ServiceStatus == "Running", node.Errors));
             await Probe(node, "health", () => node.Health = HealthInfo(name));
-            await Probe(node, "recentErrors", () => node.RecentErrors = RecentErrors(HealthCollector.Store(name).Query("24h").Notes, DateTimeOffset.UtcNow));
-            await Probe(node, "recentWarnings", () => node.RecentWarnings = RecentWarnings(Path.Combine(dataDir, "node.log"), DateTimeOffset.UtcNow));
+            // The day before the log was last written, not before now: for a node that stopped
+            // a while ago, what it logged before stopping is what matters.
+            string logPath = Path.Combine(dataDir, "node.log");
+            DateTimeOffset until = LogEnd(logPath, DateTimeOffset.UtcNow);
+            await Probe(node, "recentErrors", () => node.RecentErrors = RecentErrors(HealthCollector.Store(name).Query("24h").Notes, until));
+            await Probe(node, "recentWarnings", () => node.RecentWarnings = RecentWarnings(logPath, until));
 
             if (name == "algorand")
             {
@@ -247,14 +251,22 @@ namespace FUNC
             };
         }
 
-        // Distinct errors from the last 24 hours, newest first. They come from the health
+        // When the node last wrote its log, or now if it has no log.
+        internal static DateTimeOffset LogEnd(string logPath, DateTimeOffset now)
+        {
+            if (!File.Exists(logPath)) return now;
+            DateTimeOffset written = File.GetLastWriteTimeUtc(logPath);
+            return written < now ? written : now;
+        }
+
+        // Distinct errors from the 24 hours up to `until`, newest first. They come from the health
         // history, which follows the log continuously, so they cover the whole day even
         // though a busy node rotates node.log every few hours.
-        internal static RecentMessages RecentErrors(IEnumerable<HealthNote> notes, DateTimeOffset now)
+        internal static RecentMessages RecentErrors(IEnumerable<HealthNote> notes, DateTimeOffset until)
         {
-            DateTimeOffset since = now - TimeSpan.FromHours(24);
-            RecentMessages recent = new() { Since = since };
-            foreach (HealthNote note in notes.Where(n => n.Level == "error" && n.Time.ToUniversalTime() >= since).OrderBy(n => n.Time))
+            DateTimeOffset since = until - TimeSpan.FromHours(24);
+            RecentMessages recent = new() { Since = since, Until = until };
+            foreach (HealthNote note in notes.Where(n => n.Level == "error" && n.Time.ToUniversalTime() >= since && n.Time.ToUniversalTime() <= until).OrderBy(n => n.Time))
             {
                 // A note is a run of one message; its Time is the latest in the run.
                 recent.Count += note.Count;
@@ -264,32 +276,46 @@ namespace FUNC
             return recent;
         }
 
-        // Distinct warnings from node.log, newest first. Warnings aren't kept in the health
-        // history, and a busy node writes more log than can be read back quickly, so Since
-        // says how far back this got: 24 hours ago at most.
-        internal static RecentMessages RecentWarnings(string logPath, DateTimeOffset now, int maxSearches = MaxLogSearches,
+        // Distinct warnings from the node log, newest first. Warnings aren't kept in the
+        // health history, so this searches node.log and then node.archive.log (where algod
+        // moves the log when it rotates it). A busy node writes more than can be read back
+        // quickly, so Since is the time of the oldest line actually read: 24 hours before Until at most.
+        internal static RecentMessages RecentWarnings(string logPath, DateTimeOffset until, int maxSearches = MaxLogSearches,
             int chunkBytes = LogSearch.ChunkBytes, long scanBytes = LogSearch.ScanBytes)
         {
-            DateTimeOffset since = now - TimeSpan.FromHours(24);
-            RecentMessages recent = new();
+            DateTimeOffset since = until - TimeSpan.FromHours(24);
+            RecentMessages recent = new() { Until = until };
             if (!File.Exists(logPath)) return recent;
+            string[] files = [logPath, Path.Combine(Path.GetDirectoryName(logPath)!, "node.archive.log")];
+
             List<LogLine> lines = [];
-            long? before = null;
-            bool done = false;
-            for (int i = 0; i < maxSearches && !done; i++)
+            int searches = 0;
+            bool reachedSince = false;
+            // Where reading stopped: the oldest line read so far.
+            string stopFile = logPath;
+            long stopOffset = 0;
+            foreach (string file in files.Where(File.Exists))
             {
-                LogPage page = LogSearch.Search(logPath, null, "warning", before, null, LogSearchLimit, chunkBytes, scanBytes);
-                lines.AddRange(page.Lines);
-                before = page.Next;
-                done = page.Next == null || page.Lines.Any(l => l.Time?.ToUniversalTime() < since);
+                long? before = null;
+                while (searches < maxSearches && !reachedSince)
+                {
+                    LogPage page = LogSearch.Search(file, null, "warning", before, null, LogSearchLimit, chunkBytes, scanBytes);
+                    searches++;
+                    lines.AddRange(page.Lines);
+                    reachedSince = page.Lines.Any(l => l.Time?.ToUniversalTime() < since);
+                    (stopFile, stopOffset) = (file, page.Next ?? 0);
+                    if (page.Next == null) break;
+                    before = page.Next;
+                }
+                if (searches >= maxSearches || reachedSince) break;
             }
-            // Out of searches: the window starts at the line the search stopped at.
-            recent.Since = done ? since : LogSearch.TimeAt(logPath, before!.Value)?.ToUniversalTime() ?? since;
-            if (recent.Since < since) recent.Since = since;
+
+            DateTimeOffset? stoppedAt = reachedSince ? since : LogSearch.TimeAt(stopFile, stopOffset)?.ToUniversalTime();
+            recent.Since = stoppedAt is { } t && t > since ? t : since;
 
             foreach (LogLine line in Enumerable.Reverse(lines))
             {
-                if (line.Level != "warning" || line.Time?.ToUniversalTime() is not { } time || time < recent.Since) continue;
+                if (line.Level != "warning" || line.Time?.ToUniversalTime() is not { } time || time < recent.Since || time > until) continue;
                 recent.Count++;
                 Tally(recent, Redact(line.Msg), time, 1);
             }
