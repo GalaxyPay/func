@@ -48,7 +48,7 @@ namespace FUNC
                 new DateTimeOffset(DateTime.UtcNow.AddDays(-1)),
                 new DateTimeOffset(DateTime.UtcNow.AddDays(365)));
 
-            return new X509Certificate2(certificate.Export(X509ContentType.Pkcs12, password), password, x509KeyStorageFlags);
+            return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pkcs12, password), password, x509KeyStorageFlags);
         }
     }
 }
