@@ -76,6 +76,12 @@ jobs:
           dotnet publish -o ../publish -r osx-x64
           cd ..
 
+      - name: Publish FUNC.Tray
+        run: |
+          cd FUNC.Tray
+          dotnet publish -o ../publish -r osx-x64
+          cd ..
+
       - name: Download webui Artifact
         uses: actions/download-artifact@v8
         with:
@@ -109,6 +115,12 @@ jobs:
       - name: Publish FUNC
         run: |
           cd FUNC
+          dotnet publish -o ../publish -r osx-arm64
+          cd ..
+
+      - name: Publish FUNC.Tray
+        run: |
+          cd FUNC.Tray
           dotnet publish -o ../publish -r osx-arm64
           cd ..
 
@@ -220,6 +232,12 @@ jobs:
           dotnet publish -o ..\publish
           cd ..
 
+      - name: Publish FUNC.Tray
+        run: |
+          cd FUNC.Tray
+          dotnet publish -o ..\publish
+          cd ..
+
       - name: Publish NodeService
         run: |
           cd NodeService
@@ -274,6 +292,12 @@ jobs:
       - name: Publish FUNC
         run: |
           cd FUNC
+          dotnet publish -o ..\publish -r win-arm64
+          cd ..
+
+      - name: Publish FUNC.Tray
+        run: |
+          cd FUNC.Tray
           dotnet publish -o ..\publish -r win-arm64
           cd ..
 

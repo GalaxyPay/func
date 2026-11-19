@@ -85,6 +85,14 @@ app.Lifetime.ApplicationStarted.Register(() =>
         {
             Console.WriteLine($"Service migration error: {ex.Message}");
         }
+        try
+        {
+            await TrayLauncher.EnsureWindowsTask();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Tray task error: {ex.Message}");
+        }
     });
 });
 

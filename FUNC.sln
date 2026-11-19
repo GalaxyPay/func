@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValarService", "ValarServic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FUNC.Tests", "FUNC.Tests\FUNC.Tests.csproj", "{80936353-D360-4327-ABEA-4AFE764BFD09}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FUNC.Tray", "FUNC.Tray\FUNC.Tray.csproj", "{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{80936353-D360-4327-ABEA-4AFE764BFD09}.Release|x64.Build.0 = Release|Any CPU
 		{80936353-D360-4327-ABEA-4AFE764BFD09}.Release|x86.ActiveCfg = Release|Any CPU
 		{80936353-D360-4327-ABEA-4AFE764BFD09}.Release|x86.Build.0 = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|x64.Build.0 = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Debug|x86.Build.0 = Debug|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|x64.ActiveCfg = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|x64.Build.0 = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|x86.ActiveCfg = Release|Any CPU
+		{2D3686AE-3F0D-4357-AB75-05A9DD42A6C8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

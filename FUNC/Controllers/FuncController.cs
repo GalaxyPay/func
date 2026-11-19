@@ -104,6 +104,18 @@ namespace FUNC.Controllers
             return Content(JsonSerializer.Serialize(report, DiagnosticsJson), "application/json");
         }
 
+        // GET: func/tray
+        // Status for the per-user tray / menu-bar helper: running version, available
+        // updates and broadcast message titles. Same access rule as diagnostics, so the
+        // helper on the node machine needs no session.
+        [AllowAnonymous]
+        [HttpGet("tray")]
+        public async Task<ActionResult<Models.TrayStatus>> GetTrayStatus()
+        {
+            if (!Diagnostics.Allowed(Request)) return Unauthorized();
+            return await Tray.Collect();
+        }
+
         // POST: func/update
         [HttpPost("update")]
         public async Task<ActionResult> FuncUpdate()

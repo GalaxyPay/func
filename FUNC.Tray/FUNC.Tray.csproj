@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- Per-user tray (Windows) / menu-bar (macOS) helper for the FUNC service.
+	     Windows: plain Win32 + WinRT toasts, native AOT. macOS: Avalonia (NSStatusItem/NSMenu). -->
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<!-- Each platform builds on its own CI runner. On Windows, pass -p:TrayTarget=mac
+		     to compile-check the macOS code. -->
+		<TrayTarget Condition="'$(TrayTarget)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">windows</TrayTarget>
+		<TargetFramework Condition="'$(TrayTarget)' == 'windows'">net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetFramework Condition="'$(TrayTarget)' != 'windows'">net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<AssemblyName>FUNC.Tray</AssemblyName>
+		<RootNamespace>FUNC.Tray</RootNamespace>
+		<DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+		<IsWindowsBuild>$(TargetFramework.Contains('-windows'))</IsWindowsBuild>
+	</PropertyGroup>
+
+	<!-- The version is set in one place, webui/package.json. -->
+	<PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)..\webui\package.json')">
+		<Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\webui\package.json')), '(?&lt;="version":\s*")[^"]+').Value)</Version>
+	</PropertyGroup>
+
+	<!-- Windows -->
+	<PropertyGroup Condition="'$(IsWindowsBuild)' == 'true'">
+		<ApplicationIcon>..\FUNC\node.ico</ApplicationIcon>
+		<ApplicationManifest>Windows\app.manifest</ApplicationManifest>
+		<PublishAot>true</PublishAot>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(IsWindowsBuild)' == 'true'">
+		<Compile Remove="Mac\**" />
+		<EmbeddedResource Include="Windows\*.ico" LogicalName="%(Filename)%(Extension)" />
+		<EmbeddedResource Include="..\assets\icon.png" LogicalName="icon.png" />
+	</ItemGroup>
+
+	<!-- macOS -->
+	<PropertyGroup Condition="'$(IsWindowsBuild)' != 'true'">
+		<SelfContained>true</SelfContained>
+		<PublishSingleFile Condition="'$(Configuration)' == 'Release'">true</PublishSingleFile>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<PublishTrimmed Condition="'$(Configuration)' == 'Release'">true</PublishTrimmed>
+		<BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(IsWindowsBuild)' != 'true'">
+		<Compile Remove="Windows\**" />
+		<AvaloniaResource Include="..\assets\icon.png" Link="Assets\icon.png" />
+		<PackageReference Include="Avalonia" Version="12.1.6" />
+		<PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+	</ItemGroup>
+
+	<!-- SkiaSharp/HarfBuzz ship ~100 MB of native .pdb files; don't publish them. -->
+	<Target Name="DropNativePdbs" AfterTargets="ComputeResolvedFilesToPublishList">
+		<ItemGroup>
+			<ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+		</ItemGroup>
+	</Target>
+
+</Project>

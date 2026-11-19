@@ -51,17 +51,21 @@ Filename: "cmd.exe"; Parameters: "/c md {commonappdata}\FUNC"
 Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch FUNC"
 
 [UninstallRun]
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM FUNC.Tray.exe"; Flags: runhidden; RunOnceId: "StopTray"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /F /TN ""FUNC Tray"""; Flags: runhidden; RunOnceId: "DelTrayTask"
 Filename: "sc.exe"; Parameters: "stop FUNC"; RunOnceId: "StopService"
 Filename: "sc.exe"; Parameters: "delete FUNC"; RunOnceId: "DelService"
 
 [Code]
-// On upgrade, stop the FUNC service so its files can be replaced
-// (required for silent upgrades, where in-use file errors abort setup).
+// On upgrade, stop the FUNC service and every user's tray helper so their files
+// can be replaced (required for silent upgrades, where in-use file errors abort
+// setup). The service relaunches the tray via its logon task when it restarts.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode, I: Integer;
 begin
   Result := '';
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM FUNC.Tray.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec(ExpandConstant('{sys}\sc.exe'), 'stop FUNC', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   // 1060 = service does not exist (fresh install); nothing to wait for.
   // sc stop is asynchronous, so poll until the service reports STOPPED.

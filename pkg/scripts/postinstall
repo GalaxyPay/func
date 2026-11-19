@@ -35,9 +35,16 @@ FRESH_INSTALL=1
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
 launchctl bootstrap system /Library/LaunchDaemons/func.api.plist
 sleep 2
-if [ "$FRESH_INSTALL" -eq 1 ]; then
-  console_uid=$(stat -f %u /dev/console)
-  if [ "$console_uid" -gt 0 ]; then
+# Menu-bar helper: starts at every user's login; start it now for whoever is signed in
+# (preinstall stopped it for the upgrade).
+cp /opt/func/Templates/func.tray.plist /Library/LaunchAgents
+chown root:wheel /Library/LaunchAgents/func.tray.plist
+chmod 644 /Library/LaunchAgents/func.tray.plist
+console_uid=$(stat -f %u /dev/console)
+if [ "$console_uid" -gt 0 ]; then
+  launchctl bootstrap "gui/$console_uid" /Library/LaunchAgents/func.tray.plist 2>/dev/null \
+    || launchctl kickstart -k "gui/$console_uid/func.tray"
+  if [ "$FRESH_INSTALL" -eq 1 ]; then
     launchctl asuser "$console_uid" sudo -u "#$console_uid" open http://localhost:3536
   fi
 fi

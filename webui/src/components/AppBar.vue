@@ -209,7 +209,19 @@ function openMessages(e: MouseEvent) {
   else showMessages.value = true;
 }
 
+// The tray / menu-bar helper links here with ?open=messages or ?open=settings.
+function openFromQuery() {
+  const url = new URL(window.location.href);
+  const open = url.searchParams.get("open");
+  if (!open) return;
+  if (open === "messages") showMessages.value = true;
+  else if (open === "settings") showSettings.value = true;
+  url.searchParams.delete("open");
+  window.history.replaceState(window.history.state, "", url);
+}
+
 onBeforeMount(() => {
+  openFromQuery();
   store.refreshPart++;
   store
     .fetchMessages()
