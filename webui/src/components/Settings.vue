@@ -10,7 +10,13 @@
         <div class="group">
           <div class="set-row">
             <div class="set-title">Password</div>
-            <div class="set-desc">Required to control this node</div>
+            <div class="set-desc">
+              Required to control this node<template
+                v-if="store.auth?.walletEnabled"
+                >. Accounts with participation keys on this node can also sign
+                in with their wallet</template
+              >
+            </div>
             <div class="set-actions">
               <v-btn
                 variant="outlined"
@@ -201,7 +207,16 @@
         <v-form ref="passwordForm" @submit.prevent="changePassword()">
           <v-card-title>Change Password</v-card-title>
           <v-card-text>
+            <input
+              type="text"
+              name="username"
+              autocomplete="username"
+              :value="username"
+              hidden
+              readonly
+            />
             <v-text-field
+              v-if="!viaWallet"
               v-model="currentPassword"
               label="Current Password"
               type="password"
@@ -230,6 +245,27 @@
             <div class="footnote mt-2">
               Every other browser and device will be signed out.
             </div>
+            <template v-if="store.auth?.walletEnabled">
+              <a
+                v-if="!viaWallet"
+                href="#"
+                class="d-inline-block text-body-2 mt-3"
+                @click.prevent="viaWallet = true"
+              >
+                Forgot it? Confirm with your wallet instead
+              </a>
+              <div v-else class="mt-4">
+                <div class="text-body-2 mb-2">
+                  Sign with an account that has participation keys on this
+                  node.
+                </div>
+                <WalletSignIn
+                  label="Confirm with"
+                  :submit="changePasswordWithWallet"
+                  :ready="passwordFormValid"
+                />
+              </div>
+            </template>
           </v-card-text>
           <v-card-actions>
             <v-btn
@@ -238,6 +274,7 @@
               @click="showPassword = false"
             />
             <v-btn
+              v-if="!viaWallet"
               type="submit"
               text="Change"
               color="primary"
@@ -253,7 +290,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
-import { NodeUpdateMode } from "@/types";
+import { NodeUpdateMode, type WalletProof } from "@/types";
 import { copyToClipboard, errorMessage, isNewer } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
@@ -286,11 +323,37 @@ const newPassword = ref("");
 const confirmPassword = ref("");
 const passwordError = ref("");
 const changingPassword = ref(false);
+// Forgot the current password: prove ownership with a wallet signature instead.
+const viaWallet = ref(false);
+const username = `FUNC (${location.hostname})`;
+watch(showPassword, (open) => {
+  if (!open) viaWallet.value = false;
+});
 const required = (v: string) => !!v || "Required";
 const minLength = (v: string) =>
   (v?.length ?? 0) >= 8 || "At least 8 characters";
 const matches = (v: string) =>
   v === newPassword.value || "Passwords do not match";
+
+async function passwordFormValid(): Promise<boolean> {
+  return (await passwordForm.value.validate()).valid;
+}
+
+async function changePasswordWithWallet(proof: WalletProof) {
+  const { data } = await store.api.put("auth/password", {
+    wallet: proof,
+    newPassword: newPassword.value,
+  });
+  passwordChanged(data.token);
+}
+
+function passwordChanged(token: string) {
+  // The change signs out every session; keep this one on the new token.
+  store.setApiToken(token);
+  showPassword.value = false;
+  currentPassword.value = newPassword.value = confirmPassword.value = "";
+  store.setSnackbar("Password changed", "success");
+}
 
 async function changePassword() {
   const { valid } = await passwordForm.value.validate();
@@ -301,11 +364,7 @@ async function changePassword() {
       currentPassword: currentPassword.value,
       newPassword: newPassword.value,
     });
-    // The change signs out every session; keep this one on the new token.
-    store.setApiToken(data.token);
-    showPassword.value = false;
-    currentPassword.value = newPassword.value = confirmPassword.value = "";
-    store.setSnackbar("Password changed", "success");
+    passwordChanged(data.token);
   } catch (err: any) {
     if (err?.response?.status === 401) {
       passwordError.value = "Current password is incorrect";

@@ -4,7 +4,7 @@ Open Settings with the gear icon at the top right. A dot on the icon means there
 
 | Setting | What it does |
 | --- | --- |
-| **Password** | Change your password, or sign out of this browser. |
+| **Password** | Change your password, or sign out of this browser. If you've forgotten it, you can confirm the change with your wallet instead (see [Password](/password#forgot-your-password)). |
 | **FUNC Version** | The installed version of FUNC. An **Update** button appears when a newer version is available. |
 | **Node Version** | The installed version of the node software, with an **Update** button when there's a newer one. In **Manual** mode, a menu lets you pick any release instead. |
 | **Node Updates** | How the node software is kept up to date: **Auto**, **Notify** or **Manual**. See [Node updates](#node-updates). |

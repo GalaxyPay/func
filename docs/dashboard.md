@@ -30,7 +30,7 @@ While a new node syncs, a **Fast Catchup** section shows its progress through ea
 
 ## Networks
 
-FUNC shows Algorand by default. To run a Voi node too, turn on **Show Alternative Networks** in [Settings](/settings), and a tab appears for each network.
+FUNC shows Algorand by default. To run a Voi node, turn on **Show Alternative Networks** in [Settings](/settings), and a tab appears for each network.
 
 ::: tip
 The dashboard doesn't need to be open for the node to run. It's more efficient to close it when you're not using it.

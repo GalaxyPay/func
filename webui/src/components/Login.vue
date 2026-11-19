@@ -12,6 +12,16 @@
             in from this computer and from other devices on your network.
           </p>
           <p class="mb-4" v-else>Enter your FUNC password to continue.</p>
+          <!-- Lets password managers (iOS, Android, browsers) save and fill the
+               password; most won't without a username field. -->
+          <input
+            type="text"
+            name="username"
+            autocomplete="username"
+            :value="username"
+            hidden
+            readonly
+          />
           <v-text-field
             v-model="password"
             label="Password"
@@ -34,6 +44,10 @@
             :type="reveal ? 'text' : 'password'"
             :rules="[required, matches]"
           />
+          <template v-if="!setupMode && store.auth?.walletEnabled">
+            <div class="text-center text-medium-emphasis my-3">or</div>
+            <WalletSignIn label="Sign in with" :submit="walletSignIn" />
+          </template>
         </v-card-text>
         <v-card-actions>
           <v-btn
@@ -60,6 +74,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { WalletProof } from "@/types";
 import { mdiEye, mdiEyeOff, mdiHelpCircleOutline } from "@mdi/js";
 
 const store = useAppStore();
@@ -71,6 +86,7 @@ const loading = ref(false);
 const error = ref("");
 
 const setupMode = computed(() => store.auth?.hasPassword === false);
+const username = `FUNC (${location.hostname})`;
 
 const required = (v: string) => !!v || "Required";
 const minLength = (v: string) =>
@@ -96,6 +112,12 @@ async function refresh() {
   } catch {
     // Service unreachable; the polling components report that.
   }
+}
+
+async function walletSignIn(proof: WalletProof) {
+  const { data } = await store.api.post("auth/wallet-login", proof);
+  store.setApiToken(data.token);
+  location.reload();
 }
 
 async function submit() {

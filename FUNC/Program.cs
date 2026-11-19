@@ -4,6 +4,9 @@ using FUNC.Health;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms;
 
+// `FUNC --reset-password` (as admin/root) forgets the password; nothing else runs.
+if (args.Contains("--reset-password")) Environment.Exit(Auth.ResetFromCommandLine());
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Developer overrides live in <appDataDir>/func.json so they survive updates:
