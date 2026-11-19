@@ -11,6 +11,6 @@ FUNC won't create its own Algorand service alongside one of these. If FUNC doesn
 How FUNC's options work with an existing node:
 
 - **Start / Stop Node** controls the node's existing service: `algorand` on Linux, `com.algorand.algod` on Mac, or `goal node start/stop` if it has no service.
-- **Update** in Settings uses whatever installed the node: `apt`, `dnf`, `brew` or `update.sh`. Only the latest version is offered.
+- **Update** in Settings uses whatever installed the node: `apt`, `dnf`, `brew` or `update.sh`. Only the latest version is offered. The **Node Updates** setting isn't available: FUNC alerts you when a new version is out, and you install it with **Update**.
 - **Node Data Directory** moves the data and leaves a link at the old path. The service, NodeKit and `goal` keep finding the node there without changes, including any `-d` or `ALGORAND_DATA` you already use.
 - **Delete Node Data** deletes the node's data, including participation keys, and uninstalls the existing node (for example `apt-get remove algorand`). FUNC can then create its own node.
