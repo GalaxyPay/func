@@ -1,6 +1,7 @@
 // Utilities
 import { AlgodFunc } from "@/clients";
 import { AuthStatus, GoalVersion, Message, SnackBar } from "@/types";
+import { isNewer } from "@/utils";
 import algosdk, { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
@@ -102,8 +103,7 @@ export const useAppStore = defineStore("app", {
     async refreshGoalVersion() {
       const { data } = await this.api.get("goal/version");
       this.goalVersion = data;
-      this.nodeUpdateAvailable =
-        !!data?.latest && data.latest !== data.installed;
+      this.nodeUpdateAvailable = isNewer(data?.latest, data?.installed);
     },
     async signOut(everywhere = false) {
       try {

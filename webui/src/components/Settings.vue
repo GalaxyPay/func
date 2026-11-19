@@ -243,7 +243,7 @@
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
 import { AutoUpdate } from "@/types";
-import { copyToClipboard, errorMessage } from "@/utils";
+import { copyToClipboard, errorMessage, isNewer } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
@@ -384,9 +384,9 @@ const githubClient = axios.create({
 async function getVersion() {
   try {
     const { data } = await githubClient.get("latest");
-    if (data?.name) {
-      funcLatest.value = data.name.slice(1);
-      store.funcUpdateAvailable = funcLatest.value !== appVersion;
+    if (data?.tag_name) {
+      funcLatest.value = data.tag_name.replace(/^v/, "");
+      store.funcUpdateAvailable = isNewer(funcLatest.value, appVersion);
     }
   } catch (err: any) {
     funcCheckFailed.value = true;
@@ -395,8 +395,7 @@ async function getVersion() {
   }
 
   try {
-    const goalVersion = await store.api.get("goal/version");
-    store.goalVersion = goalVersion.data;
+    await store.refreshGoalVersion();
     if (store.goalVersion?.installed) store.ready = true;
     else {
       if (!init) {
@@ -404,9 +403,6 @@ async function getVersion() {
         updateNodeLatest(true);
       }
     }
-    store.nodeUpdateAvailable =
-      !!store.goalVersion?.latest &&
-      store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     store.ready = true;
     console.error(err);
