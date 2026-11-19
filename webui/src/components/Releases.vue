@@ -12,7 +12,9 @@
           :key="release.name"
           :title="release.name"
           :subtitle="release.unsupported ?? undefined"
+          :lines="release.unsupported ? 'two' : 'one'"
           :disabled="!!release.unsupported"
+          class="release"
           @click="emit('release', release.name)"
         />
       </v-list>
@@ -27,7 +29,8 @@ import { mdiChevronDown } from "@mdi/js";
 const emit = defineEmits(["release"]);
 
 const store = useAppStore();
-// unsupported: why the release can't follow the network's consensus protocol.
+// unsupported: set on the last entry only, the newest release that can't follow
+// the network's consensus protocol; older ones are left out.
 const releases = ref<{ name: string; unsupported: string | null }[]>();
 
 onMounted(async () => {
@@ -40,3 +43,9 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.release {
+  max-width: 320px;
+}
+</style>

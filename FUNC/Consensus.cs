@@ -69,17 +69,25 @@ namespace FUNC
 
         // Why a release can't follow the network, or null if it can or that can't be determined.
         public static async Task<string?> Blocker(string tag, Requirement? req) =>
-            req == null ? null : Blocker(await ReleaseProtocols(tag), req);
+            await Missing(tag, req) is { } missing ? $"Doesn't support {missing}" : null;
 
-        internal static string? Blocker(HashSet<string>? protocols, Requirement req)
+        internal static string? Blocker(HashSet<string>? protocols, Requirement req) =>
+            Missing(protocols, req) is { } missing ? $"Doesn't support {missing}" : null;
+
+        // The protocol a release lacks ("the consensus upgrade at round 1,000"), or null if it
+        // has them all or that can't be determined.
+        public static async Task<string?> Missing(string tag, Requirement? req) =>
+            req == null ? null : Missing(await ReleaseProtocols(tag), req);
+
+        internal static string? Missing(HashSet<string>? protocols, Requirement req)
         {
             if (protocols == null) return null;
             if (!protocols.Contains(req.Current))
-                return "Doesn't support the network's current consensus protocol";
+                return "the network's current consensus protocol";
             if (req.Next != null && !protocols.Contains(req.Next))
                 return req.NextRound is { } r
-                    ? $"Doesn't support the consensus upgrade at round {r:N0}"
-                    : "Doesn't support the approved consensus upgrade";
+                    ? $"the consensus upgrade at round {r:N0}"
+                    : "the approved consensus upgrade";
             return null;
         }
 

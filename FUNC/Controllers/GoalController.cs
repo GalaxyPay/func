@@ -95,13 +95,38 @@ namespace FUNC.Controllers
                     .Where(t => t.Contains("stable", StringComparison.OrdinalIgnoreCase))
                     .ToList();
                 var req = await Consensus.AlgorandRequirement();
-                var blockers = await Task.WhenAll(tags.Select(t => Consensus.Blocker(t, req)));
-                return tags.Select((t, i) => new ReleaseOption { Name = t, Unsupported = blockers[i] }).ToList();
+                var missing = await Task.WhenAll(tags.Select(t => Consensus.Missing(t, req)));
+                return ReleaseOptions(tags, missing);
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // Newest version first, ending at the newest release that can't follow the network:
+        // protocol support only grows from release to release, so every older one can't
+        // either, and listing them all would bury the ones that can be installed.
+        internal static List<ReleaseOption> ReleaseOptions(List<string> tags, string?[] missing)
+        {
+            List<ReleaseOption> options = [];
+            foreach (var (tag, lacks) in tags.Zip(missing).OrderByDescending(r => TagVersion(r.First)))
+            {
+                if (lacks != null)
+                {
+                    options.Add(new ReleaseOption { Name = tag, Unsupported = $"This and earlier versions don't support {lacks}" });
+                    break;
+                }
+                options.Add(new ReleaseOption { Name = tag });
+            }
+            return options;
+        }
+
+        // "v4.0.1-stable" → 4.0.1. Unparseable tags sort last.
+        private static Version TagVersion(string tag)
+        {
+            int dash = tag.IndexOf('-');
+            return Version.TryParse(tag[(tag.StartsWith('v') ? 1 : 0)..(dash < 0 ? tag.Length : dash)], out var v) ? v : new Version();
         }
 
         // POST: goal/update

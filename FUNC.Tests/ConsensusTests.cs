@@ -101,4 +101,35 @@ public class ConsensusTests
         await Assert.ThrowsAnyAsync<Exception>(() => Diagnostics.AlgodGet(Consensus.statusHttp, port, "/v2/status", "t"));
         Assert.True(sw.ElapsedMilliseconds < 500, $"took {sw.ElapsedMilliseconds} ms");
     }
+
+    private const string Lacks = "the network's current consensus protocol";
+
+    [Fact]
+    public void ReleaseOptions_EndAtNewestUnsupported()
+    {
+        var options = FUNC.Controllers.GoalController.ReleaseOptions(
+            ["v4.1.0-stable", "v4.0.2-stable", "v4.0.1-stable", "v3.27.0-stable"],
+            [null, null, Lacks, Lacks]);
+        Assert.Equal(["v4.1.0-stable", "v4.0.2-stable", "v4.0.1-stable"], options.Select(o => o.Name));
+        Assert.Null(options[1].Unsupported);
+        Assert.Equal($"This and earlier versions don't support {Lacks}", options[2].Unsupported);
+    }
+
+    // GitHub lists by date; a late hotfix on an old line mustn't cut off newer versions.
+    [Fact]
+    public void ReleaseOptions_OrderByVersionNotDate()
+    {
+        var options = FUNC.Controllers.GoalController.ReleaseOptions(
+            ["v3.27.1-stable", "v4.1.0-stable", "v4.0.10-stable", "v4.0.9-stable"],
+            [Lacks, null, null, Lacks]);
+        Assert.Equal(["v4.1.0-stable", "v4.0.10-stable", "v4.0.9-stable"], options.Select(o => o.Name));
+    }
+
+    [Fact]
+    public void ReleaseOptions_AllSupportedWhenUnknown()
+    {
+        var options = FUNC.Controllers.GoalController.ReleaseOptions(["v4.1.0-stable", "v4.0.2-stable"], [null, null]);
+        Assert.All(options, o => Assert.Null(o.Unsupported));
+        Assert.Equal(2, options.Count);
+    }
 }
