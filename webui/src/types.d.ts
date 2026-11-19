@@ -55,10 +55,18 @@ export interface GoalVersion {
   installed: string;
   latest: string;
   manager: string;
+  updates: NodeUpdates;
+  // Why the installed version can't follow the network (it will stall at an
+  // approved consensus upgrade), or null.
+  unsupported: string | null;
 }
 
-export interface AutoUpdate {
-  enabled: boolean;
+// auto: FUNC installs new releases. notify: alerts, the user installs.
+// manual: stays on the version the user picked, no alerts.
+export type NodeUpdateMode = "auto" | "notify" | "manual";
+
+export interface NodeUpdates {
+  mode: NodeUpdateMode;
   lastCheck: string | null;
   lastError: string | null;
   lastUpdated: string | null;

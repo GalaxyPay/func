@@ -11,6 +11,8 @@ internal sealed class TrayState
     public HashSet<ulong> NotifiedMessageIds { get; set; } = [];
     public string? NotifiedFuncVersion { get; set; }
     public string? NotifiedNodeVersion { get; set; }
+    // The installed node's consensus problem last alerted, so each one notifies once.
+    public string? NotifiedUnsupported { get; set; }
 
     // %LOCALAPPDATA%\FUNC on Windows, ~/Library/Application Support/FUNC on macOS.
     private static string FilePath =>

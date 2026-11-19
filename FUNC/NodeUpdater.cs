@@ -4,46 +4,54 @@ using FUNC.Models;
 
 namespace FUNC
 {
-    // Keeps FUNC's own node binaries on the latest release, when the user turns it on.
-    // Adopted nodes are skipped: their package manager or update.sh owns their binaries.
+    // Holds the node update mode, and in auto mode keeps FUNC's own node binaries on the
+    // latest release. Adopted nodes are skipped: their package manager or update.sh owns their binaries.
     public sealed class NodeUpdater(ILogger<NodeUpdater> logger) : BackgroundService
     {
         private static readonly string settingsPath = Path.Combine(Utils.appDataDir, "node-update.json");
         private static readonly TimeSpan FirstCheck = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
 
-        // Released when auto-update is turned on, so the check runs right away.
+        // Released when auto mode is turned on, so the check runs right away.
         private static readonly SemaphoreSlim wake = new(0, 1);
 
-        private static bool enabled = LoadEnabled();
+        private static string mode = LoadMode();
         private static DateTimeOffset? lastCheck;
         private static string? lastError;
         private static string? lastUpdated;
 
-        public static AutoUpdate Status() => new()
+        public static string Mode => mode;
+
+        public static NodeUpdates Status() => new()
         {
-            Enabled = enabled,
+            Mode = mode,
             LastCheck = lastCheck,
             LastError = lastError,
             LastUpdated = lastUpdated,
         };
 
-        public static void SetEnabled(bool value)
+        public static void SetMode(string value)
         {
-            if (value == enabled) return;
-            File.WriteAllText(settingsPath, JsonSerializer.Serialize(new { enabled = value }));
-            enabled = value;
-            if (value && wake.CurrentCount == 0) wake.Release();
+            if (!NodeUpdateMode.IsValid(value)) throw new ArgumentException($"Unknown node update mode: {value}");
+            if (value == mode) return;
+            File.WriteAllText(settingsPath, JsonSerializer.Serialize(new { mode = value }));
+            mode = value;
+            if (value == NodeUpdateMode.Auto && wake.CurrentCount == 0) wake.Release();
         }
 
-        private static bool LoadEnabled()
+        private static string LoadMode()
         {
-            try
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(settingsPath));
-                return doc.RootElement.GetProperty("enabled").GetBoolean();
-            }
-            catch { return false; }
+            try { return ParseMode(File.ReadAllText(settingsPath)); }
+            catch { return NodeUpdateMode.Notify; }
+        }
+
+        // {"mode":"auto"}. Anything missing or unknown falls back to notify.
+        internal static string ParseMode(string json)
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("mode", out var m) && NodeUpdateMode.IsValid(m.GetString())
+                ? m.GetString()!
+                : NodeUpdateMode.Notify;
         }
 
         protected override async Task ExecuteAsync(CancellationToken ct)
@@ -53,7 +61,7 @@ namespace FUNC
             {
                 try { await wake.WaitAsync(wait, ct); }
                 catch (OperationCanceledException) { return; }
-                if (enabled) await Check();
+                if (mode == NodeUpdateMode.Auto) await Check();
                 wait = CheckInterval;
             }
         }

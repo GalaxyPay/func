@@ -12,4 +12,13 @@ public class NodeUpdaterTests
     [InlineData("5.0.5", "", false)]        // nothing installed
     public void IsNewer(string latest, string installed, bool expected) =>
         Assert.Equal(expected, NodeUpdater.IsNewer(latest, installed));
+
+    [Theory]
+    [InlineData("""{"mode":"auto"}""", "auto")]
+    [InlineData("""{"mode":"manual"}""", "manual")]
+    [InlineData("""{"mode":"notify"}""", "notify")]
+    [InlineData("""{"mode":"bogus"}""", "notify")]
+    [InlineData("{}", "notify")]
+    public void ParseMode(string json, string expected) =>
+        Assert.Equal(expected, NodeUpdater.ParseMode(json));
 }

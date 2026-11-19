@@ -73,4 +73,17 @@ public class ConsensusTests
     [Fact]
     public void Blocker_AllowsWhenReleaseSourceUnknown() =>
         Assert.Null(Consensus.Blocker((HashSet<string>?)null, new(V44, null, null)));
+
+    [Fact]
+    public void InstalledBlocker_UnsupportedUpgrade() =>
+        Assert.Contains("upgrade at round",
+            Consensus.InstalledBlocker(JsonNode.Parse("""{"next-version-supported":false,"next-version-round":56000000}""") as JsonObject));
+
+    [Fact]
+    public void InstalledBlocker_SupportedUpgrade() =>
+        Assert.Null(Consensus.InstalledBlocker(JsonNode.Parse("""{"next-version-supported":true,"next-version-round":56000000}""") as JsonObject));
+
+    [Fact]
+    public void InstalledBlocker_NodeUnreachable() =>
+        Assert.Null(Consensus.InstalledBlocker(null));
 }

@@ -30,7 +30,14 @@ namespace FUNC.Controllers
                 string latest = string.Empty;
                 try { latest = await LatestVersion(); } catch { }
 
-                return new GoalVersion() { Installed = installed, Latest = latest, Manager = ext?.Manager ?? "func" };
+                return new GoalVersion()
+                {
+                    Installed = installed,
+                    Latest = latest,
+                    Manager = ext?.Manager ?? "func",
+                    Updates = NodeUpdater.Status(),
+                    Unsupported = await Consensus.InstalledBlocker(),
+                };
             }
             catch (Exception ex)
             {
@@ -57,19 +64,15 @@ namespace FUNC.Controllers
             return latest.TagName[1..latest.TagName.IndexOf("-")];
         }
 
-        // GET: goal/autoupdate
-        [HttpGet("autoupdate")]
-        public ActionResult<AutoUpdate> GetAutoUpdate() => NodeUpdater.Status();
-
-        // PUT: goal/autoupdate
-        [HttpPut("autoupdate")]
-        public ActionResult<AutoUpdate> SetAutoUpdate(AutoUpdateSettings model)
+        // PUT: goal/updates
+        [HttpPut("updates")]
+        public ActionResult<NodeUpdates> SetUpdates(NodeUpdatesSettings model)
         {
             try
             {
-                if (model.Enabled && External.Load() != null)
+                if (model.Mode != NodeUpdateMode.Notify && External.Load() != null)
                     throw new Exception("An existing node is updated by its own installer");
-                NodeUpdater.SetEnabled(model.Enabled);
+                NodeUpdater.SetMode(model.Mode);
                 return NodeUpdater.Status();
             }
             catch (Exception ex)
@@ -114,13 +117,14 @@ namespace FUNC.Controllers
                 else
                 {
                     await Install(model.Name);
-                    // An older version would be replaced by the next auto-update.
-                    if (model.Name != "latest")
+                    // Picking an older version means staying on it: no auto-update replacing it,
+                    // no alerts nagging about it.
+                    if (model.Name != "latest" && NodeUpdater.Mode != NodeUpdateMode.Manual)
                     {
                         string installed = await InstalledVersion(Path.Combine(Utils.appDataDir, "bin"));
                         string latest = string.Empty;
                         try { latest = await LatestVersion(); } catch { }
-                        if (latest.Length == 0 || NodeUpdater.IsNewer(latest, installed)) NodeUpdater.SetEnabled(false);
+                        if (latest.Length == 0 || NodeUpdater.IsNewer(latest, installed)) NodeUpdater.SetMode(NodeUpdateMode.Manual);
                     }
                 }
                 return Ok();

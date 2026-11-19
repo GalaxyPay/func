@@ -16,8 +16,11 @@ namespace FUNC.Models
         public string? Installed { get; set; }
         public string? Latest { get; set; }
         public bool Available { get; set; }
-        // FUNC installs it on its own (node auto-update), so there's nothing to do.
-        public bool Automatic { get; set; }
+        // The user wants to hear about it: node updates are in notify mode, or the node is
+        // adopted (its own installer updates it). False in auto mode (FUNC installs it) and manual mode.
+        public bool Notify { get; set; }
+        // Why the installed version can't follow the network; alerted whatever the mode.
+        public string? Unsupported { get; set; }
     }
 
     public class TrayMessage

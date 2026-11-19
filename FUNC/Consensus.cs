@@ -20,7 +20,12 @@ namespace FUNC
         private static readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
         // What the algorand node reports, or null when it isn't reachable (then nothing is blocked).
-        public static async Task<Requirement?> AlgorandRequirement()
+        public static async Task<Requirement?> AlgorandRequirement() => FromStatus(await AlgorandStatus());
+
+        // Why the installed node can't follow the network, or null if it can or the node isn't reachable.
+        public static async Task<string?> InstalledBlocker() => InstalledBlocker(await AlgorandStatus());
+
+        private static async Task<JsonObject?> AlgorandStatus()
         {
             int port = Node.AlgodPort("algorand");
             string token = Node.AlgodToken("algorand");
@@ -28,9 +33,21 @@ namespace FUNC
             try
             {
                 using HttpClient c = new() { Timeout = TimeSpan.FromSeconds(3) };
-                return FromStatus(await Diagnostics.AlgodGet(c, port, "/v2/status", token));
+                return await Diagnostics.AlgodGet(c, port, "/v2/status", token);
             }
             catch { return null; }
+        }
+
+        // algod knows whether its own build supports an approved upgrade: next-version-supported
+        // is false when it doesn't, and the node will stall at next-version-round.
+        internal static string? InstalledBlocker(JsonObject? status)
+        {
+            if (status?["next-version-supported"] is not JsonValue s || !s.TryGetValue(out bool supported) || supported)
+                return null;
+            ulong? round = status["next-version-round"] is JsonValue v && v.TryGetValue(out ulong r) ? r : null;
+            return round is { } at
+                ? $"Doesn't support the consensus upgrade at round {at:N0}"
+                : "Doesn't support the approved consensus upgrade";
         }
 
         // algod reports next-version equal to last-version when no upgrade is pending.

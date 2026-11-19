@@ -139,7 +139,14 @@ async function mock(route) {
   if (url.hostname === FUNC_HOST) {
     if (url.port === "3536") {
       if (p === "/auth") return json(route, { hasPassword: true, signedIn: true });
-      if (p === "/goal/version") return json(route, { installed: NODE_VERSION, latest: NODE_VERSION, manager: "func" });
+      if (p === "/goal/version")
+        return json(route, {
+          installed: NODE_VERSION,
+          latest: NODE_VERSION,
+          manager: "func",
+          updates: { mode: "notify", lastCheck: null, lastError: null, lastUpdated: null },
+          unsupported: null,
+        });
       if (/^\/algorand\/health$/i.test(p)) return json(route, health);
       if (/^\/algorand$/i.test(p))
         return json(route, {

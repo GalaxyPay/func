@@ -74,7 +74,8 @@ namespace FUNC
                             Installed = installed,
                             Latest = nodeLatest.Value,
                             Available = NodeUpdater.IsNewer(nodeLatest.Value, installed),
-                            Automatic = ext == null && NodeUpdater.Status().Enabled,
+                            Notify = ext != null || NodeUpdater.Mode == NodeUpdateMode.Notify,
+                            Unsupported = await Consensus.InstalledBlocker(),
                         };
                     }
                 }

@@ -1,6 +1,12 @@
 // Utilities
 import { AlgodFunc } from "@/clients";
-import { AuthStatus, GoalVersion, Message, SnackBar } from "@/types";
+import {
+  AuthStatus,
+  GoalVersion,
+  Message,
+  NodeUpdateMode,
+  SnackBar,
+} from "@/types";
 import { isNewer } from "@/utils";
 import algosdk, { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
@@ -61,9 +67,6 @@ export const useAppStore = defineStore("app", {
     showMachineName: (localStorage.getItem("showMachineName") === "true") as
       | boolean
       | null,
-    showNodeVersions: (localStorage.getItem("showNodeVersions") === "true") as
-      | boolean
-      | null,
     machineName: undefined as string | undefined,
     isWindows: undefined as boolean | undefined,
     resetDates: JSON.parse(localStorage.getItem("resetDates") || "[]") as {
@@ -84,7 +87,16 @@ export const useAppStore = defineStore("app", {
     },
     // Manual version selection only applies to binaries FUNC installs itself.
     manualNodeVersions(): boolean {
-      return !!this.showNodeVersions && !this.nodeAdopted;
+      return !this.nodeAdopted && this.goalVersion?.updates.mode === "manual";
+    },
+    // Something about the node's version needs the user: a release they asked to
+    // hear about (notify mode, or an adopted node), or a version that will stall.
+    nodeVersionAlert(state): boolean {
+      if (state.goalVersion?.unsupported) return true;
+      return (
+        state.nodeUpdateAvailable &&
+        (this.nodeAdopted || state.goalVersion?.updates.mode === "notify")
+      );
     },
     unreadCount(state): number {
       const read = new Set(state.readMessages);
@@ -101,9 +113,26 @@ export const useAppStore = defineStore("app", {
       return data as AuthStatus;
     },
     async refreshGoalVersion() {
-      const { data } = await this.api.get("goal/version");
+      const { data } = await this.api.get<GoalVersion>("goal/version");
       this.goalVersion = data;
       this.nodeUpdateAvailable = isNewer(data?.latest, data?.installed);
+      await this.migrateNodeVersionsSetting();
+    },
+    async setNodeUpdateMode(mode: NodeUpdateMode) {
+      const { data } = await this.api.put("goal/updates", { mode });
+      if (this.goalVersion) this.goalVersion.updates = data;
+    },
+    // Manual version selection used to be a per-browser setting; it's now the
+    // service's manual update mode. Carry it over once, unless already changed.
+    async migrateNodeVersionsSetting() {
+      if (localStorage.getItem("showNodeVersions") !== "true") return;
+      try {
+        if (!this.nodeAdopted && this.goalVersion?.updates.mode === "notify")
+          await this.setNodeUpdateMode("manual");
+        localStorage.removeItem("showNodeVersions");
+      } catch (err) {
+        console.error(err);
+      }
     },
     async signOut(everywhere = false) {
       try {

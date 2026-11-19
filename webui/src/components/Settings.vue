@@ -78,6 +78,10 @@
                   Up to date
                 </span>
               </template>
+              <div v-if="store.goalVersion?.unsupported" class="text-error">
+                {{ store.goalVersion.unsupported }}. Update the node or it will
+                stall.
+              </div>
             </div>
             <div class="set-actions">
               <Releases
@@ -99,20 +103,37 @@
               </v-btn>
             </div>
           </div>
-          <div v-if="store.goalVersion && !store.nodeAdopted" class="set-row">
-            <div class="set-title">Auto-Update Node</div>
+          <div v-if="updates && !store.nodeAdopted" class="set-row">
+            <div class="set-title">Node Updates</div>
             <div class="set-desc">
-              <span v-if="autoUpdate?.lastError" class="text-error">
-                Last update failed: {{ autoUpdate.lastError }}
+              <span
+                v-if="updates.mode === 'auto' && updates.lastError"
+                class="text-error"
+              >
+                Last update failed: {{ updates.lastError }}
               </span>
-              <span v-else>Install new node versions when they're released</span>
+              <span v-else>{{ updateModes[updates.mode].desc }}</span>
             </div>
             <div class="set-actions">
-              <v-switch
-                :model-value="!!autoUpdate?.enabled"
-                :disabled="!autoUpdate"
-                @click.prevent="setAutoUpdate(!autoUpdate?.enabled)"
-              />
+              <v-btn-toggle
+                :model-value="updates.mode"
+                @update:model-value="setUpdateMode"
+                :disabled="settingMode || store.downloading"
+                mandatory
+                divided
+                density="compact"
+                variant="outlined"
+                class="mode"
+              >
+                <v-btn
+                  v-for="(m, key) in updateModes"
+                  :key="key"
+                  :value="key"
+                  size="x-small"
+                >
+                  {{ m.title }}
+                </v-btn>
+              </v-btn-toggle>
             </div>
           </div>
           <div class="set-row">
@@ -143,16 +164,6 @@
           </div>
         </div>
         <div class="group">
-          <div v-if="!store.nodeAdopted" class="set-row">
-            <div class="set-title">Manual Node Version Selection</div>
-            <div class="set-desc">Also suppresses new version alerts</div>
-            <div class="set-actions">
-              <v-switch
-                v-model="store.showNodeVersions"
-                @click.prevent="setShowNodeVersions(!store.showNodeVersions)"
-              />
-            </div>
-          </div>
           <div class="set-row">
             <div class="set-title">Show Machine Name</div>
             <div class="set-desc">In App Bar</div>
@@ -242,7 +253,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
-import { AutoUpdate } from "@/types";
+import { NodeUpdateMode } from "@/types";
 import { copyToClipboard, errorMessage, isNewer } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
@@ -353,28 +364,29 @@ const externalManager = computed(() =>
 
 onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
-  await Promise.all([getVersion(), getAutoUpdate()]);
+  await getVersion();
 });
 
-const autoUpdate = ref<AutoUpdate>();
+const updates = computed(() => store.goalVersion?.updates);
+const updateModes: Record<NodeUpdateMode, { title: string; desc: string }> = {
+  auto: { title: "Auto", desc: "Installs new versions when they're released" },
+  notify: { title: "Notify", desc: "Alerts you when a new version is released" },
+  manual: {
+    title: "Manual",
+    desc: "Stays on the version you select, without update alerts",
+  },
+};
+const settingMode = ref(false);
 
-async function getAutoUpdate() {
+async function setUpdateMode(mode: NodeUpdateMode) {
+  settingMode.value = true;
   try {
-    const { data } = await store.api.get("goal/autoupdate");
-    autoUpdate.value = data;
+    await store.setNodeUpdateMode(mode);
   } catch (err: any) {
     console.error(err);
+    store.setSnackbar(errorMessage(err, "Set node updates"), "error");
   }
-}
-
-async function setAutoUpdate(enabled: boolean) {
-  try {
-    const { data } = await store.api.put("goal/autoupdate", { enabled });
-    autoUpdate.value = data;
-  } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(errorMessage(err, "Set node auto-update"), "error");
-  }
+  settingMode.value = false;
 }
 
 const githubClient = axios.create({
@@ -469,14 +481,6 @@ async function updateNode(release: string, bypass = false) {
     await store.api.post("goal/update", { name: release });
     await getVersion();
     store.refreshStatus++;
-    // Installing an older version turns auto-update off on the server.
-    const wasAutoUpdating = autoUpdate.value?.enabled;
-    await getAutoUpdate();
-    if (wasAutoUpdating && !autoUpdate.value?.enabled)
-      store.setSnackbar(
-        `Auto-update turned off to keep the node on ${release}`,
-        "info"
-      );
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, `Update node to ${release}`), "error");
@@ -498,11 +502,6 @@ async function setShowNetworks(val: boolean) {
 async function setShowMachineName(val: boolean) {
   store.showMachineName = val;
   localStorage.setItem("showMachineName", val.toString());
-}
-
-async function setShowNodeVersions(val: boolean) {
-  store.showNodeVersions = val;
-  localStorage.setItem("showNodeVersions", val.toString());
 }
 </script>
 
@@ -558,6 +557,15 @@ async function setShowNodeVersions(val: boolean) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+.mode {
+  height: 26px;
+}
+.mode .v-btn {
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 11.5px;
+  letter-spacing: normal;
 }
 .set-actions :deep(.v-switch) {
   flex: none;

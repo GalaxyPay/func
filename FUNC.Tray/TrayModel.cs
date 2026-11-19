@@ -99,10 +99,16 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
             Notifier.Show("FUNC update available", $"Version {funcLatest} is ready to install.", SettingsUrl);
             state.NotifiedFuncVersion = funcLatest;
         }
-        if (status.NodeUpdate is { Available: true, Automatic: false, Latest: string nodeLatest } && nodeLatest != state.NotifiedNodeVersion)
+        if (status.NodeUpdate is { Available: true, Notify: true, Latest: string nodeLatest } && nodeLatest != state.NotifiedNodeVersion)
         {
             Notifier.Show("Node update available", $"Algorand node {nodeLatest} is ready to install.", SettingsUrl);
             state.NotifiedNodeVersion = nodeLatest;
+        }
+        // Alerted whatever the update mode: the node stalls at the upgrade round otherwise.
+        if (status.NodeUpdate?.Unsupported is string unsupported && unsupported != state.NotifiedUnsupported)
+        {
+            Notifier.Show("Node update required", $"{unsupported}. Update the node or it will stall.", SettingsUrl);
+            state.NotifiedUnsupported = unsupported;
         }
 
         state.Save();
@@ -124,7 +130,8 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
 
         int unseen = status.Messages.Count(m => !state.SeenMessageIds.Contains(m.Id));
         bool funcUpdate = status.FuncUpdate?.Available == true;
-        bool nodeUpdate = status.NodeUpdate is { Available: true, Automatic: false };
+        bool nodeUpdate = status.NodeUpdate is { Available: true, Notify: true };
+        bool nodeUnsupported = status.NodeUpdate?.Unsupported != null;
 
         menu.Add(new($"FUNC {(status.Version != null ? "v" + status.Version + " " : "")}is running"));
         menu.Add(new($"Node: {status.NodeStatus ?? "Unknown"}"));
@@ -134,7 +141,9 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
             menu.Add(new(unseen > 0 ? $"Messages ({unseen} new)" : "Messages", OpenMessages));
         if (funcUpdate)
             menu.Add(new($"FUNC update available: v{status.FuncUpdate!.Latest}", () => Browser.Open(SettingsUrl)));
-        if (nodeUpdate)
+        if (nodeUnsupported)
+            menu.Add(new("Node update required", () => Browser.Open(SettingsUrl)));
+        else if (nodeUpdate)
             menu.Add(new($"Node update available: v{status.NodeUpdate!.Latest}", () => Browser.Open(SettingsUrl)));
         menu.Add(MenuEntry.Separator);
         menu.Add(new("Quit FUNC Tray", quit));
@@ -142,7 +151,8 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
         List<string> alerts = [];
         if (unseen > 0) alerts.Add(unseen == 1 ? "1 new message" : $"{unseen} new messages");
         if (funcUpdate) alerts.Add("FUNC update available");
-        if (nodeUpdate) alerts.Add("Node update available");
+        if (nodeUnsupported) alerts.Add("Node update required");
+        else if (nodeUpdate) alerts.Add("Node update available");
 
         return new(
             alerts.Count > 0 ? TrayLook.Alert : TrayLook.Normal,
@@ -175,7 +185,7 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
 
 // Mirrors FUNC.Models.TrayStatus (GET func/tray).
 internal sealed record Status(string? Version, string? NodeStatus, Update? FuncUpdate, Update? NodeUpdate, List<Message> Messages);
-internal sealed record Update(string? Installed, string? Latest, bool Available, bool Automatic);
+internal sealed record Update(string? Installed, string? Latest, bool Available, bool Notify, string? Unsupported);
 internal sealed record Message(ulong Id, string Title);
 
 // Source-generated JSON: the trimmed / native AOT builds have no reflection serializer.
