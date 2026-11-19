@@ -12,6 +12,9 @@ deb/postrm text eol=lf
 pkg/scripts/preinstall text eol=lf
 pkg/scripts/postinstall text eol=lf
 
+# PGP test fixtures are byte-exact signed release files; never convert line endings.
+FUNC.Tests/Fixtures/pgp/** -text
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
