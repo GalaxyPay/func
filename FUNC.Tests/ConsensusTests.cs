@@ -86,4 +86,19 @@ public class ConsensusTests
     [Fact]
     public void InstalledBlocker_NodeUnreachable() =>
         Assert.Null(Consensus.InstalledBlocker(null));
+
+    // Windows takes ~2s to fail a connect to a closed localhost port; a stopped node
+    // must not hold up goal/version that long.
+    [Fact]
+    public async Task StatusClient_FailsFastWhenNodeStopped()
+    {
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsAnyAsync<Exception>(() => Diagnostics.AlgodGet(Consensus.statusHttp, port, "/v2/status", "t"));
+        Assert.True(sw.ElapsedMilliseconds < 500, $"took {sw.ElapsedMilliseconds} ms");
+    }
 }

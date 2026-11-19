@@ -27,6 +27,7 @@ namespace FUNC.Controllers
                 ExternalNode? ext = External.Load();
                 string installed = await InstalledVersion(ext?.BinDir ?? Path.Combine(Utils.appDataDir, "bin"));
 
+                Task<string?> unsupported = Consensus.InstalledBlocker();
                 string latest = string.Empty;
                 try { latest = await LatestVersion(); } catch { }
 
@@ -36,7 +37,7 @@ namespace FUNC.Controllers
                     Latest = latest,
                     Manager = ext?.Manager ?? "func",
                     Updates = NodeUpdater.Status(),
-                    Unsupported = await Consensus.InstalledBlocker(),
+                    Unsupported = await unsupported,
                 };
             }
             catch (Exception ex)

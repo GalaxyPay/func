@@ -30,13 +30,19 @@ namespace FUNC
             int port = Node.AlgodPort("algorand");
             string token = Node.AlgodToken("algorand");
             if (port == 0 || token.Length == 0) return null;
-            try
-            {
-                using HttpClient c = new() { Timeout = TimeSpan.FromSeconds(3) };
-                return await Diagnostics.AlgodGet(c, port, "/v2/status", token);
-            }
+            try { return await Diagnostics.AlgodGet(statusHttp, port, "/v2/status", token); }
             catch { return null; }
         }
+
+        // A running algod accepts on localhost at once. A stopped one leaves the port closed,
+        // and Windows retries a refused localhost connect for ~2s before failing, which every
+        // caller (goal/version, the tray) would otherwise wait out.
+        internal static readonly HttpClient statusHttp = new(new SocketsHttpHandler
+        {
+            // Far above a localhost connect (well under 1ms), above Windows' ~15.6ms timer tick.
+            ConnectTimeout = TimeSpan.FromMilliseconds(50),
+        })
+        { Timeout = TimeSpan.FromSeconds(3) };
 
         // algod knows whether its own build supports an approved upgrade: next-version-supported
         // is false when it doesn't, and the node will stall at next-version-round.
