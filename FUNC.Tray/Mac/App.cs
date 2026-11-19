@@ -44,7 +44,9 @@ internal sealed class AvaloniaTray : ITrayUi, IDisposable
 
     public AvaloniaTray(Application app)
     {
-        icon = new TrayIcon { Menu = new NativeMenu(), IsVisible = true };
+        // ToolTipText must be non-null before SetIcons: Avalonia.Native's Attach() marshals it
+        // to UTF-8 and throws ArgumentNullException on null, crashing the app at startup.
+        icon = new TrayIcon { Menu = new NativeMenu(), ToolTipText = "FUNC", IsVisible = true };
         MacOSProperties.SetIsTemplateIcon(icon, true);
         TrayIcon.SetIcons(app, [icon]);
     }
@@ -53,7 +55,10 @@ internal sealed class AvaloniaTray : ITrayUi, IDisposable
     {
         icon.Icon = Icons.Get(view.Look);
         icon.ToolTipText = view.Tooltip;
-        var menu = new NativeMenu();
+        // Rebuild the items of the menu attached at startup. Assigning a new NativeMenu to
+        // icon.Menu makes Avalonia.Native throw "The menu being updated does not match".
+        NativeMenu menu = icon.Menu!;
+        menu.Items.Clear();
         foreach (MenuEntry entry in view.Menu)
         {
             if (entry.IsSeparator)
@@ -65,7 +70,6 @@ internal sealed class AvaloniaTray : ITrayUi, IDisposable
             if (entry.Click is Action click) item.Click += (_, _) => click();
             menu.Items.Add(item);
         }
-        icon.Menu = menu;
     });
 
     public void Dispose()
