@@ -219,6 +219,7 @@ namespace FUNC
             node.Service == null ? false : await Utils.StartsAtBoot(node.Service, string.Empty, node.Service);
 
         private static volatile bool updating;
+        internal static bool Updating => updating;
 
         public static async Task Control(ExternalNode node, string cmd)
         {

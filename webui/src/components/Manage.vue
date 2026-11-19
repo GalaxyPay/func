@@ -338,11 +338,7 @@ async function toggleTelemetry() {
 }
 
 // The node's binaries switch between FUNC's and the existing node's installer.
-async function refreshGoalVersion() {
-  const { data } = await store.api.get("goal/version");
-  store.goalVersion = data;
-  store.nodeUpdateAvailable = !!data?.latest && data.latest !== data.installed;
-}
+const refreshGoalVersion = () => store.refreshGoalVersion();
 
 async function finish(message: string) {
   store.refreshStatus++;

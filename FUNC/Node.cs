@@ -164,6 +164,7 @@ namespace FUNC
                 Token = token,
                 External = ext,
                 Detected = name == "algorand" && ext == null && serviceStatus == "Not Found" ? await External.Detect() : null,
+                Updating = GoalController.Installing || External.Updating,
             };
 
             if (name == "algorand")

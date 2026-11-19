@@ -38,7 +38,7 @@
       <v-btn icon size="small" @click="showSettings = true">
         <v-badge
           :model-value="
-            ((store.nodeUpdateAvailable && !store.showNodeVersions) ||
+            ((store.nodeUpdateAvailable && !store.manualNodeVersions) ||
               store.funcUpdateAvailable) &&
             !store.downloading
           "

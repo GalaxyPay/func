@@ -2,7 +2,7 @@
   <div class="loading" v-if="!store.ready || store.downloading">
     <v-progress-circular :size="40" :width="3" indeterminate />
     <div v-if="store.downloading" class="text-muted">
-      Downloading node software, please wait
+      Installing node software, please wait
     </div>
   </div>
 </template>

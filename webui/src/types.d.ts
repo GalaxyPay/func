@@ -13,6 +13,8 @@ export interface NodeStatus {
   valarStatus?: DaemonStatus;
   external?: ExternalNode;
   detected?: ExternalNode;
+  // Node binaries are being installed or updated, which stops the node for a while.
+  updating?: boolean;
 }
 
 // A node installed by apt/rpm, NodeKit, Homebrew or update.sh.
@@ -53,6 +55,13 @@ export interface GoalVersion {
   installed: string;
   latest: string;
   manager: string;
+}
+
+export interface AutoUpdate {
+  enabled: boolean;
+  lastCheck: string | null;
+  lastError: string | null;
+  lastUpdated: string | null;
 }
 
 export interface PartDetails {

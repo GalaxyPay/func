@@ -9,8 +9,11 @@
         <v-list-subheader title="Choose a Version" />
         <v-list-item
           v-for="release in releases"
-          :title="release"
-          @click="emit('release', release)"
+          :key="release.name"
+          :title="release.name"
+          :subtitle="release.unsupported ?? undefined"
+          :disabled="!!release.unsupported"
+          @click="emit('release', release.name)"
         />
       </v-list>
     </v-menu>
@@ -24,18 +27,13 @@ import { mdiChevronDown } from "@mdi/js";
 const emit = defineEmits(["release"]);
 
 const store = useAppStore();
-const releases = ref();
+// unsupported: why the release can't follow the network's consensus protocol.
+const releases = ref<{ name: string; unsupported: string | null }[]>();
 
 onMounted(async () => {
-  const repo = store.isWindows
-    ? "GalaxyPay/go-algo-win"
-    : "algorand/go-algorand";
-  const url = `https://api.github.com/repos/${repo}/releases`;
   try {
-    const { data } = await axios({ url });
-    releases.value = data
-      .map((r: any) => r.tag_name)
-      .filter((n: string) => n.toLowerCase().includes("stable"));
+    const { data } = await store.api.get("goal/releases");
+    releases.value = data;
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, "Load node releases"), "error");

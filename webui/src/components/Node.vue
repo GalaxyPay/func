@@ -619,7 +619,10 @@ onBeforeMount(async () => {
   healthTimer = setInterval(refreshHealth, healthMs);
 });
 
+let unmounted = false;
+
 onBeforeUnmount(() => {
+  unmounted = true;
   refreshing = false;
   awaitingStart = false;
   clearInterval(healthTimer);
@@ -754,6 +757,7 @@ async function getNodeStatus() {
       : undefined;
     const resp = await store.api.get(props.name);
     nodeStatus.value = resp.data;
+    if (nodeStatus.value?.updating && !store.downloading) watchUpdate();
     store.machineName = nodeStatus.value?.machineName;
     store.isWindows = nodeStatus.value?.isWindows;
     if (nodeStatus.value?.serviceStatus !== "Running") {
@@ -770,6 +774,29 @@ async function getNodeStatus() {
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, "Get service status"), "error");
+  }
+}
+
+// An update this page didn't start (auto-update, another browser) stops the node for
+// a while, and the status loop stops with it. Show the update screen until it's done.
+async function watchUpdate() {
+  store.downloading = true;
+  try {
+    while (!unmounted) {
+      await delay(2000);
+      try {
+        const { data } = await store.api.get<NodeStatus>(props.name);
+        if (!data.updating) break;
+      } catch {
+        // FUNC may be briefly unreachable; check again.
+      }
+    }
+    await store.refreshGoalVersion();
+  } catch (err: any) {
+    console.error(err);
+  } finally {
+    store.downloading = false;
+    store.refreshStatus++;
   }
 }
 

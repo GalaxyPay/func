@@ -22,44 +22,77 @@ namespace FUNC.Controllers
         {
             try
             {
-                string installed = string.Empty;
-                string latest = string.Empty;
-
                 // An adopted node's binaries come from its package manager or update.sh.
                 await Node.SyncExternal();
                 ExternalNode? ext = External.Load();
-                string algodPath = Path.Combine(ext?.BinDir ?? Path.Combine(Utils.appDataDir, "bin"), "algod");
-                string version = await Utils.Exec(algodPath, "-v");
-                if (version != string.Empty)
-                {
-                    int firstBreak = version.IndexOf("\n") + 1;
-                    string secondLine = version[firstBreak..version.IndexOf("\n", firstBreak)];
-                    installed = secondLine[..secondLine.LastIndexOf(".")];
-                }
+                string installed = await InstalledVersion(ext?.BinDir ?? Path.Combine(Utils.appDataDir, "bin"));
 
-                string workspaceName = string.Empty;
-                string repositoryName = string.Empty;
-
-                if (IsWindows())
-                {
-                    workspaceName = "GalaxyPay";
-                    repositoryName = "go-algo-win";
-                }
-                else if (IsLinux() || IsMacOS())
-                {
-                    workspaceName = "algorand";
-                    repositoryName = "go-algorand";
-                }
-
-                try
-                {
-                    var client = new GitHubClient(new ProductHeaderValue(repositoryName));
-                    var latestInfo = await client.Repository.Release.GetLatest(workspaceName, repositoryName);
-                    latest = latestInfo.TagName[1..latestInfo.TagName.IndexOf("-")];
-                }
-                catch { }
+                string latest = string.Empty;
+                try { latest = await LatestVersion(); } catch { }
 
                 return new GoalVersion() { Installed = installed, Latest = latest, Manager = ext?.Manager ?? "func" };
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // The version of the algod in binDir ("5.0.5"), or empty if there's none.
+        internal static async Task<string> InstalledVersion(string binDir)
+        {
+            string version = await Utils.Exec(Path.Combine(binDir, "algod"), "-v");
+            if (version == string.Empty) return string.Empty;
+            int firstBreak = version.IndexOf("\n") + 1;
+            string secondLine = version[firstBreak..version.IndexOf("\n", firstBreak)];
+            return secondLine[..secondLine.LastIndexOf(".")];
+        }
+
+        // The latest node release's version ("5.0.5").
+        internal static async Task<string> LatestVersion()
+        {
+            var (owner, repo) = NodeRepo();
+            var client = new GitHubClient(new ProductHeaderValue(repo));
+            var latest = await client.Repository.Release.GetLatest(owner, repo);
+            return latest.TagName[1..latest.TagName.IndexOf("-")];
+        }
+
+        // GET: goal/autoupdate
+        [HttpGet("autoupdate")]
+        public ActionResult<AutoUpdate> GetAutoUpdate() => NodeUpdater.Status();
+
+        // PUT: goal/autoupdate
+        [HttpPut("autoupdate")]
+        public ActionResult<AutoUpdate> SetAutoUpdate(AutoUpdateSettings model)
+        {
+            try
+            {
+                if (model.Enabled && External.Load() != null)
+                    throw new Exception("An existing node is updated by its own installer");
+                NodeUpdater.SetEnabled(model.Enabled);
+                return NodeUpdater.Status();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // GET: goal/releases
+        [HttpGet("releases")]
+        public async Task<ActionResult<List<ReleaseOption>>> Releases()
+        {
+            try
+            {
+                var (owner, repo) = NodeRepo();
+                var client = new GitHubClient(new ProductHeaderValue(repo));
+                var releases = await client.Repository.Release.GetAll(owner, repo, new ApiOptions { PageSize = 30, PageCount = 1 });
+                var tags = releases.Select(r => r.TagName)
+                    .Where(t => t.Contains("stable", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var req = await Consensus.AlgorandRequirement();
+                var blockers = await Task.WhenAll(tags.Select(t => Consensus.Blocker(t, req)));
+                return tags.Select((t, i) => new ReleaseOption { Name = t, Unsupported = blockers[i] }).ToList();
             }
             catch (Exception ex)
             {
@@ -81,6 +114,14 @@ namespace FUNC.Controllers
                 else
                 {
                     await Install(model.Name);
+                    // An older version would be replaced by the next auto-update.
+                    if (model.Name != "latest")
+                    {
+                        string installed = await InstalledVersion(Path.Combine(Utils.appDataDir, "bin"));
+                        string latest = string.Empty;
+                        try { latest = await LatestVersion(); } catch { }
+                        if (latest.Length == 0 || NodeUpdater.IsNewer(latest, installed)) NodeUpdater.SetEnabled(false);
+                    }
                 }
                 return Ok();
             }
@@ -98,14 +139,33 @@ namespace FUNC.Controllers
         // The embedded keyring keeps expired subkeys, which older releases are signed with.
         private const string AlgorandKeyUrl = "https://releases.algorand.com/key.pub";
 
+        // One install at a time, between manual updates, auto-updates and first-run setup.
+        private static readonly SemaphoreSlim installLock = new(1, 1);
+        private static volatile bool installing;
+        internal static bool Installing => installing;
+
         // Download a go-algorand release into FUNC's bin dir, restarting FUNC's nodes around it.
         public static async Task Install(string name)
         {
-            var (owner, repo) = IsWindows() ? ("GalaxyPay", "go-algo-win") : ("algorand", "go-algorand");
+            await installLock.WaitAsync();
+            installing = true;
+            try { await InstallUnlocked(name); }
+            finally
+            {
+                installing = false;
+                installLock.Release();
+            }
+        }
+
+        private static async Task InstallUnlocked(string name)
+        {
+            var (owner, repo) = NodeRepo();
             var client = new GitHubClient(new ProductHeaderValue(repo));
             var release = name == "latest"
                 ? await client.Repository.Release.GetLatest(owner, repo)
                 : await client.Repository.Release.Get(owner, repo, name);
+            if (name != "latest" && await Consensus.Blocker(release.TagName, await Consensus.AlgorandRequirement()) is { } why)
+                throw new Exception($"{release.TagName}: {why}, so the node would stall");
             var asset = FindNodeAsset(release)
                 ?? throw new Exception($"No node binaries for this platform in release {release.TagName}");
 
@@ -158,6 +218,9 @@ namespace FUNC.Controllers
 
             System.IO.File.Delete(filePath);
         }
+
+        private static (string Owner, string Repo) NodeRepo() =>
+            IsWindows() ? ("GalaxyPay", "go-algo-win") : ("algorand", "go-algorand");
 
         private static ReleaseAsset? FindNodeAsset(Octokit.Release release)
         {

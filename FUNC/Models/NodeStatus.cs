@@ -17,6 +17,8 @@
         public ExternalNode? External { get; set; }
         // An existing node found while FUNC has none of its own, offered for adoption.
         public ExternalNode? Detected { get; set; }
+        // Node binaries are being installed or updated, which stops the node for a while.
+        public bool Updating { get; set; }
     }
 
     // Status of an add-on daemon service (Reti, Valar).

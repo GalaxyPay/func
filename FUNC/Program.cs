@@ -17,6 +17,7 @@ builder.Services.AddControllers(options => options.Filters.Add<SessionFilter>())
 builder.Services.AddWindowsService();
 builder.Services.AddSystemd();
 builder.Services.AddHostedService<HealthCollector>();
+builder.Services.AddHostedService<NodeUpdater>();
 
 string[] corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 

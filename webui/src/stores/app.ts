@@ -76,6 +76,15 @@ export const useAppStore = defineStore("app", {
     ) as number[],
   }),
   getters: {
+    // An adopted node's manager installs its binaries, always at the latest version.
+    nodeAdopted(state): boolean {
+      const manager = state.goalVersion?.manager;
+      return !!manager && manager !== "func";
+    },
+    // Manual version selection only applies to binaries FUNC installs itself.
+    manualNodeVersions(): boolean {
+      return !!this.showNodeVersions && !this.nodeAdopted;
+    },
     unreadCount(state): number {
       const read = new Set(state.readMessages);
       return state.messages.filter((m) => !read.has(m.id)).length;
@@ -89,6 +98,12 @@ export const useAppStore = defineStore("app", {
       this.auth = data;
       if (!data.hasPassword || !data.signedIn) this.authRequired = true;
       return data as AuthStatus;
+    },
+    async refreshGoalVersion() {
+      const { data } = await this.api.get("goal/version");
+      this.goalVersion = data;
+      this.nodeUpdateAvailable =
+        !!data?.latest && data.latest !== data.installed;
     },
     async signOut(everywhere = false) {
       try {

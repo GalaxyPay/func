@@ -82,7 +82,7 @@
             <div class="set-actions">
               <Releases
                 @release="updateNode"
-                v-if="store.showNodeVersions && !externalManager"
+                v-if="store.manualNodeVersions"
               />
               <v-btn
                 v-else-if="
@@ -97,6 +97,22 @@
               >
                 Update
               </v-btn>
+            </div>
+          </div>
+          <div v-if="store.goalVersion && !store.nodeAdopted" class="set-row">
+            <div class="set-title">Auto-Update Node</div>
+            <div class="set-desc">
+              <span v-if="autoUpdate?.lastError" class="text-error">
+                Last update failed: {{ autoUpdate.lastError }}
+              </span>
+              <span v-else>Install new node versions when they're released</span>
+            </div>
+            <div class="set-actions">
+              <v-switch
+                :model-value="!!autoUpdate?.enabled"
+                :disabled="!autoUpdate"
+                @click.prevent="setAutoUpdate(!autoUpdate?.enabled)"
+              />
             </div>
           </div>
           <div class="set-row">
@@ -127,7 +143,7 @@
           </div>
         </div>
         <div class="group">
-          <div class="set-row">
+          <div v-if="!store.nodeAdopted" class="set-row">
             <div class="set-title">Manual Node Version Selection</div>
             <div class="set-desc">Also suppresses new version alerts</div>
             <div class="set-actions">
@@ -226,6 +242,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
+import { AutoUpdate } from "@/types";
 import { copyToClipboard, errorMessage } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
@@ -330,15 +347,35 @@ let init = false;
 
 // apt, rpm, brew, updater or manual when the node is an adopted existing node;
 // those update only to the latest version, with the node's own installer.
-const externalManager = computed(() => {
-  const manager = store.goalVersion?.manager;
-  return manager && manager !== "func" ? manager : undefined;
-});
+const externalManager = computed(() =>
+  store.nodeAdopted ? store.goalVersion?.manager : undefined
+);
 
 onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
-  await getVersion();
+  await Promise.all([getVersion(), getAutoUpdate()]);
 });
+
+const autoUpdate = ref<AutoUpdate>();
+
+async function getAutoUpdate() {
+  try {
+    const { data } = await store.api.get("goal/autoupdate");
+    autoUpdate.value = data;
+  } catch (err: any) {
+    console.error(err);
+  }
+}
+
+async function setAutoUpdate(enabled: boolean) {
+  try {
+    const { data } = await store.api.put("goal/autoupdate", { enabled });
+    autoUpdate.value = data;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Set node auto-update"), "error");
+  }
+}
 
 const githubClient = axios.create({
   baseURL: "https://api.github.com/repos/GalaxyPay/func/releases",
@@ -436,6 +473,14 @@ async function updateNode(release: string, bypass = false) {
     await store.api.post("goal/update", { name: release });
     await getVersion();
     store.refreshStatus++;
+    // Installing an older version turns auto-update off on the server.
+    const wasAutoUpdating = autoUpdate.value?.enabled;
+    await getAutoUpdate();
+    if (wasAutoUpdating && !autoUpdate.value?.enabled)
+      store.setSnackbar(
+        `Auto-update turned off to keep the node on ${release}`,
+        "info"
+      );
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, `Update node to ${release}`), "error");
