@@ -42,8 +42,15 @@ chown root:wheel /Library/LaunchAgents/func.tray.plist
 chmod 644 /Library/LaunchAgents/func.tray.plist
 console_uid=$(stat -f %u /dev/console)
 if [ "$console_uid" -gt 0 ]; then
-  launchctl bootstrap "gui/$console_uid" /Library/LaunchAgents/func.tray.plist 2>/dev/null \
-    || launchctl kickstart -k "gui/$console_uid/func.tray"
+  # Bootstrap from inside the user's own launchd session: updates run the installer
+  # from the func.update daemon (system session), where a bare `bootstrap gui/<uid>`
+  # can fail. Errors are left visible so they land in /var/log/install.log.
+  launchctl asuser "$console_uid" launchctl bootstrap "gui/$console_uid" /Library/LaunchAgents/func.tray.plist \
+    || echo "func.tray: bootstrap failed (may already be loaded)"
+  # Starts it if loaded but not running (e.g. bootstrap raced preinstall's bootout);
+  # a no-op if RunAtLoad already started it.
+  launchctl kickstart "gui/$console_uid/func.tray" \
+    || echo "func.tray: kickstart failed"
   if [ "$FRESH_INSTALL" -eq 1 ]; then
     launchctl asuser "$console_uid" sudo -u "#$console_uid" open http://localhost:3536
   fi
