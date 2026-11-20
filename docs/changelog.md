@@ -11,13 +11,15 @@ The changes you'll notice in each version of FUNC. Releases with only behind-the
 
 _2026-11-20_
 
-- **Tray icon (Windows and Mac):** shows that FUNC is running and notifies you about new messages, updates and expiring keys. Click it to open the dashboard. See [Keeping Your Node Running](/running).
-- **Automatic node updates:** the new **Node Updates** setting can install new node releases for you (**Auto**), alert you (**Notify**, the default) or stay on a version you pick (**Manual**). See [Node updates](/settings#node-updates).
+- **Tray icon (Windows and Mac):** shows that FUNC is running, notifies you about new messages, updates and expiring keys, and opens the dashboard. See [Keeping Your Node Running](/running).
+- **Automatic node updates:** the new **Node Updates** setting can install new node releases for you (**Auto**), alert you (**Notify**, the default) or stay on a version you pick (**Manual**). It replaces **Manual Node Version Selection**: if you had that on, FUNC switches to **Manual** the next time you open Settings in that browser. See [Node updates](/settings#node-updates).
 - **Required updates:** FUNC warns you when the network is about to upgrade and your node needs a newer version to keep syncing. Versions that can't follow the network are greyed out.
 - **Block alerts:** the dashboard plays a chime and shows the round and reward when one of your accounts creates a block. Turn on **Notify on Blocks Created** to get a desktop notification with the dashboard closed.
 - **Expiring keys:** online keys with a week or less left get an **Expiring** badge. Keys looked after by Reti or Valar are badged as such instead.
 - **Password reset:** reset a forgotten password from the tray menu or with `--reset-password`. See [Password](/password#forgot-your-password).
 - Node downloads on Mac and Linux are now checked against Algorand's signed release hashes before installing.
+- The node is down for less time during an update: it only stops while the new files are swapped in, and if the swap fails, the previous version is put back.
+- Fixed Valar on Windows, where setting up its folder's permissions could leave its files unreadable, or fail on Windows in a language other than English.
 
 ## 5.4.0
 
