@@ -283,7 +283,6 @@
 
 <script lang="ts" setup>
 import { algodTarget } from "@/clients";
-import { networks } from "@/data";
 import { CreatedBlock, PartDetails, PartKey, Participation } from "@/types";
 import {
   b64,
@@ -294,7 +293,7 @@ import {
   execAtc,
   formatAddr,
   getSuggestedParams,
-  nodeHostname,
+  algodBaseUrl,
 } from "@/utils";
 import { playBlockSound } from "@/utils/blockSound";
 import {
@@ -311,7 +310,6 @@ import type { PropType } from "vue";
 
 const props = defineProps({
   name: { type: String, required: true },
-  port: { type: Number, required: true },
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
   status: { type: String, required: true },
@@ -362,20 +360,13 @@ const headers = computed(
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
-const hostname = nodeHostname();
-const port =
-  location.protocol === "https:"
-    ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
-    : props.port;
-
 // The participation API is served by algod itself, so both clients fail
 // together when the node is down; name that endpoint in errors.
-const algodEndpoint = algodTarget(
-  `${location.protocol}//${hostname}${port ? `:${port}` : ""}`
-);
+const algodUrl = algodBaseUrl(props.name);
+const algodEndpoint = algodTarget(algodUrl);
 
 const partClient = axios.create({
-  baseURL: `${location.protocol}//${hostname}:${port}/v2/participation`,
+  baseURL: `${algodUrl}/v2/participation`,
   headers: { "X-Algo-Api-Token": props.token },
 });
 
