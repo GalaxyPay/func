@@ -1,6 +1,5 @@
-import { networks } from "@/data";
 import { NodeStatus } from "@/types";
-import { nodeHostname } from "@/utils";
+import { algodBaseUrl } from "@/utils";
 import { Algodv2 } from "algosdk";
 
 export class AlgodFunc extends Algodv2 {
@@ -9,13 +8,10 @@ export class AlgodFunc extends Algodv2 {
   readonly baseUrl: string;
 
   constructor(name: string, nodeStatus: NodeStatus) {
-    const hostname = nodeHostname();
-    const port =
-      location.protocol === "https:"
-        ? networks.find((n) => n.title === name)?.yarpAlgodPort
-        : nodeStatus.port;
-    super(nodeStatus.token, `${location.protocol}//${hostname}`, port);
-    this.baseUrl = `${location.protocol}//${hostname}${port ? `:${port}` : ""}`;
+    // No port: the base URL carries FUNC's origin and the /algod/<network> path.
+    const baseUrl = algodBaseUrl(name);
+    super(nodeStatus.token, baseUrl);
+    this.baseUrl = baseUrl;
   }
 }
 

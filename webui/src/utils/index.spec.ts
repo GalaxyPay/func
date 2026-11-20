@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  algodBaseUrl,
   b64,
   effectiveResetDate,
   errorMessage,
@@ -167,5 +168,21 @@ describe("errorMessage", () => {
     ["plain text", "plain text"],
   ])("uses the server's detail: %#", (err, detail) => {
     expect(errorMessage(err, "Save")).toBe(`Save failed: ${detail}`);
+  });
+});
+
+describe("algodBaseUrl", () => {
+  it("points at FUNC's own algod proxy, by network", () => {
+    expect(algodBaseUrl("Algorand")).toBe(
+      "http://localhost:3536/algod/algorand"
+    );
+    expect(algodBaseUrl("Voi")).toBe("http://localhost:3536/algod/voi");
+  });
+
+  it("names the proxied endpoint when algod can't be reached", () => {
+    const target = `the node's algod API (${algodBaseUrl("Voi")})`;
+    expect(
+      errorMessage(new TypeError("Failed to fetch"), "Status", target)
+    ).toContain("no response from the node's algod API (http://localhost:3536/algod/voi)");
   });
 });

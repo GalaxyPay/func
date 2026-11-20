@@ -39,17 +39,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-    .AddTransforms(transformBuilderContext =>
-    {
-        transformBuilderContext.AddRequestTransform(transformContext =>
-        {
-            var ogPort = transformContext.HttpContext.Request.Host.Port;
-            var destPort = ogPort == 3538 ? Shared.VoiPort : Shared.AlgoPort;
-            var newUri = new UriBuilder(transformContext.DestinationPrefix) { Port = destPort }.Uri;
-            transformContext.DestinationPrefix = newUri.ToString();
-            return ValueTask.CompletedTask;
-        });
-    });
+    .AddTransforms(AlgodProxy.AddTransform);
 
 // The UI is served from this same origin, so cross-origin access is only needed for
 // development (e.g. the Vite dev server) and must be listed explicitly.

@@ -103,14 +103,11 @@ const funcOrigin = (() => {
   }
 })();
 
-// The machine running the FUNC service, and therefore algod: the host part of
-// the API origin (which is only ever set for development).
-export function nodeHostname(): string {
-  try {
-    return new URL(funcOrigin).hostname;
-  } catch {
-    return location.hostname;
-  }
+// algod is reached through FUNC's own proxy, at the same origin as the API, so
+// the page works on any port, scheme or reverse proxy and needs no node ports
+// open. FUNC maps /algod/<network>/v2/... to that node's /v2/... on localhost.
+export function algodBaseUrl(name: string): string {
+  return `${funcOrigin}/algod/${name.toLowerCase()}`;
 }
 
 // Recover the origin an axios request was aimed at. Network failures from
