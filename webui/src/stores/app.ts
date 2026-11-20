@@ -9,9 +9,31 @@ import {
 } from "@/types";
 import { isNewer } from "@/utils";
 import algosdk, { modelsv2 } from "algosdk";
+import type { AxiosInstance } from "axios";
 import { defineStore } from "pinia";
 
 const TOKEN_KEY = "session";
+
+// Messages are read from this node only once it's running and synced. On a
+// fresh install it's absent, stopped or still catching up and doesn't have the
+// contract yet; asking would only fail, so wait. Node.vue fetches again once
+// the node has synced.
+async function messagesClient(
+  api: AxiosInstance
+): Promise<algosdk.Algodv2 | undefined> {
+  const name = "algorand";
+  try {
+    const { data } = await api.get(name);
+    if (data?.serviceStatus !== "Running") return undefined;
+    const local = new AlgodFunc(name, data);
+    const status = await local.status().do();
+    if (status.lastRound > 0n && !status.catchupTime && !status.catchpoint)
+      return local;
+  } catch {
+    // Not reachable yet.
+  }
+  return undefined;
+}
 
 function readToken(): string {
   try {
@@ -171,10 +193,9 @@ export const useAppStore = defineStore("app", {
       };
     },
     async fetchMessages() {
-      const name = "algorand";
-      const { data } = await this.api.get(name);
-      const algodClient = new AlgodFunc(name, data);
-      const resp = await algodClient
+      const client = await messagesClient(this.api);
+      if (!client) return;
+      const resp = await client
         .getApplicationBoxes(import.meta.env.VITE_MESSAGES_APP_ID)
         .include("values")
         .do();

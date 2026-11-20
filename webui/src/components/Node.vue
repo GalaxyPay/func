@@ -457,6 +457,14 @@ const synced = computed(
     (algodStatus.value?.lastRound ?? 0n) > 100n
 );
 
+// Messages wait for this node to sync (see fetchMessages); load them once it has.
+watch(synced, (isSynced) => {
+  if (isSynced && props.name === "algorand")
+    store
+      .fetchMessages()
+      .catch((err) => console.error(errorMessage(err, "Load messages"), err));
+});
+
 // Getting Started walks a new node through to its first key online, then is
 // gone for good, as it is once the user hides it.
 const gettingStartedKey = computed(() => `gettingStartedDone:${props.name}`);
@@ -696,6 +704,15 @@ async function autoRefresh() {
         await delay(500);
         continue;
       }
+      // algod answers wait-for-block-after with 503 during fast catchup, so
+      // poll status directly until the catchpoint is applied.
+      if (algodStatus.value?.catchpoint) {
+        pendingStatus = null;
+        await delay(1000);
+        algodStatus.value = await algodClient.value.status().do();
+        retry = false;
+        continue;
+      }
       const round = algodStatus.value?.lastRound ?? 0n;
       // Reuse the in-flight statusAfterBlock for the same round so a stalled
       // wait doesn't pile up long-poll connections (browsers cap ~6 per host).
@@ -724,7 +741,16 @@ async function autoRefresh() {
     } catch (err: any) {
       // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
       pendingStatus = null;
-      if (!retry) {
+      if (err.status === 503) {
+        // Fast catchup began between polls; the next pass sees the catchpoint
+        // in status and stops long-polling.
+        try {
+          algodStatus.value = await algodClient.value?.status().do();
+        } catch {
+          // Handled by the next pass.
+        }
+        await delay(1000);
+      } else if (!retry) {
         retry = true;
         await getAllStatus();
       } else {
