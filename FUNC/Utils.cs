@@ -187,6 +187,22 @@ namespace FUNC
             await Exec("chown", "-R", owner, path);
         }
 
+        // Make a dir private to SYSTEM, Administrators and one service account, with
+        // everything below it inheriting that. Well-known groups go by SID so this also
+        // works on non-English Windows, where "Administrators" has another name.
+        //
+        // The two steps must stay separate: running the grants with /T would apply
+        // /inheritance:r to every file too, and the (OI)(CI) grants don't take on files,
+        // so each file would be left with an empty DACL that nobody can read.
+        public static async Task RestrictWindowsDir(string dir, string account, string rights)
+        {
+            await Exec("icacls.exe", dir, "/inheritance:r",
+                "/grant:r", "*S-1-5-18:(OI)(CI)F",
+                "/grant:r", "*S-1-5-32-544:(OI)(CI)F",
+                "/grant:r", $"{account}:(OI)(CI){rights}", "/Q");
+            await Exec("icacls.exe", Path.Combine(dir, "*"), "/reset", "/T", "/Q");
+        }
+
         public static async Task RestartWindowsService(string svc)
         {
             await Sc("stop", svc);
