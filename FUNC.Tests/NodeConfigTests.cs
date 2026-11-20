@@ -154,6 +154,26 @@ public class NodeConfigTests
     }
 
     [Fact]
+    public void SyncProxyPort_PointsTheProxyAtTheNode_AndKeepsItWhenUnknown()
+    {
+        int before = Shared.AlgoPort;
+        try
+        {
+            Existing("""{"EndpointAddress":"0.0.0.0:4190"}""");
+            Assert.Equal(4190, Node.SyncProxyPort(Name));
+            Assert.Equal(4190, Shared.AlgoPort);
+
+            File.Delete(ConfigPath);
+            Assert.Equal(0, Node.SyncProxyPort(Name));
+            Assert.Equal(4190, Shared.AlgoPort);
+        }
+        finally
+        {
+            Shared.AlgoPort = before;
+        }
+    }
+
+    [Fact]
     public void AlgodToken_IsTrimmed()
     {
         File.WriteAllText(Path.Combine(_dir, "algod.admin.token"), "abc123\n");

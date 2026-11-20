@@ -310,7 +310,6 @@ import type { PropType } from "vue";
 
 const props = defineProps({
   name: { type: String, required: true },
-  port: { type: Number, required: true },
   token: { type: String, required: true },
   algodClient: { type: Algodv2, required: true },
   status: { type: String, required: true },

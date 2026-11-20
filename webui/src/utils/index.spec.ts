@@ -179,10 +179,26 @@ describe("algodBaseUrl", () => {
     expect(algodBaseUrl("Voi")).toBe("http://localhost:3536/algod/voi");
   });
 
-  it("names the proxied endpoint when algod can't be reached", () => {
-    const target = `the node's algod API (${algodBaseUrl("Voi")})`;
+  const target = { proxied: `the node's algod API (${algodBaseUrl("Voi")})` };
+
+  it.each([
+    [{ status: 502, response: { status: 502 }, message: "Bad Gateway" }],
+    [{ response: { status: 502, data: "" }, message: "Request failed" }],
+    [{ response: { status: 504, data: "" }, message: "Request failed" }],
+  ])("names the node when FUNC's proxy can't reach algod: %#", (err) => {
+    expect(errorMessage(err, "Status", target)).toBe(
+      "Status failed: no response from the node's algod API (http://localhost:3536/algod/voi) - check that the node is running."
+    );
+  });
+
+  it("names FUNC when a proxied call gets no answer at all", () => {
     expect(
       errorMessage(new TypeError("Failed to fetch"), "Status", target)
-    ).toContain("no response from the node's algod API (http://localhost:3536/algod/voi)");
+    ).toContain(`no response from the FUNC service (${funcOrigin}) -`);
+  });
+
+  it("passes on algod's own errors", () => {
+    const err = { response: { status: 400, data: { message: "bad round" } } };
+    expect(errorMessage(err, "Status", target)).toBe("Status failed: bad round");
   });
 });

@@ -1,5 +1,5 @@
 import { NodeStatus } from "@/types";
-import { algodBaseUrl } from "@/utils";
+import { algodBaseUrl, type ProxiedTarget } from "@/utils";
 import { Algodv2 } from "algosdk";
 
 export class AlgodFunc extends Algodv2 {
@@ -15,7 +15,8 @@ export class AlgodFunc extends Algodv2 {
   }
 }
 
-// Human-readable name for the node's algod API, used in error messages.
-export function algodTarget(baseUrl?: string) {
-  return `the node's algod API${baseUrl ? ` (${baseUrl})` : ""}`;
+// Human-readable name for the node's algod API, used in error messages. It is
+// reached through FUNC's proxy, so errors can tell FUNC and the node apart.
+export function algodTarget(baseUrl?: string): ProxiedTarget {
+  return { proxied: `the node's algod API${baseUrl ? ` (${baseUrl})` : ""}` };
 }

@@ -7,7 +7,7 @@ You can use FUNC from your phone or another computer on your network, with the s
 | 3537 | FUNC over HTTPS (recommended) |
 | 3536 | FUNC over plain HTTP |
 
-FUNC passes the page's calls to the Algorand and Voi nodes along itself, so the node ports (8081, 8082) and port 3538 don't need to be open for the web page. FUNC still listens on 3538, and the nodes on their own ports, for tools that use them directly.
+The page reaches your node through FUNC itself, so the node's own port (8081, or 8082 for Voi) and port 3538 don't need to be open. FUNC still listens on 3538, and the node on its own port, for tools that connect to them directly.
 
 ::: danger Local network only
 Only open these ports on your local network. **Do not** open them to the internet.

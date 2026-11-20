@@ -37,6 +37,8 @@ builder.WebHost.ConfigureKestrel(options =>
         listenOptions.UseHttps(cert);
     });
 });
+// The algod proxy below needs each node's port before the first page asks for it.
+foreach (string name in new[] { "algorand", "voi" }) Node.SyncProxyPort(name);
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(AlgodProxy.AddTransform);
