@@ -89,7 +89,11 @@ namespace FUNC.Health
             public List<PeerInfo> Peers { get; set; } = [];
             public DateTimeOffset? PeersAt { get; set; }
             public Dictionary<long, List<string>> Proposed { get; set; } = [];
+            public List<BlockWin> Wins { get; set; } = [];
         }
+
+        // A round whose block was this node's proposal.
+        public sealed record BlockWin(long Round, DateTimeOffset Time);
 
         private readonly object _lock = new();
         private readonly string? _path;
@@ -109,6 +113,9 @@ namespace FUNC.Health
         // decided within seconds, so this holds a handful of entries at most.
         private readonly Dictionary<long, HashSet<string>> _proposed = [];
         private const int ProposalRounds = 20;
+        // The latest wins, oldest first, for the tray to announce.
+        private readonly List<BlockWin> _wins = [];
+        private const int MaxWins = 20;
 
         // Not persisted: how the sources are doing right now.
         private bool _logFound;
@@ -178,6 +185,11 @@ namespace FUNC.Health
                             b.ArrivalMsMax = Math.Max(b.ArrivalMsMax, ev.ReceivedMs);
                             if (won) b.Wins++;
                         });
+                        if (won)
+                        {
+                            _wins.Add(new BlockWin(ev.Round, ev.Time));
+                            if (_wins.Count > MaxWins) _wins.RemoveRange(0, _wins.Count - MaxWins);
+                        }
                         break;
                     case HealthEventKind.VoteSent:
                         Add(t, now, b => b.Votes++);
@@ -336,6 +348,12 @@ namespace FUNC.Health
 
         #region Output
 
+        // The latest rounds this node's block won, oldest first.
+        public List<BlockWin> RecentWins()
+        {
+            lock (_lock) return [.. _wins];
+        }
+
         public NodeHealth Query(string? range)
         {
             (int width, long span, bool hourly) = range switch
@@ -440,6 +458,7 @@ namespace FUNC.Health
                     PeersAt = _peersAt,
                     // Saved so a win isn't missed when FUNC restarts mid-round.
                     Proposed = _proposed.ToDictionary(p => p.Key, p => p.Value.ToList()),
+                    Wins = _wins,
                 }, Json);
             }
             // Replace the file in one step so a crash can't leave half of it.
@@ -467,6 +486,7 @@ namespace FUNC.Health
             _peers = state.Peers;
             _peersAt = state.PeersAt;
             foreach (var (round, hashes) in state.Proposed) _proposed[round] = [.. hashes];
+            _wins.AddRange(state.Wins);
             Prune();
         }
 

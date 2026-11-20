@@ -116,6 +116,24 @@ namespace FUNC.Controllers
             return await Tray.Collect();
         }
 
+        // GET: func/notifications
+        [HttpGet("notifications")]
+        public ActionResult<Models.NotificationSettings> GetNotifications() => Notifications.Get();
+
+        // PUT: func/notifications
+        [HttpPut("notifications")]
+        public ActionResult<Models.NotificationSettings> SetNotifications(Models.NotificationSettings model)
+        {
+            try
+            {
+                return Notifications.Set(model);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         // POST: func/update
         [HttpPost("update")]
         public async Task<ActionResult> FuncUpdate()

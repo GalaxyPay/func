@@ -80,6 +80,15 @@ export interface PartDetails {
   proposals: number | undefined;
 }
 
+// A block this node created, for the dashboard's toast.
+export interface CreatedBlock {
+  round: bigint;
+  address: string;
+  // The proposer's payout, in micro units; 0 when the account isn't eligible.
+  payout: bigint;
+  unit: string;
+}
+
 export interface Message {
   id: number;
   title: string;

@@ -30,7 +30,9 @@
               <span class="font-mono">{{ appVersion }}</span>
               <span class="ver-sep">·</span>
               <span v-if="updatingFunc">Updating…</span>
-              <span v-else-if="funcCheckFailed">Couldn't check for updates</span>
+              <span v-else-if="funcCheckFailed"
+                >Couldn't check for updates</span
+              >
               <span v-else-if="!funcLatest">Checking for updates…</span>
               <span v-else-if="store.funcUpdateAvailable" class="text-warning">
                 <span class="font-mono">{{ funcLatest }}</span> available
@@ -84,10 +86,7 @@
               </div>
             </div>
             <div class="set-actions">
-              <Releases
-                @release="updateNode"
-                v-if="store.manualNodeVersions"
-              />
+              <Releases @release="updateNode" v-if="store.manualNodeVersions" />
               <v-btn
                 v-else-if="
                   (store.nodeUpdateAvailable && externalManager !== 'manual') ||
@@ -164,6 +163,21 @@
           </div>
         </div>
         <div class="group">
+          <div v-if="notifications?.tray" class="set-row">
+            <div class="set-title">Notify on Blocks Created</div>
+            <div class="set-desc">
+              Desktop alert when this node creates a block{{
+                store.showNetworks ? " (Voi not included)" : ""
+              }}
+            </div>
+            <div class="set-actions">
+              <v-switch
+                :model-value="notifications.blocks"
+                :disabled="settingNotifications"
+                @click.prevent="setBlockNotifications(!notifications.blocks)"
+              />
+            </div>
+          </div>
           <div class="set-row">
             <div class="set-title">Show Machine Name</div>
             <div class="set-desc">In App Bar</div>
@@ -376,10 +390,51 @@ onBeforeMount(async () => {
   await getVersion();
 });
 
+// Read each time the dialog opens: it mounts before sign-in.
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) getNotifications();
+  }
+);
+
+// Optional desktop notifications, raised by the tray / menu-bar helper. The
+// service keeps the setting so every user's helper on this machine follows it.
+const notifications = ref<{ blocks: boolean; tray: boolean }>();
+const settingNotifications = ref(false);
+
+async function getNotifications() {
+  try {
+    const { data } = await store.api.get("func/notifications");
+    notifications.value = data;
+  } catch (err: any) {
+    // The row stays hidden; the setting is optional.
+    console.error(err);
+  }
+}
+
+async function setBlockNotifications(blocks: boolean) {
+  settingNotifications.value = true;
+  try {
+    const { data } = await store.api.put("func/notifications", { blocks });
+    notifications.value = data;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(
+      errorMessage(err, "Save block notification setting"),
+      "error"
+    );
+  }
+  settingNotifications.value = false;
+}
+
 const updates = computed(() => store.goalVersion?.updates);
 const updateModes: Record<NodeUpdateMode, { title: string; desc: string }> = {
   auto: { title: "Auto", desc: "Installs new versions when they're released" },
-  notify: { title: "Notify", desc: "Alerts you when a new version is released" },
+  notify: {
+    title: "Notify",
+    desc: "Alerts you when a new version is released",
+  },
   manual: {
     title: "Manual",
     desc: "Stays on the version you select, without update alerts",

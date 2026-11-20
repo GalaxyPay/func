@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using FUNC.Controllers;
+using FUNC.Health;
 using FUNC.Models;
 using Octokit;
 
@@ -86,6 +87,10 @@ namespace FUNC
                     try { messages = (DateTimeOffset.UtcNow, await FetchMessages()); } catch { }
                 }
                 status.Messages = messages.Value;
+
+                status.NotifyBlocks = Notifications.Blocks;
+                status.Blocks = HealthCollector.Store("algorand").RecentWins()
+                    .Select(w => new TrayBlock { Round = w.Round, Time = w.Time }).ToList();
 
                 return status;
             }

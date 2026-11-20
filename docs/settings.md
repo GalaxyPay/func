@@ -9,6 +9,7 @@ Open Settings with the gear icon at the top right. A dot on the icon means there
 | **Node Version** | The installed version of the node software, with an **Update** button when there's a newer one. In **Manual** mode, a menu lets you pick any release instead. |
 | **Node Updates** | How the node software is kept up to date: **Auto**, **Notify** or **Manual**. See [Node updates](#node-updates). |
 | **Diagnostics** | Copy or download troubleshooting info to share when asking for help. See [Getting Help](/support). |
+| **Notify on Blocks Created** | Windows and Mac: a desktop notification from the tray or menu bar each time this node creates a block, even with the dashboard closed. Off by default. |
 | **Show Machine Name** | Shows the computer's name in the top bar. Handy if you run more than one node. |
 | **Show Advanced Details** | Adds node health charts, algod's version and uptime, and a list of peers to the dashboard. |
 | **Show Alternative Networks** | Adds tabs for other networks, such as Voi. |

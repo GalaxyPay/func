@@ -20,6 +20,8 @@ Once the node is running, the **Overview** shows:
 - **Blocks Created**: blocks proposed by your online accounts. Use the button beside it to count from a chosen date: all time, this year, this month, today or a date you pick.
 - **Online Accounts** and **Online Stake**: your accounts that are online, and how much they hold
 
+While the dashboard is open, it plays a chime and shows a toast with the round and reward each time one of your accounts creates a block. Browsers stay quiet until you've clicked somewhere on the page. To be told with the dashboard closed, turn on **Notify on Blocks Created** in [Settings](/settings) (Windows and Mac).
+
 On Algorand, a calendar at the bottom of the page shows the days your accounts created blocks.
 
 Turn on **Show Advanced Details** in [Settings](/settings) to also see charts of the node's health over time, algod's version and uptime, and a list of peers. Click the **Network** row to show the peers.

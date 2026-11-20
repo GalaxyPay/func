@@ -28,6 +28,16 @@ Manual installs, uninstalling, remote access and everything else are covered in 
 
 Need help? See [Getting Help](https://func.algo.xyz/support).
 
+### Data folder
+
+FUNC keeps its files (settings, `auth.json`, node data, logs, binaries) in:
+
+| OS      | Location                 |
+| ------- | ------------------------ |
+| Windows | `C:\ProgramData\func`    |
+| Mac     | `/usr/local/share/func`  |
+| Linux   | `/usr/share/func`        |
+
 ## Build (for Developers)
 
 You can fork the repo and let Github Actions do the build for you, or you can run:
@@ -42,7 +52,7 @@ To run the web UI from the Vite dev server against an installed FUNC service, po
 VITE_ORIGIN=http://localhost:3536
 ```
 
-The UI talks to algod on the same host, so if the service runs on another machine just use its address (for example `http://192.168.1.100:3536`). The API sends no CORS headers by default, so you also need to allow the dev server's origin on the machine running the service: create a file named `func.json` in the same folder as `auth.json`, with the following contents, then restart the FUNC service:
+The UI talks to algod on the same host, so if the service runs on another machine just use its address (for example `http://192.168.1.100:3536`). The API sends no CORS headers by default, so you also need to allow the dev server's origin on the machine running the service: create a file named `func.json` in the [data folder](#data-folder), with the following contents, then restart the FUNC service:
 
 ```json
 { "Cors": { "Origins": ["http://localhost:3000"] } }

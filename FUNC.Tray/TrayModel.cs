@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -115,8 +116,30 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
             state.NotifiedUnsupported = unsupported;
         }
 
+        NotifyBlocks(status);
+
         state.Save();
     }
+
+    // One notification per poll for the blocks this node created since the last one,
+    // when the user turned them on. Blocks seen while they're off are skipped, not saved up.
+    private void NotifyBlocks(Status status)
+    {
+        List<BlockWin> blocks = status.Blocks ?? [];
+        if (state.NotifiedBlockRound is long seen && status.NotifyBlocks)
+        {
+            List<BlockWin> fresh = blocks.Where(b => b.Round > seen).OrderBy(b => b.Round).ToList();
+            if (fresh.Count == 1)
+                Notifier.Show("🎉 Block created", $"This node created block {Round(fresh[0].Round)}.", BaseUrl);
+            else if (fresh.Count > 1)
+                Notifier.Show($"🎉 {fresh.Count} blocks created", $"This node created blocks {string.Join(", ", fresh.Select(b => Round(b.Round)))}.", BaseUrl);
+        }
+        // Follows the store even when its rounds go down (its history file was reset).
+        if (blocks.Count > 0) state.NotifiedBlockRound = blocks.Max(b => b.Round);
+        else state.NotifiedBlockRound ??= 0;
+    }
+
+    private static string Round(long round) => round.ToString("N0", CultureInfo.InvariantCulture);
 
     private TrayView BuildView()
     {
@@ -188,9 +211,10 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
 }
 
 // Mirrors FUNC.Models.TrayStatus (GET func/tray).
-internal sealed record Status(string? Version, string? NodeStatus, Update? FuncUpdate, Update? NodeUpdate, List<Message> Messages);
+internal sealed record Status(string? Version, string? NodeStatus, Update? FuncUpdate, Update? NodeUpdate, List<Message> Messages, bool NotifyBlocks = false, List<BlockWin>? Blocks = null);
 internal sealed record Update(string? Installed, string? Latest, bool Available, bool Notify, string? Unsupported);
 internal sealed record Message(ulong Id, string Title);
+internal sealed record BlockWin(long Round, DateTimeOffset Time);
 
 // Source-generated JSON: the trimmed / native AOT builds have no reflection serializer.
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, WriteIndented = true)]

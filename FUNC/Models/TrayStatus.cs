@@ -9,6 +9,17 @@ namespace FUNC.Models
         public UpdateInfo? NodeUpdate { get; set; }
         public string? NodeStatus { get; set; }
         public List<TrayMessage> Messages { get; set; } = [];
+        // Whether the user asked to hear about this node's blocks (Settings, Notify on Blocks Created).
+        public bool NotifyBlocks { get; set; }
+        // The latest rounds this node's block won, oldest first. Sent whatever NotifyBlocks
+        // says, so the helper can skip past them while notifications are off.
+        public List<TrayBlock> Blocks { get; set; } = [];
+    }
+
+    public class TrayBlock
+    {
+        public long Round { get; set; }
+        public DateTimeOffset Time { get; set; }
     }
 
     public class UpdateInfo

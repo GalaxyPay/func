@@ -255,13 +255,14 @@
         </v-form>
       </v-card>
     </v-dialog>
+    <BlockToast :block="createdBlock" />
   </section>
 </template>
 
 <script lang="ts" setup>
 import { algodTarget } from "@/clients";
 import { networks } from "@/data";
-import { PartDetails, Participation } from "@/types";
+import { CreatedBlock, PartDetails, Participation } from "@/types";
 import {
   b64,
   copyToClipboard,
@@ -273,6 +274,7 @@ import {
   getSuggestedParams,
   nodeHostname,
 } from "@/utils";
+import { playBlockSound } from "@/utils/blockSound";
 import {
   mdiChevronDown,
   mdiClose,
@@ -313,6 +315,7 @@ const gen = ref<{ first?: bigint | string; last?: bigint | string }>({});
 const lastRound = ref<bigint>();
 const acctInfos = ref<modelsv2.Account[]>([]);
 const emittedPart = ref<PartDetails>();
+const createdBlock = ref<CreatedBlock>();
 
 const validAddress = (v: string) =>
   algosdk.isValidAddress(v) || "Invalid Address";
@@ -482,6 +485,12 @@ async function checkNewBlock(round: bigint) {
     const proposer = resp.block.header.proposer?.toString();
     if (!proposer || !online.includes(proposer)) return;
     playBlockSound();
+    createdBlock.value = {
+      round: resp.block.header.round,
+      address: proposer,
+      payout: BigInt(resp.block.header.proposerPayout ?? 0),
+      unit: props.name === "Voi" ? "VOI" : "ALGO",
+    };
     if (partStats.value[proposer]) {
       partStats.value[proposer].proposals =
         (partStats.value[proposer].proposals || 0) + 1;
@@ -501,68 +510,6 @@ async function checkNewBlock(round: bigint) {
     emit("blockTimestamps", [...cachedTimestamps, ...liveTimestamps]);
   } catch (err: any) {
     console.error(errorMessage(err, "Check new block", algodEndpoint), err);
-  }
-}
-
-let audioCtx: AudioContext | undefined;
-
-function playBlockSound() {
-  try {
-    audioCtx ??= new (
-      window.AudioContext || (window as any).webkitAudioContext
-    )();
-    const ctx = audioCtx;
-    if (ctx.state === "suspended") ctx.resume();
-    const now = ctx.currentTime;
-
-    const out = ctx.createGain();
-    out.gain.value = 0.9;
-    out.connect(ctx.destination);
-
-    // Solid wooden "tok": short, dense tone with a fast pitch drop and
-    // a second partial just above to add body instead of a hollow ring.
-    const partials = [
-      { type: "sine" as OscillatorType, f0: 720, f1: 560, level: 0.7 },
-      { type: "sine" as OscillatorType, f0: 1180, f1: 940, level: 0.35 },
-    ];
-    for (const p of partials) {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = p.type;
-      osc.frequency.setValueAtTime(p.f0, now);
-      osc.frequency.exponentialRampToValueAtTime(p.f1, now + 0.012);
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(p.level, now + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-      osc.connect(g).connect(out);
-      osc.start(now);
-      osc.stop(now + 0.08);
-    }
-
-    // Sharp percussive attack (the "t") for a solid, dry strike.
-    const noise = ctx.createBufferSource();
-    const buf = ctx.createBuffer(
-      1,
-      Math.ceil(ctx.sampleRate * 0.02),
-      ctx.sampleRate
-    );
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    }
-    noise.buffer = buf;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 2400;
-    bp.Q.value = 1.2;
-    const nGain = ctx.createGain();
-    nGain.gain.setValueAtTime(0.5, now);
-    nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
-    noise.connect(bp).connect(nGain).connect(out);
-    noise.start(now);
-    noise.stop(now + 0.03);
-  } catch (err) {
-    console.error(err);
   }
 }
 

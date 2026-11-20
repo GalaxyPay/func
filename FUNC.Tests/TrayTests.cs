@@ -50,6 +50,13 @@ public class TrayTests
         Assert.Equal("S-1-5-32-545", doc.Descendants(ns + "GroupId").Single().Value);
     }
 
+    [Theory]
+    [InlineData("{\"blocks\":true}", true)]
+    [InlineData("{\"blocks\":false}", false)]
+    [InlineData("{}", false)]
+    public void Notifications_ParsesTheSavedSetting(string json, bool blocks) =>
+        Assert.Equal(blocks, Notifications.Parse(json).Blocks);
+
     [Fact]
     public void DecodeMessage_SkipsMalformedValues() =>
         Assert.Null(Tray.DecodeMessage(Key(1), [0, 200, 0, 0]));
