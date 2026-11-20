@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
@@ -49,6 +50,10 @@ namespace FUNC.Controllers
         // The version of the algod in binDir ("5.0.5"), or empty if there's none.
         internal static async Task<string> InstalledVersion(string binDir)
         {
+            // FUNC's own algod is being replaced; running it would lock the file (callers treat
+            // an empty version as unknown).
+            if (Installing && Path.GetFullPath(binDir) == Path.GetFullPath(Path.Combine(Utils.appDataDir, "bin")))
+                return string.Empty;
             string version = await Utils.Exec(Path.Combine(binDir, "algod"), "-v");
             if (version == string.Empty) return string.Empty;
             int firstBreak = version.IndexOf("\n") + 1;
@@ -169,6 +174,9 @@ namespace FUNC.Controllers
         // The embedded keyring keeps expired subkeys, which older releases are signed with.
         private const string AlgorandKeyUrl = "https://releases.algorand.com/key.pub";
 
+        // Set at startup; Install is static and runs from requests, the auto-updater and first-run setup.
+        internal static ILogger? Log { get; set; }
+
         // One install at a time, between manual updates, auto-updates and first-run setup.
         private static readonly SemaphoreSlim installLock = new(1, 1);
         private static volatile bool installing;
@@ -200,53 +208,149 @@ namespace FUNC.Controllers
                 ?? throw new Exception($"No node binaries for this platform in release {release.TagName}");
 
             string filePath = Path.Combine(Utils.appDataDir, "node.tar.gz");
-            using var httpClient = new HttpClient();
-            using (var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl))
-            using (FileStream fs = new(filePath, System.IO.FileMode.Create))
+            string staging = Path.Combine(Utils.appDataDir, "node-staging");
+            var total = Stopwatch.StartNew();
+            var step = Stopwatch.StartNew();
+            void Done(string what)
             {
-                await s.CopyToAsync(fs);
+                Log?.LogInformation("Node install {Tag}: {Step} took {Ms} ms", release.TagName, what, step.ElapsedMilliseconds);
+                step.Restart();
             }
 
             try
             {
+                using var httpClient = new HttpClient();
+                using (var s = await httpClient.GetStreamAsync(asset.BrowserDownloadUrl))
+                using (FileStream fs = new(filePath, System.IO.FileMode.Create))
+                {
+                    await s.CopyToAsync(fs);
+                }
+                Done("download");
+
                 await VerifyNodeDownload(httpClient, release, asset, filePath);
+                Done("verify");
+
+                // Unpack beside the live install first, so the nodes are only down for the swap.
+                if (Directory.Exists(staging)) Directory.Delete(staging, true);
+                using (FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read))
+                using (GZipStream gz = new(rfs, CompressionMode.Decompress))
+                {
+                    await TarFile.ExtractToDirectoryAsync(gz, staging, true);
+                }
+                Done("extract");
+
+                var running = new List<string>();
+                foreach (string node in new[] { "algorand", "voi" })
+                {
+                    if (await Node.ServiceStatus(node) == "Running") running.Add(node);
+                }
+                foreach (string node in running) await Node.ControlService(node, "stop");
+                Done("stop nodes");
+
+                try
+                {
+                    await ReplaceFiles(staging, Utils.appDataDir);
+                    Done("replace files");
+                }
+                finally
+                {
+                    // Restart even when the swap failed: ReplaceFiles has put the old files back.
+                    foreach (string node in running)
+                    {
+                        try { await Node.ControlService(node, "start"); }
+                        catch (Exception ex) { Log?.LogWarning("Node install: restarting {Node} failed: {Message}", node, ex.Message); }
+                    }
+                    Done("start nodes");
+                }
+
+                Log?.LogInformation("Node install {Tag} finished in {Ms} ms", release.TagName, total.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning("Node install {Tag} failed after {Ms} ms: {Message}", release.TagName, total.ElapsedMilliseconds, ex.Message);
+                throw;
+            }
+            finally
+            {
+                TryDelete(filePath);
+                try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { }
+            }
+        }
+
+        // Moves every file under `staging` to the same relative path under `target`.
+        //
+        // Windows won't overwrite a running .exe (e.g. a goal or diagcfg a status check just
+        // started), but it will rename one, so each existing file is first moved aside to
+        // "<name>.func-old". If any step fails, the files already replaced are put back, so
+        // the node is never left with a mix of two versions' binaries.
+        internal static async Task ReplaceFiles(string staging, string target, int attempts = 10)
+        {
+            var replaced = new List<(string Dest, string? Aside)>();
+            try
+            {
+                foreach (string src in Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories))
+                {
+                    string dest = Path.Combine(target, Path.GetRelativePath(staging, src));
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                    string? aside = null;
+                    if (System.IO.File.Exists(dest))
+                    {
+                        aside = AsideName(dest);
+                        await Retry(() => System.IO.File.Move(dest, aside), attempts);
+                    }
+                    replaced.Add((dest, aside));
+                    await Retry(() => System.IO.File.Move(src, dest), attempts);
+                }
             }
             catch
             {
-                System.IO.File.Delete(filePath);
+                foreach (var (dest, aside) in Enumerable.Reverse(replaced))
+                {
+                    try
+                    {
+                        if (aside != null) System.IO.File.Move(aside, dest, overwrite: true);
+                        else TryDelete(dest);
+                    }
+                    catch { }
+                }
                 throw;
             }
 
-            // Get Node Statuses
-            var algorandStatus = await Node.Get("algorand");
-            var voiStatus = await Node.Get("voi");
-
-            // Stop Running Nodes
-            if (algorandStatus.ServiceStatus == "Running")
+            // Old binaries still running can't be deleted yet; the next install clears them.
+            foreach (string dir in replaced.Select(r => Path.GetDirectoryName(r.Dest)!).Distinct())
             {
-                await Node.ControlService("algorand", "stop");
+                foreach (string old in Directory.EnumerateFiles(dir, "*.func-old*")) TryDelete(old);
             }
-            if (voiStatus.ServiceStatus == "Running")
-            {
-                await Node.ControlService("voi", "stop");
-            }
+        }
 
-            using FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read);
-            using GZipStream gz = new(rfs, CompressionMode.Decompress, leaveOpen: true);
-            await TarFile.ExtractToDirectoryAsync(gz, Utils.appDataDir, true);
-            rfs.Dispose();
+        // "<dest>.func-old", or a unique variant when a leftover one is still in use.
+        private static string AsideName(string dest)
+        {
+            string aside = dest + ".func-old";
+            if (System.IO.File.Exists(aside)) TryDelete(aside);
+            return System.IO.File.Exists(aside) ? $"{aside}-{Guid.NewGuid():N}" : aside;
+        }
 
-            // Restart Running Nodes
-            if (algorandStatus.ServiceStatus == "Running")
+        // File operations can briefly fail while antivirus scans a new file or a process exits.
+        private static async Task Retry(Action action, int attempts)
+        {
+            for (int i = 1; ; i++)
             {
-                await Node.ControlService("algorand", "start");
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (Exception ex) when (i < attempts && ex is IOException or UnauthorizedAccessException)
+                {
+                    await Task.Delay(300);
+                }
             }
-            if (voiStatus.ServiceStatus == "Running")
-            {
-                await Node.ControlService("voi", "start");
-            }
+        }
 
-            System.IO.File.Delete(filePath);
+        private static void TryDelete(string path)
+        {
+            try { System.IO.File.Delete(path); } catch { }
         }
 
         private static (string Owner, string Repo) NodeRepo() =>

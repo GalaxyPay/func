@@ -25,6 +25,8 @@ namespace FUNC
         private static async Task<string> Tool(string name, string tool, params string[] args)
         {
             if (Ext(name) is { } ext) return (await External.RunAs(ext.User, Path.Combine(ext.BinDir, tool), args)).Stdout;
+            // A running binary can't be replaced on Windows; don't start one mid-install.
+            if (GoalController.Installing) return string.Empty;
             return await Utils.Exec(Path.Combine(Utils.appDataDir, "bin", tool), args);
         }
 

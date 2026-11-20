@@ -61,6 +61,8 @@ if (corsOrigins.Length > 0)
 
 var app = builder.Build();
 
+GoalController.Log = app.Services.GetRequiredService<ILogger<GoalController>>();
+
 // Configure the HTTP request pipeline.
 app.Use(async (httpContext, next) =>
 {
