@@ -1,5 +1,4 @@
 // Utilities
-import { AlgodFunc } from "@/clients";
 import {
   AuthStatus,
   GoalVersion,
@@ -8,32 +7,10 @@ import {
   SnackBar,
 } from "@/types";
 import { isNewer } from "@/utils";
-import algosdk, { modelsv2 } from "algosdk";
-import type { AxiosInstance } from "axios";
+import { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
 const TOKEN_KEY = "session";
-
-// Messages are read from this node only once it's running and synced. On a
-// fresh install it's absent, stopped or still catching up and doesn't have the
-// contract yet; asking would only fail, so wait. Node.vue fetches again once
-// the node has synced.
-async function messagesClient(
-  api: AxiosInstance
-): Promise<algosdk.Algodv2 | undefined> {
-  const name = "algorand";
-  try {
-    const { data } = await api.get(name);
-    if (data?.serviceStatus !== "Running") return undefined;
-    const local = new AlgodFunc(name, data);
-    const status = await local.status().do();
-    if (status.lastRound > 0n && !status.catchupTime && !status.catchpoint)
-      return local;
-  } catch {
-    // Not reachable yet.
-  }
-  return undefined;
-}
 
 function readToken(): string {
   try {
@@ -192,27 +169,16 @@ export const useAppStore = defineStore("app", {
         display: true,
       };
     },
-    async fetchMessages() {
-      const client = await messagesClient(this.api);
-      if (!client) return;
-      const resp = await client
-        .getApplicationBoxes(import.meta.env.VITE_MESSAGES_APP_ID)
-        .include("values")
-        .do();
-      const abiType = algosdk.ABIType.from("(string,string)");
-      // Message boxes have 8-byte uint64 keys; allowedSenders boxes have
-      // 32-byte address keys and hold no message data.
-      this.messages = (resp.boxes ?? [])
-        .filter((box) => box.name.length === 8)
-        .map((box) => {
-          const abiData = abiType.decode(box.value!) as string[];
-          return {
-            id: algosdk.decodeUint64(box.name),
-            title: abiData[0],
-            body: abiData[1],
-          };
-        });
-      // Drop read ids that no longer correspond to an existing message.
+    // The service reads them through the Algorand node and caches them; until that
+    // node has synced the list is just empty. refresh skips the cache.
+    async fetchMessages(refresh = false) {
+      const { data } = await this.api.get<Message[]>("func/messages", {
+        params: { refresh },
+      });
+      this.messages = data;
+      // Drop read ids that no longer correspond to an existing message. An empty
+      // list usually means the node isn't synced yet, so leave them alone then.
+      if (!data.length) return;
       const ids = new Set(this.messages.map((m) => m.id));
       this.setReadMessages(this.readMessages.filter((id) => ids.has(id)));
     },

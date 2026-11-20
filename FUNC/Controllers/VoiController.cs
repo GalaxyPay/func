@@ -186,6 +186,21 @@ namespace FUNC.Controllers
             }
         }
 
+        // GET: voi/keys
+        // Participation keys with estimated expiry and which ones need renewing.
+        [HttpGet("keys")]
+        public async Task<ActionResult<List<PartKey>>> GetPartKeys()
+        {
+            try
+            {
+                return await PartKeys.List(_name);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         // GET: voi/health?range=24h
         [HttpGet("health")]
         public ActionResult<NodeHealth> GetNodeHealth(string? range)

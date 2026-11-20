@@ -118,6 +118,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         }
 
         NotifyBlocks(status);
+        NotifyExpiringKeys(status);
 
         state.Save();
     }
@@ -140,6 +141,25 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         else state.NotifiedBlockRound ??= 0;
     }
 
+    // One alert per key that's due to expire; forgotten once it's renewed or gone.
+    private void NotifyExpiringKeys(Status status)
+    {
+        List<ExpiringKey> keys = status.ExpiringKeys ?? [];
+        List<ExpiringKey> fresh = keys.Where(k => !state.NotifiedExpiringKeyIds.Contains(k.Id)).ToList();
+        if (fresh.Count == 1)
+            Notifier.Show("Participation key expiring", $"The key for {ShortAddress(fresh[0].Address)} {ExpiresText(fresh[0].Expires)}. Generate and register a new one to stay online.", BaseUrl);
+        else if (fresh.Count > 1)
+            Notifier.Show($"{fresh.Count} participation keys expiring", $"Keys for {string.Join(", ", fresh.Select(k => ShortAddress(k.Address)))} expire within a week. Generate and register new ones to stay online.", BaseUrl);
+        state.NotifiedExpiringKeyIds = [.. keys.Select(k => k.Id)];
+    }
+
+    internal static string ShortAddress(string address) => address.Length > 10 ? $"{address[..5]}…{address[^5..]}" : address;
+
+    internal static string ExpiresText(DateTimeOffset? expires) =>
+        expires is not DateTimeOffset at ? "expires soon"
+        : at <= DateTimeOffset.Now ? "has expired"
+        : $"expires around {at.ToLocalTime().ToString("MMM d", CultureInfo.CurrentCulture)}";
+
     private static string Round(long round) => round.ToString("N0", CultureInfo.InvariantCulture);
 
     private TrayView BuildView()
@@ -161,6 +181,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         bool funcUpdate = status.FuncUpdate?.Available == true;
         bool nodeUpdate = status.NodeUpdate is { Available: true, Notify: true };
         bool nodeUnsupported = status.NodeUpdate?.Unsupported != null;
+        List<ExpiringKey> expiring = status.ExpiringKeys ?? [];
 
         menu.Add(new($"FUNC {(status.Version != null ? "v" + status.Version + " " : "")}is running"));
         menu.Add(new($"Node: {status.NodeStatus ?? "Unknown"}"));
@@ -174,6 +195,8 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
             menu.Add(new("Node update required", () => Browser.Open(SettingsUrl)));
         else if (nodeUpdate)
             menu.Add(new($"Node update available: v{status.NodeUpdate!.Latest}", () => Browser.Open(SettingsUrl)));
+        foreach (ExpiringKey key in expiring)
+            menu.Add(new($"Key for {ShortAddress(key.Address)} {ExpiresText(key.Expires)}", OpenDashboard));
         menu.Add(MenuEntry.Separator);
         menu.Add(SettingsEntry);
         menu.Add(ResetPasswordEntry);
@@ -183,6 +206,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         if (funcUpdate) alerts.Add("FUNC update available");
         if (nodeUnsupported) alerts.Add("Node update required");
         else if (nodeUpdate) alerts.Add("Node update available");
+        if (expiring.Count > 0) alerts.Add(expiring.Count == 1 ? "Participation key expiring" : $"{expiring.Count} participation keys expiring");
 
         return new(
             alerts.Count > 0 ? TrayLook.Alert : TrayLook.Normal,
@@ -214,10 +238,11 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
 }
 
 // Mirrors FUNC.Models.TrayStatus (GET func/tray).
-internal sealed record Status(string? Version, string? NodeStatus, Update? FuncUpdate, Update? NodeUpdate, List<Message> Messages, bool NotifyBlocks = false, List<BlockWin>? Blocks = null);
+internal sealed record Status(string? Version, string? NodeStatus, Update? FuncUpdate, Update? NodeUpdate, List<Message> Messages, bool NotifyBlocks = false, List<BlockWin>? Blocks = null, List<ExpiringKey>? ExpiringKeys = null);
 internal sealed record Update(string? Installed, string? Latest, bool Available, bool Notify, string? Unsupported);
 internal sealed record Message(ulong Id, string Title);
 internal sealed record BlockWin(long Round, DateTimeOffset Time);
+internal sealed record ExpiringKey(string Id, string Address, DateTimeOffset? Expires);
 
 // Source-generated JSON: the trimmed / native AOT builds have no reflection serializer.
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, WriteIndented = true)]

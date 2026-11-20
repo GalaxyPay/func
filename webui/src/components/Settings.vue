@@ -275,8 +275,8 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
-import { NodeUpdateMode } from "@/types";
-import { copyToClipboard, errorMessage, isNewer } from "@/utils";
+import { NodeUpdateMode, UpdateInfo } from "@/types";
+import { copyToClipboard, errorMessage } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
 
@@ -453,17 +453,15 @@ async function setUpdateMode(mode: NodeUpdateMode) {
   settingMode.value = false;
 }
 
-const githubClient = axios.create({
-  baseURL: "https://api.github.com/repos/GalaxyPay/func/releases",
-});
-
 async function getVersion() {
+  // The service checks GitHub (cached, shared with the tray); null means it
+  // hasn't been able to reach it yet.
   try {
-    const { data } = await githubClient.get("latest");
-    if (data?.tag_name) {
-      funcLatest.value = data.tag_name.replace(/^v/, "");
-      store.funcUpdateAvailable = isNewer(funcLatest.value, appVersion);
-    }
+    const { data } = await store.api.get<UpdateInfo | null>("func/version");
+    if (data?.latest) {
+      funcLatest.value = data.latest;
+      store.funcUpdateAvailable = data.available;
+    } else funcCheckFailed.value = true;
   } catch (err: any) {
     funcCheckFailed.value = true;
     console.error(err);

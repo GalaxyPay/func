@@ -457,14 +457,6 @@ const synced = computed(
     (algodStatus.value?.lastRound ?? 0n) > 100n
 );
 
-// Messages wait for this node to sync (see fetchMessages); load them once it has.
-watch(synced, (isSynced) => {
-  if (isSynced && props.name === "algorand")
-    store
-      .fetchMessages()
-      .catch((err) => console.error(errorMessage(err, "Load messages"), err));
-});
-
 // Getting Started walks a new node through to its first key online, then is
 // gone for good, as it is once the user hides it.
 const gettingStartedKey = computed(() => `gettingStartedDone:${props.name}`);

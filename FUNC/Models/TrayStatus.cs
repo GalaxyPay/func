@@ -14,6 +14,16 @@ namespace FUNC.Models
         // The latest rounds this node's block won, oldest first. Sent whatever NotifyBlocks
         // says, so the helper can skip past them while notifications are off.
         public List<TrayBlock> Blocks { get; set; } = [];
+        // Registered keys on accounts the user renews themselves (not Reti or Valar)
+        // that run out within a week.
+        public List<TrayKey> ExpiringKeys { get; set; } = [];
+    }
+
+    public class TrayKey
+    {
+        public required string Id { get; set; }
+        public required string Address { get; set; }
+        public DateTimeOffset? Expires { get; set; }
     }
 
     public class TrayBlock
@@ -38,5 +48,6 @@ namespace FUNC.Models
     {
         public ulong Id { get; set; }
         public required string Title { get; set; }
+        public string Body { get; set; } = "";
     }
 }

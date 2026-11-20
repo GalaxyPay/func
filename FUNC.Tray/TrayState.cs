@@ -16,6 +16,8 @@ internal sealed class TrayState
     // The latest round of this node's that has been seen, announced or not; null until
     // the first poll, so blocks from before the helper ran aren't announced.
     public long? NotifiedBlockRound { get; set; }
+    // Expiring participation keys already alerted, by key id.
+    public HashSet<string> NotifiedExpiringKeyIds { get; set; } = [];
 
     // %LOCALAPPDATA%\FUNC on Windows, ~/Library/Application Support/FUNC on macOS.
     private static string FilePath =>

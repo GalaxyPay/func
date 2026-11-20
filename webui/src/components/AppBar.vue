@@ -219,13 +219,24 @@ function openFromQuery() {
   window.history.replaceState(window.history.state, "", url);
 }
 
-onBeforeMount(() => {
-  openFromQuery();
-  store.refreshPart++;
+function loadMessages() {
   store
     .fetchMessages()
     .catch((err) => console.error(errorMessage(err, "Load messages"), err));
+}
+
+// The service caches messages, so polling is cheap; it also picks them up once a
+// fresh node has synced.
+let messagesTimer: ReturnType<typeof setInterval> | undefined;
+
+onBeforeMount(() => {
+  openFromQuery();
+  store.refreshPart++;
+  loadMessages();
+  messagesTimer = setInterval(loadMessages, 5 * 60 * 1000);
 });
+
+onBeforeUnmount(() => clearInterval(messagesTimer));
 function walletActionLabel(wallet: Wallet) {
   return wallet.isActive
     ? "Disconnect"

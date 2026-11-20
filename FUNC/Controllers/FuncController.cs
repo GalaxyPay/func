@@ -116,6 +116,16 @@ namespace FUNC.Controllers
             return await Tray.Collect();
         }
 
+        // GET: func/version
+        // The running version against the latest release (cached, shared with the tray).
+        [HttpGet("version")]
+        public async Task<ActionResult<Models.UpdateInfo?>> GetVersion() => await Tray.FuncUpdate();
+
+        // GET: func/messages?refresh=true
+        // Broadcast messages, read through the Algorand node (cached, shared with the tray).
+        [HttpGet("messages")]
+        public async Task<ActionResult<List<Models.TrayMessage>>> GetMessages(bool refresh) => await Tray.Messages(refresh);
+
         // GET: func/notifications
         [HttpGet("notifications")]
         public ActionResult<Models.NotificationSettings> GetNotifications() => Notifications.Get();

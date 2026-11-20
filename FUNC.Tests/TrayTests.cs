@@ -34,6 +34,7 @@ public class TrayTests
         Assert.NotNull(message);
         Assert.Equal(42UL, message.Id);
         Assert.Equal("Upgrade soon ✓", message.Title);
+        Assert.Equal("Body text", message.Body);
     }
 
     [Fact]

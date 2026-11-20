@@ -89,6 +89,28 @@ export interface CreatedBlock {
   unit: string;
 }
 
+// GET func/version: the running FUNC against its latest release.
+export interface UpdateInfo {
+  installed?: string;
+  latest?: string;
+  available: boolean;
+}
+
+// GET {name}/keys: what the service knows about each participation key.
+export interface PartKey {
+  id: string;
+  address: string;
+  lastValid: number;
+  // Estimated from the recent block time.
+  expires?: string;
+  // The account is online with this key.
+  registered: boolean;
+  // The daemon that looks after this account's keys.
+  manager?: "reti" | "valar" | null;
+  // Registered, not managed, and runs out within a week (or already has).
+  expiringSoon: boolean;
+}
+
 export interface Message {
   id: number;
   title: string;

@@ -20,10 +20,14 @@ namespace FUNC
         private static readonly TimeSpan ReleaseTtl = TimeSpan.FromMinutes(30);
         private static readonly TimeSpan MessagesTtl = TimeSpan.FromMinutes(5);
         private static readonly SemaphoreSlim gate = new(1, 1);
+        private static readonly SemaphoreSlim funcGate = new(1, 1);
+        private static readonly SemaphoreSlim messagesGate = new(1, 1);
 
         private static (DateTimeOffset At, string? Value) funcLatest;
         private static (DateTimeOffset At, string? Value) nodeLatest;
+        private static readonly TimeSpan KeysTtl = TimeSpan.FromMinutes(5);
         private static (DateTimeOffset At, List<TrayMessage> Value) messages = (DateTimeOffset.MinValue, []);
+        private static (DateTimeOffset At, List<TrayKey> Value) expiringKeys = (DateTimeOffset.MinValue, []);
 
         public static string? FuncVersion() =>
             Assembly.GetEntryAssembly()?
@@ -50,16 +54,7 @@ namespace FUNC
                     Started = p.StartTime.ToUniversalTime().ToString("O"),
                 };
 
-                funcLatest = await Cached(funcLatest, ReleaseTtl, LatestFuncVersion);
-                if (funcLatest.Value != null)
-                {
-                    status.FuncUpdate = new UpdateInfo
-                    {
-                        Installed = version,
-                        Latest = funcLatest.Value,
-                        Available = version != null && NodeUpdater.IsNewer(funcLatest.Value, version),
-                    };
-                }
+                status.FuncUpdate = await FuncUpdate();
 
                 try { status.NodeStatus = await Node.ServiceStatus("algorand"); } catch { }
 
@@ -82,11 +77,22 @@ namespace FUNC
                 }
                 catch { }
 
-                if (status.NodeStatus == "Running" && DateTimeOffset.UtcNow - messages.At > MessagesTtl)
+                status.Messages = status.NodeStatus == "Running" ? await Messages() : messages.Value;
+
+                if (status.NodeStatus == "Running" && DateTimeOffset.UtcNow - expiringKeys.At > KeysTtl)
                 {
-                    try { messages = (DateTimeOffset.UtcNow, await FetchMessages()); } catch { }
+                    try
+                    {
+                        List<TrayKey> keys = (await PartKeys.List("algorand"))
+                            .Where(k => k.ExpiringSoon)
+                            .Select(k => new TrayKey { Id = k.Id, Address = k.Address, Expires = k.Expires })
+                            .ToList();
+                        expiringKeys = (DateTimeOffset.UtcNow, keys);
+                    }
+                    catch { }
                 }
-                status.Messages = messages.Value;
+                // A stopped node is its own alert; its keys are reported again once it runs.
+                status.ExpiringKeys = status.NodeStatus == "Running" ? expiringKeys.Value : [];
 
                 status.NotifyBlocks = Notifications.Blocks;
                 status.Blocks = HealthCollector.Store("algorand").RecentWins()
@@ -97,6 +103,48 @@ namespace FUNC
             finally
             {
                 gate.Release();
+            }
+        }
+
+        // The running FUNC against its latest release, shared with the dashboard's Settings;
+        // null until GitHub has answered once.
+        public static async Task<UpdateInfo?> FuncUpdate()
+        {
+            await funcGate.WaitAsync();
+            try
+            {
+                funcLatest = await Cached(funcLatest, ReleaseTtl, LatestFuncVersion);
+            }
+            finally
+            {
+                funcGate.Release();
+            }
+            string? version = FuncVersion();
+            if (funcLatest.Value is not string latest) return null;
+            return new UpdateInfo
+            {
+                Installed = version,
+                Latest = latest,
+                Available = version != null && NodeUpdater.IsNewer(latest, version),
+            };
+        }
+
+        // Broadcast messages from the contract, read through this node and shared with the
+        // dashboard. Unsynced nodes don't have the boxes yet; a failed read keeps the last list.
+        public static async Task<List<TrayMessage>> Messages(bool refresh = false)
+        {
+            await messagesGate.WaitAsync();
+            try
+            {
+                if (refresh || DateTimeOffset.UtcNow - messages.At > MessagesTtl)
+                {
+                    try { messages = (DateTimeOffset.UtcNow, await FetchMessages()); } catch { }
+                }
+                return messages.Value;
+            }
+            finally
+            {
+                messagesGate.Release();
             }
         }
 
@@ -139,7 +187,10 @@ namespace FUNC
                 int offset = BinaryPrimitives.ReadUInt16BigEndian(value.AsSpan(0, 2));
                 int length = BinaryPrimitives.ReadUInt16BigEndian(value.AsSpan(offset, 2));
                 string title = Encoding.UTF8.GetString(value, offset + 2, length);
-                return new TrayMessage { Id = id, Title = title };
+                int bodyOffset = BinaryPrimitives.ReadUInt16BigEndian(value.AsSpan(2, 2));
+                int bodyLength = BinaryPrimitives.ReadUInt16BigEndian(value.AsSpan(bodyOffset, 2));
+                string body = Encoding.UTF8.GetString(value, bodyOffset + 2, bodyLength);
+                return new TrayMessage { Id = id, Title = title, Body = body };
             }
             catch (ArgumentException) { return null; }
         }
