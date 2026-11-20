@@ -14,4 +14,4 @@ You only need the node ports for the networks you use, and you can change them u
 Only open these ports on your local network. **Do not** open them to the internet.
 :::
 
-Use port **3537** when opening FUNC from another device: `https://<computer's address>:3537`. It serves the page over HTTPS with a self-signed certificate, so your password isn't sent in the clear. Your browser will warn about the certificate the first time; that's expected. Port 3537 is also required for WalletConnect wallets (such as Defly and Pera), for [signing in with your wallet](/password#sign-in-with-your-wallet), and for the copy buttons.
+Use port **3537** when opening FUNC from another device: `https://<computer's address>:3537`. It serves the page over HTTPS with a self-signed certificate, so your password isn't sent in the clear. Your browser will warn about the certificate the first time; that's expected. Port 3537 is also required for WalletConnect wallets (such as Defly and Pera) and for the copy buttons.

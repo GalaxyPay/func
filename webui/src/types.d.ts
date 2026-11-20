@@ -49,18 +49,6 @@ export interface Participation {
 export interface AuthStatus {
   hasPassword: boolean;
   signedIn: boolean;
-  // Some account has participation keys on this node, so can sign in with a wallet.
-  walletEnabled: boolean;
-}
-
-// An ARC-60 signData response over a SIWA payload, byte fields in base64.
-export interface WalletProof {
-  address: string;
-  data: string;
-  signer: string;
-  domain: string;
-  authenticatorData: string;
-  signature: string;
 }
 
 export interface GoalVersion {
