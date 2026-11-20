@@ -18,7 +18,7 @@ internal sealed class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var ui = new AvaloniaTray(this);
-            model = new TrayModel(ui, () => Dispatcher.UIThread.Post(() => desktop.Shutdown()));
+            model = new TrayModel(ui);
             desktop.Exit += (_, _) =>
             {
                 model.Dispose();

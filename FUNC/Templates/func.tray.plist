@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Per-user LaunchAgent for the FUNC menu-bar helper. Installed to /Library/LaunchAgents
-     so it starts at every user's login; Quit exits 0 and keeps it stopped until next login. -->
+     so it starts at every user's login and is restarted if it crashes. -->
 <plist version="1.0">
     <dict>
         <key>Label</key>

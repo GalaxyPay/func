@@ -24,7 +24,9 @@ internal interface ITrayUi
 
 // Polls the local FUNC service, raises notifications and describes what the
 // icon and menu should show. Platform-neutral; the ITrayUi draws it.
-internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
+// No Quit item: the tray is FUNC's face on the desktop and lives as long as FUNC
+// is installed.
+internal sealed class TrayModel(ITrayUi ui) : IDisposable
 {
     public const string BaseUrl = "http://localhost:3536/";
     private const string MessagesUrl = BaseUrl + "?open=messages";
@@ -127,7 +129,6 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
             menu.Add(new("Open FUNC", OpenDashboard, IsDefault: true));
             menu.Add(MenuEntry.Separator);
             menu.Add(ResetPasswordEntry);
-            menu.Add(new("Quit FUNC Tray", quit));
             return new(polled ? TrayLook.Offline : TrayLook.Normal, polled ? "FUNC is not responding" : "FUNC", menu);
         }
 
@@ -150,7 +151,6 @@ internal sealed class TrayModel(ITrayUi ui, Action quit) : IDisposable
             menu.Add(new($"Node update available: v{status.NodeUpdate!.Latest}", () => Browser.Open(SettingsUrl)));
         menu.Add(MenuEntry.Separator);
         menu.Add(ResetPasswordEntry);
-        menu.Add(new("Quit FUNC Tray", quit));
 
         List<string> alerts = [];
         if (unseen > 0) alerts.Add(unseen == 1 ? "1 new message" : $"{unseen} new messages");

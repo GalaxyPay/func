@@ -28,7 +28,7 @@ internal sealed unsafe class Win32Tray : ITrayUi
         var tray = new Win32Tray();
         instance = tray;
         tray.CreateWindow();
-        using var model = new TrayModel(tray, () => PostMessage(tray.hwnd, WM_CLOSE, 0, 0));
+        using var model = new TrayModel(tray);
         model.Start();
 
         MSG msg;
