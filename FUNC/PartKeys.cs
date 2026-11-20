@@ -24,10 +24,13 @@ namespace FUNC
             JsonArray keys = await AlgodGet(http, port, "/v2/participation", token, allowMissing: true) as JsonArray ?? [];
             if (keys.Count == 0) return [];
 
-            ulong lastRound = (await AlgodGet(http, port, "/v2/status", token))?["last-round"]?.GetValue<ulong>() ?? 0;
+            // A failed lookup leaves the expiry unknown rather than failing the whole list.
+            ulong lastRound = 0;
+            try { lastRound = (await AlgodGet(http, port, "/v2/status", token))?["last-round"]?.GetValue<ulong>() ?? 0; } catch { }
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            double? blockMs = await BlockTime(name, http, port, token, lastRound);
-            Dictionary<string, string> managed = name == "algorand" ? await ManagedAccounts.Get() : [];
+            double? blockMs = lastRound == 0 ? null : await BlockTime(name, http, port, token, lastRound);
+            // null: not known yet whether Reti or Valar manages an account.
+            Dictionary<string, string>? managed = name == "algorand" ? await ManagedAccounts.Get() : [];
 
             Dictionary<string, JsonObject?> accounts = [];
             List<PartKey> result = [];
@@ -39,7 +42,10 @@ namespace FUNC
                 if (address == null || id == null || key == null) continue;
                 if (!accounts.TryGetValue(address, out JsonObject? account))
                 {
-                    account = await AlgodGet(http, port, $"/v2/accounts/{address}?exclude=all", token) as JsonObject;
+                    try { account = await AlgodGet(http, port, $"/v2/accounts/{address}?exclude=all", token) as JsonObject; }
+                    // Leave the key out: the dashboard then checks it itself, and the tray
+                    // doesn't warn about a key it can't tell is registered.
+                    catch { continue; }
                     accounts[address] = account;
                 }
 
@@ -53,9 +59,10 @@ namespace FUNC
                         ? now.AddMilliseconds(((double)lastValid - lastRound) * ms)
                         : null,
                     Registered = IsRegistered(key, account?["participation"] as JsonObject),
-                    Manager = AlgoAddress.KeyHex(address) is string hex ? managed.GetValueOrDefault(hex) : null,
+                    Manager = AlgoAddress.KeyHex(address) is string hex ? managed?.GetValueOrDefault(hex) : null,
                 };
-                part.ExpiringSoon = part.Registered && part.Manager == null && part.Expires is DateTimeOffset at && at - now <= WarnWithin;
+                part.ExpiringSoon = part.Registered && managed != null && part.Manager == null
+                    && part.Expires is DateTimeOffset at && at - now <= WarnWithin;
                 result.Add(part);
             }
             return result;

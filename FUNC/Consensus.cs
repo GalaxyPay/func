@@ -20,17 +20,30 @@ namespace FUNC
         private static readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
         // What the algorand node reports, or null when it isn't reachable (then nothing is blocked).
-        public static async Task<Requirement?> AlgorandRequirement() => FromStatus(await AlgorandStatus());
+        //
+        // With strict, a node whose service is running must answer: a quick status check can
+        // time out on a busy machine, and treating that as "nothing is blocked" would let an
+        // incompatible release be installed. Throws if it still doesn't answer.
+        public static async Task<Requirement?> AlgorandRequirement(bool strict = false)
+        {
+            JsonObject? status = await AlgorandStatus(statusHttp);
+            if (status == null && strict && await Node.ServiceStatus("algorand") == "Running")
+            {
+                status = await AlgorandStatus(http)
+                    ?? throw new Exception("This node didn't report the network's consensus protocol, so releases can't be checked against it. Try again shortly.");
+            }
+            return FromStatus(status);
+        }
 
         // Why the installed node can't follow the network, or null if it can or the node isn't reachable.
-        public static async Task<string?> InstalledBlocker() => InstalledBlocker(await AlgorandStatus());
+        public static async Task<string?> InstalledBlocker() => InstalledBlocker(await AlgorandStatus(statusHttp));
 
-        private static async Task<JsonObject?> AlgorandStatus()
+        private static async Task<JsonObject?> AlgorandStatus(HttpClient client)
         {
             int port = Node.AlgodPort("algorand");
             string token = Node.AlgodToken("algorand");
             if (port == 0 || token.Length == 0) return null;
-            try { return await Diagnostics.AlgodGet(statusHttp, port, "/v2/status", token); }
+            try { return await Diagnostics.AlgodGet(client, port, "/v2/status", token); }
             catch { return null; }
         }
 
@@ -39,8 +52,9 @@ namespace FUNC
         // caller (goal/version, the tray) would otherwise wait out.
         internal static readonly HttpClient statusHttp = new(new SocketsHttpHandler
         {
-            // Far above a localhost connect (well under 1ms), above Windows' ~15.6ms timer tick.
-            ConnectTimeout = TimeSpan.FromMilliseconds(50),
+            // Well under Windows' ~2s refused-connect retry, but with room for a machine
+            // whose CPU and disk are saturated (e.g. a node catching up).
+            ConnectTimeout = TimeSpan.FromMilliseconds(500),
         })
         { Timeout = TimeSpan.FromSeconds(3) };
 

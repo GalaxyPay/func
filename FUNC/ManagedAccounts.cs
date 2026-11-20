@@ -12,7 +12,8 @@ namespace FUNC
     {
         private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
         private static readonly SemaphoreSlim gate = new(1, 1);
-        private static (DateTimeOffset At, Dictionary<string, string> Value) cache = (DateTimeOffset.MinValue, []);
+        // Value is null until a lookup has succeeded.
+        private static (DateTimeOffset At, Dictionary<string, string>? Value) cache = (DateTimeOffset.MinValue, null);
 
         private static readonly string RetiEnv = Path.Combine(Utils.appDataDir, "reti", ".env");
         private static readonly string ValarConfig = Path.Combine(Utils.appDataDir, "valar", "daemon.config");
@@ -35,13 +36,13 @@ namespace FUNC
         private static readonly byte[] ValarKeyedStates = [0x03, 0x04, 0x05];
 
         // Public key (hex) to "reti" or "valar". Empty without either daemon; a failed
-        // lookup keeps the last good answer.
-        public static async Task<Dictionary<string, string>> Get()
+        // lookup keeps the last good answer, and is null (unknown) before there is one.
+        public static async Task<Dictionary<string, string>?> Get()
         {
             await gate.WaitAsync();
             try
             {
-                if (DateTimeOffset.UtcNow - cache.At < Ttl) return cache.Value;
+                if (cache.Value != null && DateTimeOffset.UtcNow - cache.At < Ttl) return cache.Value;
                 Dictionary<string, string> result = [];
                 bool reti = File.Exists(RetiEnv), valar = File.Exists(ValarConfig);
                 if (reti || valar)

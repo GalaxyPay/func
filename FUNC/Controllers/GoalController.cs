@@ -39,6 +39,7 @@ namespace FUNC.Controllers
                     Manager = ext?.Manager ?? "func",
                     Updates = NodeUpdater.Status(),
                     Unsupported = await unsupported,
+                    Installing = Installing,
                 };
             }
             catch (Exception ex)
@@ -47,18 +48,26 @@ namespace FUNC.Controllers
             }
         }
 
+        // FUNC's own algod version as last read, reported while an install is replacing it.
+        private static volatile string lastFuncVersion = string.Empty;
+
         // The version of the algod in binDir ("5.0.5"), or empty if there's none.
         internal static async Task<string> InstalledVersion(string binDir)
         {
-            // FUNC's own algod is being replaced; running it would lock the file (callers treat
-            // an empty version as unknown).
-            if (Installing && Path.GetFullPath(binDir) == Path.GetFullPath(Path.Combine(Utils.appDataDir, "bin")))
-                return string.Empty;
+            bool funcBin = Path.GetFullPath(binDir) == Path.GetFullPath(Path.Combine(Utils.appDataDir, "bin"));
+            // FUNC's own algod is being replaced; running it would lock the file. Report the
+            // version it had, so callers don't take a mid-install node for a missing one.
+            if (Installing && funcBin) return lastFuncVersion;
             string version = await Utils.Exec(Path.Combine(binDir, "algod"), "-v");
-            if (version == string.Empty) return string.Empty;
-            int firstBreak = version.IndexOf("\n") + 1;
-            string secondLine = version[firstBreak..version.IndexOf("\n", firstBreak)];
-            return secondLine[..secondLine.LastIndexOf(".")];
+            string parsed = string.Empty;
+            if (version != string.Empty)
+            {
+                int firstBreak = version.IndexOf("\n") + 1;
+                string secondLine = version[firstBreak..version.IndexOf("\n", firstBreak)];
+                parsed = secondLine[..secondLine.LastIndexOf(".")];
+            }
+            if (funcBin) lastFuncVersion = parsed;
+            return parsed;
         }
 
         // The latest node release's version ("5.0.5").
@@ -99,7 +108,7 @@ namespace FUNC.Controllers
                 var tags = releases.Select(r => r.TagName)
                     .Where(t => t.Contains("stable", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                var req = await Consensus.AlgorandRequirement();
+                var req = await Consensus.AlgorandRequirement(strict: true);
                 var missing = await Task.WhenAll(tags.Select(t => Consensus.Missing(t, req)));
                 return ReleaseOptions(tags, missing);
             }
@@ -155,7 +164,8 @@ namespace FUNC.Controllers
                         string installed = await InstalledVersion(Path.Combine(Utils.appDataDir, "bin"));
                         string latest = string.Empty;
                         try { latest = await LatestVersion(); } catch { }
-                        if (latest.Length == 0 || NodeUpdater.IsNewer(latest, installed)) NodeUpdater.SetMode(NodeUpdateMode.Manual);
+                        // Unknown latest (GitHub unreachable) leaves the mode as the user set it.
+                        if (latest.Length > 0 && NodeUpdater.IsNewer(latest, installed)) NodeUpdater.SetMode(NodeUpdateMode.Manual);
                     }
                 }
                 return Ok();
@@ -202,7 +212,7 @@ namespace FUNC.Controllers
             var release = name == "latest"
                 ? await client.Repository.Release.GetLatest(owner, repo)
                 : await client.Repository.Release.Get(owner, repo, name);
-            if (name != "latest" && await Consensus.Blocker(release.TagName, await Consensus.AlgorandRequirement()) is { } why)
+            if (name != "latest" && await Consensus.Blocker(release.TagName, await Consensus.AlgorandRequirement(strict: true)) is { } why)
                 throw new Exception($"{release.TagName}: {why}, so the node would stall");
             var asset = FindNodeAsset(release)
                 ?? throw new Exception($"No node binaries for this platform in release {release.TagName}");
@@ -232,6 +242,7 @@ namespace FUNC.Controllers
 
                 // Unpack beside the live install first, so the nodes are only down for the swap.
                 if (Directory.Exists(staging)) Directory.Delete(staging, true);
+                Directory.CreateDirectory(staging);
                 using (FileStream rfs = new(filePath, System.IO.FileMode.Open, FileAccess.Read))
                 using (GZipStream gz = new(rfs, CompressionMode.Decompress))
                 {
@@ -257,7 +268,7 @@ namespace FUNC.Controllers
                     // Restart even when the swap failed: ReplaceFiles has put the old files back.
                     foreach (string node in running)
                     {
-                        try { await Node.ControlService(node, "start"); }
+                        try { await StartAgain(node); }
                         catch (Exception ex) { Log?.LogWarning("Node install: restarting {Node} failed: {Message}", node, ex.Message); }
                     }
                     Done("start nodes");
@@ -274,6 +285,22 @@ namespace FUNC.Controllers
             {
                 TryDelete(filePath);
                 try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { }
+            }
+        }
+
+        // Starts a node the install stopped, and checks it came back: a start that fails
+        // (e.g. the service hadn't finished stopping) would otherwise leave it down silently.
+        private static async Task StartAgain(string node)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                await Node.ControlService(node, "start");
+                for (int i = 0; i < 20; i++)
+                {
+                    if (await Node.ServiceStatus(node) == "Running") return;
+                    await Task.Delay(500);
+                }
+                if (attempt == 2) throw new Exception($"{node} is not running after the update");
             }
         }
 

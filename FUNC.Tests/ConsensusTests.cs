@@ -103,7 +103,8 @@ public class ConsensusTests
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await Assert.ThrowsAnyAsync<Exception>(() => Diagnostics.AlgodGet(Consensus.statusHttp, port, "/v2/status", "t"));
-        Assert.True(sw.ElapsedMilliseconds < 1000, $"took {sw.ElapsedMilliseconds} ms");
+        // ConnectTimeout is 500ms; anything near the ~2s retry means it isn't applied.
+        Assert.True(sw.ElapsedMilliseconds < 1500, $"took {sw.ElapsedMilliseconds} ms");
     }
 
     private const string Lacks = "the network's current consensus protocol";

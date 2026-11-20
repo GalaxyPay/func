@@ -59,6 +59,8 @@ export interface GoalVersion {
   // Why the installed version can't follow the network (it will stall at an
   // approved consensus upgrade), or null.
   unsupported: string | null;
+  // FUNC is installing node software right now.
+  installing?: boolean;
 }
 
 // auto: FUNC installs new releases. notify: alerts, the user installs.

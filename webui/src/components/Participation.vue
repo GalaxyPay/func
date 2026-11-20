@@ -580,9 +580,24 @@ function isConnected(item: Participation) {
   return activeAccount.value?.address === item.address;
 }
 
-// The service compares the key with the account's online key.
+// The service compares the key with the account's online key. When it couldn't say
+// (its lookup failed), compare with the account info this page fetched itself.
 function isKeyActive(item: Participation) {
-  return !!partKeys.value[item.id]?.registered;
+  const known = partKeys.value[item.id];
+  if (known) return !!known.registered;
+  const acctInfo = acctInfos.value.find((ai) => ai.address === item.address);
+  if (!acctInfo?.participation?.stateProofKey) return false;
+  const p = acctInfo.participation;
+  return (
+    item.key.selectionParticipationKey.toString() ==
+      p.selectionParticipationKey.toString() &&
+    item.key.stateProofKey?.toString() == p.stateProofKey!.toString() &&
+    item.key.voteFirstValid == p.voteFirstValid &&
+    item.key.voteKeyDilution == p.voteKeyDilution &&
+    item.key.voteLastValid == p.voteLastValid &&
+    item.key.voteParticipationKey.toString() ==
+      p.voteParticipationKey.toString()
+  );
 }
 
 function incentiveIneligible(addr: string) {

@@ -83,9 +83,10 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
     private void Notify(Status status)
     {
         HashSet<ulong> ids = status.Messages.Select(m => m.Id).ToHashSet();
-        if (!state.Initialized)
+        if (!state.Initialized && ids.Count > 0)
         {
             // Don't announce the whole backlog on first run; those still count as unseen.
+            // Waits for a non-empty list, which may only be the service not having read it yet.
             state.NotifiedMessageIds = [.. ids];
             state.Initialized = true;
         }
@@ -96,9 +97,14 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         else if (fresh.Count > 1)
             Notifier.Show($"{fresh.Count} new FUNC messages", string.Join("\n", fresh.Select(m => m.Title)), MessagesUrl);
 
-        // Forget ids for messages that were removed.
-        state.NotifiedMessageIds = [.. ids];
-        state.SeenMessageIds.IntersectWith(ids);
+        // Forget ids for messages that were removed. An empty list usually means the service
+        // couldn't read them yet (node not running after a restart), not that all were
+        // removed; forgetting then would re-announce every message on the next poll.
+        if (ids.Count > 0)
+        {
+            state.NotifiedMessageIds = [.. ids];
+            state.SeenMessageIds.IntersectWith(ids);
+        }
 
         if (status.FuncUpdate is { Available: true, Latest: string funcLatest } && funcLatest != state.NotifiedFuncVersion)
         {

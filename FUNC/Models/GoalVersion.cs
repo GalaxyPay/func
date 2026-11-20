@@ -10,5 +10,7 @@ namespace FUNC.Models
         // Why the installed version can't follow the network (it will stall at an approved
         // consensus upgrade), or null if it can or that can't be determined.
         public string? Unsupported { get; set; }
+        // FUNC is installing node software right now (first-run setup, an update or auto-update).
+        public bool Installing { get; set; }
     }
 }

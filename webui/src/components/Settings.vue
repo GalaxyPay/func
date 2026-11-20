@@ -471,7 +471,11 @@ async function getVersion() {
   try {
     await store.refreshGoalVersion();
     if (store.goalVersion?.installed) store.ready = true;
-    else {
+    else if (store.goalVersion?.installing) {
+      // First-run setup (or another tab) is already installing; check back
+      // rather than starting a second install.
+      setTimeout(getVersion, 3000);
+    } else {
       if (!init) {
         init = true;
         updateNodeLatest(true);
