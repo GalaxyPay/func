@@ -97,9 +97,13 @@ public class ConsensusTests
         int port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
 
+        // Untimed first call absorbs JIT/handler setup, which on a loaded CI runner can take
+        // most of a second. The ~2s retry this guards against would hit every call, not just the first.
+        await Assert.ThrowsAnyAsync<Exception>(() => Diagnostics.AlgodGet(Consensus.statusHttp, port, "/v2/status", "t"));
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await Assert.ThrowsAnyAsync<Exception>(() => Diagnostics.AlgodGet(Consensus.statusHttp, port, "/v2/status", "t"));
-        Assert.True(sw.ElapsedMilliseconds < 500, $"took {sw.ElapsedMilliseconds} ms");
+        Assert.True(sw.ElapsedMilliseconds < 1000, $"took {sw.ElapsedMilliseconds} ms");
     }
 
     private const string Lacks = "the network's current consensus protocol";
