@@ -63,6 +63,7 @@ export default defineConfig({
     nav: [
       { text: "Install", link: "/install" },
       { text: "Getting Started", link: "/getting-started" },
+      { text: "Changelog", link: "/changelog" },
       {
         text: "Releases",
         link: "https://github.com/GalaxyPay/func/releases",
@@ -85,6 +86,7 @@ export default defineConfig({
           { text: "Manage Menu", link: "/manage" },
           { text: "Keeping Your Node Running", link: "/running" },
           { text: "Getting Help", link: "/support" },
+          { text: "Changelog", link: "/changelog" },
         ],
       },
       {
