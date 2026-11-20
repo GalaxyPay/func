@@ -44,10 +44,6 @@
             :type="reveal ? 'text' : 'password'"
             :rules="[required, matches]"
           />
-          <template v-if="!setupMode && store.auth?.walletEnabled">
-            <div class="text-center text-medium-emphasis my-3">or</div>
-            <WalletSignIn label="Sign in with" :submit="walletSignIn" />
-          </template>
         </v-card-text>
         <v-card-actions>
           <v-btn
@@ -74,7 +70,6 @@
 </template>
 
 <script lang="ts" setup>
-import type { WalletProof } from "@/types";
 import { mdiEye, mdiEyeOff, mdiHelpCircleOutline } from "@mdi/js";
 
 const store = useAppStore();
@@ -112,12 +107,6 @@ async function refresh() {
   } catch {
     // Service unreachable; the polling components report that.
   }
-}
-
-async function walletSignIn(proof: WalletProof) {
-  const { data } = await store.api.post("auth/wallet-login", proof);
-  store.setApiToken(data.token);
-  location.reload();
 }
 
 async function submit() {

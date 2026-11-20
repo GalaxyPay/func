@@ -22,10 +22,8 @@ namespace FUNC
     // - Failed logins are rate limited per source address, plus a network-wide cap
     //   that a rotating attacker cannot dodge. Loopback is exempt from the cap so the
     //   owner can always sign in at the machine itself.
-    // - Accounts with participation keys on this computer can also sign in with a
-    //   wallet signature instead; see WalletAuth.
     // - A forgotten password is reset with `FUNC --reset-password` as admin/root
-    //   (the tray's "Reset password…" runs it). It deletes both files, and the
+    //   (the tray's "Reset Password…" runs it). It deletes both files, and the
     //   running service picks that up without a restart, back to first-run setup.
     public static class Auth
     {
