@@ -51,6 +51,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
 
     public static void OpenDashboard() => Browser.Open(BaseUrl);
 
+    private static readonly MenuEntry SettingsEntry = new("Settings", () => Browser.Open(SettingsUrl));
     private static readonly MenuEntry ResetPasswordEntry = new("Reset Password…", () => PasswordReset.Start(BaseUrl));
 
     private async Task Loop()
@@ -151,6 +152,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
             menu.Add(MenuEntry.Separator);
             menu.Add(new("Open FUNC", OpenDashboard, IsDefault: true));
             menu.Add(MenuEntry.Separator);
+            menu.Add(SettingsEntry);
             menu.Add(ResetPasswordEntry);
             return new(polled ? TrayLook.Offline : TrayLook.Normal, polled ? "FUNC is not responding" : "FUNC", menu);
         }
@@ -173,6 +175,7 @@ internal sealed class TrayModel(ITrayUi ui) : IDisposable
         else if (nodeUpdate)
             menu.Add(new($"Node update available: v{status.NodeUpdate!.Latest}", () => Browser.Open(SettingsUrl)));
         menu.Add(MenuEntry.Separator);
+        menu.Add(SettingsEntry);
         menu.Add(ResetPasswordEntry);
 
         List<string> alerts = [];
