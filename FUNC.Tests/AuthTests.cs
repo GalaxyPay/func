@@ -84,6 +84,20 @@ public class AuthTests
     }
 
     [Fact]
+    public void Reset_IsPickedUpWithoutARestart()
+    {
+        string token = Auth.SetPassword(Password);
+
+        // What `FUNC --reset-password` does, from another process.
+        File.Delete(Auth.AuthPath);
+        File.Delete(SessionsPath);
+
+        Assert.False(Auth.HasPassword);
+        Assert.False(Auth.VerifyPassword(Password));
+        Assert.False(Auth.ValidateSession(token));
+    }
+
+    [Fact]
     public void Sessions_PersistOnlyAHashOfTheToken()
     {
         string token = Auth.CreateSession();

@@ -207,6 +207,43 @@ public class HealthStoreTests : IDisposable
     }
 
     [Fact]
+    public void RecentWins_ListsWonRoundsOldestFirst()
+    {
+        HealthStore store = NewStore();
+        DateTimeOffset t = _now.AddMinutes(-10);
+
+        store.Apply(Proposed(100, "OURS", t));
+        store.Apply(Accepted(100, "OURS", t.AddSeconds(2)));
+        store.Apply(Proposed(101, "OURS2", t.AddSeconds(3)));
+        store.Apply(Accepted(101, "THEIRS", t.AddSeconds(5)));
+        store.Apply(Proposed(102, "OURS3", t.AddSeconds(6)));
+        store.Apply(Accepted(102, "OURS3", t.AddSeconds(8)));
+        store.Apply(Accepted(102, "OURS3", t.AddSeconds(8)));
+
+        Assert.Equal([100L, 102L], store.RecentWins().Select(w => w.Round));
+        Assert.Equal(t.AddSeconds(2), store.RecentWins()[0].Time);
+    }
+
+    [Fact]
+    public void RecentWins_KeepsOnlyTheLatestAndSurvivesARestart()
+    {
+        HealthStore store = NewStore(persisted: true);
+        DateTimeOffset t = _now.AddMinutes(-30);
+        for (long r = 1; r <= 25; r++)
+        {
+            store.Apply(Proposed(r, $"H{r}", t.AddSeconds(r * 3)));
+            store.Apply(Accepted(r, $"H{r}", t.AddSeconds(r * 3 + 1)));
+        }
+        store.Save();
+
+        HealthStore restored = NewStore(persisted: true);
+        List<HealthStore.BlockWin> wins = restored.RecentWins();
+        Assert.Equal(20, wins.Count);
+        Assert.Equal(6, wins[0].Round);
+        Assert.Equal(25, wins[^1].Round);
+    }
+
+    [Fact]
     public void Apply_ForgetsProposalsWhoseRoundNeverShowedUp()
     {
         HealthStore store = NewStore();

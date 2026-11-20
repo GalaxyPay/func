@@ -187,17 +187,41 @@ namespace FUNC
             await Exec("chown", "-R", owner, path);
         }
 
+        // Make a dir private to SYSTEM, Administrators and one service account, with
+        // everything below it inheriting that. Well-known groups go by SID so this also
+        // works on non-English Windows, where "Administrators" has another name.
+        //
+        // The two steps must stay separate: running the grants with /T would apply
+        // /inheritance:r to every file too, and the (OI)(CI) grants don't take on files,
+        // so each file would be left with an empty DACL that nobody can read.
+        public static async Task RestrictWindowsDir(string dir, string account, string rights)
+        {
+            await Exec("icacls.exe", dir, "/inheritance:r",
+                "/grant:r", "*S-1-5-18:(OI)(CI)F",
+                "/grant:r", "*S-1-5-32-544:(OI)(CI)F",
+                "/grant:r", $"{account}:(OI)(CI){rights}", "/Q");
+            await Exec("icacls.exe", Path.Combine(dir, "*"), "/reset", "/T", "/Q");
+        }
+
         public static async Task RestartWindowsService(string svc)
         {
+            await StopWindowsService(svc);
+            await Sc("start", svc);
+        }
+
+        // sc stop only asks the service to stop and returns while it's STOP_PENDING; wait
+        // until it has actually stopped, so its binaries are released and a start succeeds.
+        public static async Task StopWindowsService(string svc, int timeoutMs = 60000)
+        {
             await Sc("stop", svc);
-            // sc stop is async; wait for it to actually stop before starting.
-            for (int i = 0; i < 20; i++)
+            var waited = System.Diagnostics.Stopwatch.StartNew();
+            while (waited.ElapsedMilliseconds < timeoutMs)
             {
                 string q = await Sc("query", svc);
-                if (q.Contains("STOPPED") || q.Contains("1060")) break;
+                if (q.Contains("STOPPED") || q.Contains("1060")) return;
                 await Task.Delay(500);
             }
-            await Sc("start", svc);
+            throw new Exception($"{svc} did not stop within {timeoutMs / 1000} s");
         }
 
         public static string ParseServiceStatus(string sc)

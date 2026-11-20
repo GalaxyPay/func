@@ -42,4 +42,6 @@ The status button on each key also lets you:
 
 Options that send a transaction only appear when the wallet holding that account is connected.
 
-Participation keys expire. The **Approx. Expire** column shows roughly when; generate and register a new key before then to stay online.
+Participation keys expire. The **Approx. Expire** column shows roughly which day; generate and register a new key before then to stay online. When an online key has a week or less left, it gets an **Expiring** badge, and the tray icon (Windows and Mac) notifies you once.
+
+Accounts whose keys a [Reti](/reti) or [Valar](/valar) service on this machine looks after are badged **Reti** or **Valar** and never warned about: Reti renews its pools' keys itself, and a Valar key lasts exactly as long as its delegation.

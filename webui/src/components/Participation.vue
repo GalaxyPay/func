@@ -81,14 +81,36 @@
             </v-menu>
           </v-btn>
         </template>
-        <template #[`item.address`]="{ value }">
-          <span @click="copyVal(value)" class="pointer font-mono">
-            {{ formatAddr(value, 7) }}
-            <v-tooltip activator="parent" location="top" :text="value" />
+        <template #[`item.address`]="{ item }">
+          <span class="address-cell">
+            <span @click="copyVal(item.address)" class="pointer font-mono">
+              {{ formatAddr(item.address, 7) }}
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="item.address"
+              />
+            </span>
+            <v-chip
+              v-if="keyBadge(item)"
+              :color="keyBadge(item)!.color"
+              size="x-small"
+              variant="tonal"
+              label
+            >
+              {{ keyBadge(item)!.text }}
+              <v-tooltip
+                activator="parent"
+                location="top"
+                :text="keyBadge(item)!.hint"
+              />
+            </v-chip>
           </span>
         </template>
         <template #[`item.expire`]="{ item }">
-          <span class="text-body">{{ expireDt(item.key.voteLastValid) }}</span>
+          <span class="text-body">{{
+            expireDate(partKeys[item.id]?.expires)
+          }}</span>
         </template>
         <template #expanded-row="{ columns, item }">
           <tr class="expand-row">
@@ -118,83 +140,83 @@
             </td>
           </tr>
           <tr class="expand-row expand-row--detail">
-            <td :colspan="1">
-              <div class="detail-list">
-                <div>
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(item.key.voteFirstValid)"
-                  />
-                  <span class="text-muted">First Valid:</span>
-                  <span class="font-mono">{{
-                    item.key.voteFirstValid.toLocaleString()
-                  }}</span>
+            <td :colspan="columns.length" style="max-width: 0">
+              <div class="detail-grid">
+                <div class="detail-list detail-list--valid">
+                  <div>
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(item.key.voteFirstValid)"
+                    />
+                    <span class="text-muted">First Valid:</span>
+                    <span class="font-mono">{{
+                      item.key.voteFirstValid.toLocaleString()
+                    }}</span>
+                  </div>
+                  <div>
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(item.key.voteLastValid)"
+                    />
+                    <span class="text-muted">Last Valid:</span>
+                    <span class="font-mono">{{
+                      item.key.voteLastValid.toLocaleString()
+                    }}</span>
+                  </div>
+                  <div>
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(item.key.voteKeyDilution)"
+                    />
+                    <span class="text-muted">Key Dilution:</span>
+                    <span class="font-mono">{{
+                      item.key.voteKeyDilution.toLocaleString()
+                    }}</span>
+                  </div>
                 </div>
-                <div>
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(item.key.voteLastValid)"
-                  />
-                  <span class="text-muted">Last Valid:</span>
-                  <span class="font-mono">{{
-                    item.key.voteLastValid.toLocaleString()
-                  }}</span>
-                </div>
-                <div>
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(item.key.voteKeyDilution)"
-                  />
-                  <span class="text-muted">Key Dilution:</span>
-                  <span class="font-mono">{{
-                    item.key.voteKeyDilution.toLocaleString()
-                  }}</span>
-                </div>
-              </div>
-            </td>
-            <td :colspan="columns.length - 1" style="max-width: 0">
-              <div class="detail-list">
-                <div class="ellipsis">
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(b64(item.key.voteParticipationKey))"
-                  />
-                  <span class="text-muted">Vote Key:</span>
-                  <span class="font-mono">{{
-                    b64(item.key.voteParticipationKey)
-                  }}</span>
-                </div>
-                <div class="ellipsis">
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(b64(item.key.selectionParticipationKey))"
-                  />
-                  <span class="text-muted">Selection Key:</span>
-                  <span class="font-mono">{{
-                    b64(item.key.selectionParticipationKey)
-                  }}</span>
-                </div>
-                <div class="ellipsis">
-                  <v-icon
-                    :icon="mdiContentCopy"
-                    size="14"
-                    class="clickable"
-                    @click="copyVal(b64(item.key.stateProofKey))"
-                  />
-                  <span class="text-muted">State Proof Key:</span>
-                  <span class="font-mono">{{
-                    b64(item.key.stateProofKey)
-                  }}</span>
+                <div class="detail-list">
+                  <div class="ellipsis">
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(b64(item.key.voteParticipationKey))"
+                    />
+                    <span class="text-muted">Vote Key:</span>
+                    <span class="font-mono">{{
+                      b64(item.key.voteParticipationKey)
+                    }}</span>
+                  </div>
+                  <div class="ellipsis">
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(b64(item.key.selectionParticipationKey))"
+                    />
+                    <span class="text-muted">Selection Key:</span>
+                    <span class="font-mono">{{
+                      b64(item.key.selectionParticipationKey)
+                    }}</span>
+                  </div>
+                  <div class="ellipsis">
+                    <v-icon
+                      :icon="mdiContentCopy"
+                      size="14"
+                      class="clickable"
+                      @click="copyVal(b64(item.key.stateProofKey))"
+                    />
+                    <span class="text-muted">State Proof Key:</span>
+                    <span class="font-mono">{{
+                      b64(item.key.stateProofKey)
+                    }}</span>
+                  </div>
                 </div>
               </div>
             </td>
@@ -255,13 +277,14 @@
         </v-form>
       </v-card>
     </v-dialog>
+    <BlockToast :block="createdBlock" />
   </section>
 </template>
 
 <script lang="ts" setup>
 import { algodTarget } from "@/clients";
 import { networks } from "@/data";
-import { PartDetails, Participation } from "@/types";
+import { CreatedBlock, PartDetails, PartKey, Participation } from "@/types";
 import {
   b64,
   copyToClipboard,
@@ -273,6 +296,7 @@ import {
   getSuggestedParams,
   nodeHostname,
 } from "@/utils";
+import { playBlockSound } from "@/utils/blockSound";
 import {
   mdiChevronDown,
   mdiClose,
@@ -313,24 +337,28 @@ const gen = ref<{ first?: bigint | string; last?: bigint | string }>({});
 const lastRound = ref<bigint>();
 const acctInfos = ref<modelsv2.Account[]>([]);
 const emittedPart = ref<PartDetails>();
+const createdBlock = ref<CreatedBlock>();
+// What the service knows about each key, by id: registration, expiry, manager.
+const partKeys = ref<Record<string, PartKey>>({});
 
 const validAddress = (v: string) =>
   algosdk.isValidAddress(v) || "Invalid Address";
 
-const headers = computed<any[]>(() => {
-  const val = [
-    { title: "Status", key: "status", sortable: false, align: "center" },
-    { title: "Address", key: "address", sortable: false, align: "center" },
-    {
-      title: "Approx. Expire",
-      key: "expire",
-      sortable: false,
-      align: "center",
-    },
-    { key: "data-table-expand" },
-  ];
-  return val;
-});
+const headers = computed(
+  () =>
+    [
+      { title: "Status", key: "status", sortable: false, align: "center" },
+      { title: "Address", key: "address", sortable: false, align: "center" },
+      {
+        // Phones have no room for "Approx."
+        title: xs.value ? "Expire" : "Approx. Expire",
+        key: "expire",
+        sortable: false,
+        align: "center",
+      },
+      { key: "data-table-expand" },
+    ] as const
+);
 
 const required = (v: number) => !!v || v === 0 || "Required";
 
@@ -404,11 +432,22 @@ async function getKeys(): Promise<Participation[]> {
     .sort((a, b) => Number(b.key.voteLastValid) - Number(a.key.voteLastValid));
 }
 
+async function getKeyInfo(): Promise<PartKey[]> {
+  try {
+    const { data } = await store.api.get<PartKey[]>(`${props.name}/keys`);
+    return data;
+  } catch (err: any) {
+    console.error(errorMessage(err, "Load key expiry"), err);
+    return [];
+  }
+}
+
 let statsRequestId = 0;
 
 async function refreshPartData() {
   try {
-    const tempKeys = await getKeys();
+    const [tempKeys, info] = await Promise.all([getKeys(), getKeyInfo()]);
+    partKeys.value = Object.fromEntries(info.map((k) => [k.id, k]));
     acctInfos.value = [];
     const addrs = [...new Set(tempKeys?.map((k) => k.address))];
     await Promise.all(
@@ -482,6 +521,12 @@ async function checkNewBlock(round: bigint) {
     const proposer = resp.block.header.proposer?.toString();
     if (!proposer || !online.includes(proposer)) return;
     playBlockSound();
+    createdBlock.value = {
+      round: resp.block.header.round,
+      address: proposer,
+      payout: BigInt(resp.block.header.proposerPayout ?? 0),
+      unit: props.name === "Voi" ? "VOI" : "ALGO",
+    };
     if (partStats.value[proposer]) {
       partStats.value[proposer].proposals =
         (partStats.value[proposer].proposals || 0) + 1;
@@ -504,68 +549,6 @@ async function checkNewBlock(round: bigint) {
   }
 }
 
-let audioCtx: AudioContext | undefined;
-
-function playBlockSound() {
-  try {
-    audioCtx ??= new (
-      window.AudioContext || (window as any).webkitAudioContext
-    )();
-    const ctx = audioCtx;
-    if (ctx.state === "suspended") ctx.resume();
-    const now = ctx.currentTime;
-
-    const out = ctx.createGain();
-    out.gain.value = 0.9;
-    out.connect(ctx.destination);
-
-    // Solid wooden "tok": short, dense tone with a fast pitch drop and
-    // a second partial just above to add body instead of a hollow ring.
-    const partials = [
-      { type: "sine" as OscillatorType, f0: 720, f1: 560, level: 0.7 },
-      { type: "sine" as OscillatorType, f0: 1180, f1: 940, level: 0.35 },
-    ];
-    for (const p of partials) {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = p.type;
-      osc.frequency.setValueAtTime(p.f0, now);
-      osc.frequency.exponentialRampToValueAtTime(p.f1, now + 0.012);
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(p.level, now + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-      osc.connect(g).connect(out);
-      osc.start(now);
-      osc.stop(now + 0.08);
-    }
-
-    // Sharp percussive attack (the "t") for a solid, dry strike.
-    const noise = ctx.createBufferSource();
-    const buf = ctx.createBuffer(
-      1,
-      Math.ceil(ctx.sampleRate * 0.02),
-      ctx.sampleRate
-    );
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    }
-    noise.buffer = buf;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 2400;
-    bp.Q.value = 1.2;
-    const nGain = ctx.createGain();
-    nGain.gain.setValueAtTime(0.5, now);
-    nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
-    noise.connect(bp).connect(nGain).connect(out);
-    noise.start(now);
-    noise.stop(now + 0.03);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 watch(
   () => props.currentRound,
   (val, old) => {
@@ -574,17 +557,7 @@ watch(
   }
 );
 
-onMounted(() => {
-  refreshPartData();
-  // Only drives the estimated expiry column, so report it without blocking
-  // the rest of the panel.
-  calcAvgBlockTime().catch((err) =>
-    console.error(
-      errorMessage(err, "Calculate average block time", algodEndpoint),
-      err
-    )
-  );
-});
+onMounted(() => refreshPartData());
 
 function loadDefaults() {
   if (!lastRound.value) throw Error("Invalid Round");
@@ -607,20 +580,23 @@ function isConnected(item: Participation) {
   return activeAccount.value?.address === item.address;
 }
 
+// The service compares the key with the account's online key. When it couldn't say
+// (its lookup failed), compare with the account info this page fetched itself.
 function isKeyActive(item: Participation) {
+  const known = partKeys.value[item.id];
+  if (known) return !!known.registered;
   const acctInfo = acctInfos.value.find((ai) => ai.address === item.address);
-  if (!acctInfo) return false;
+  if (!acctInfo?.participation?.stateProofKey) return false;
+  const p = acctInfo.participation;
   return (
-    acctInfo.participation?.stateProofKey &&
     item.key.selectionParticipationKey.toString() ==
-      acctInfo.participation.selectionParticipationKey.toString() &&
-    item.key.stateProofKey?.toString() ==
-      acctInfo.participation.stateProofKey.toString() &&
-    item.key.voteFirstValid == acctInfo.participation.voteFirstValid &&
-    item.key.voteKeyDilution == acctInfo.participation.voteKeyDilution &&
-    item.key.voteLastValid == acctInfo.participation.voteLastValid &&
+      p.selectionParticipationKey.toString() &&
+    item.key.stateProofKey?.toString() == p.stateProofKey!.toString() &&
+    item.key.voteFirstValid == p.voteFirstValid &&
+    item.key.voteKeyDilution == p.voteKeyDilution &&
+    item.key.voteLastValid == p.voteLastValid &&
     item.key.voteParticipationKey.toString() ==
-      acctInfo.participation.voteParticipationKey.toString()
+      p.voteParticipationKey.toString()
   );
 }
 
@@ -643,6 +619,31 @@ function keyStatus(item: Participation) {
           color: "warning",
         }
       : { text: "Online", color: "success" };
+}
+
+const managerNames = { reti: "Reti", valar: "Valar" };
+
+// One badge beside the address: who manages the account, or that its key needs renewing.
+function keyBadge(item: Participation) {
+  const k = partKeys.value[item.id];
+  if (!k) return undefined;
+  if (k.manager) {
+    const name = managerNames[k.manager];
+    return {
+      text: name,
+      color: "primary",
+      hint: `${name} manages this account's keys`,
+    };
+  }
+  // Once a key expires the account goes offline and algod deletes the key, so
+  // there is no "expired" state to show.
+  if (k.expiringSoon)
+    return {
+      text: "Expiring",
+      color: "warning",
+      hint: `Expires around ${expireDate(k.expires) ?? "soon"}. Generate and register a new key`,
+    };
+  return undefined;
 }
 
 async function deleteKey(id: string) {
@@ -683,14 +684,9 @@ async function showGenerateDialog() {
   }
 }
 
-// When lastRound was read, so expiry estimates are anchored to that moment
-// rather than to render time (the table re-renders on every new block).
-let lastRoundAt = Date.now();
-
 async function getLastRound() {
   const status = await props.algodClient.status().do();
   lastRound.value = status.lastRound;
-  lastRoundAt = Date.now();
 }
 
 async function generateKey() {
@@ -785,30 +781,13 @@ async function offline() {
   store.overlay = false;
 }
 
-const avgBlockTime = ref<number>();
-
-async function calcAvgBlockTime() {
-  await getLastRound();
-  if (!lastRound.value) return;
-  const currentRound = await props.algodClient.block(lastRound.value).do();
-  const oldRound = await props.algodClient.block(lastRound.value - 100n).do();
-  avgBlockTime.value =
-    Math.floor(
-      Number(
-        currentRound.block.header.timestamp - oldRound.block.header.timestamp
-      )
-    ) * 10;
-}
-
-function expireDt(lastValid: bigint) {
-  if (!lastRound.value || !avgBlockTime.value) return undefined;
-  const expireMs = Number(lastValid - lastRound.value) * avgBlockTime.value;
-  return new Date(lastRoundAt + expireMs).toLocaleString(undefined, {
+// The service estimates expiry from the recent block time; just the day is shown.
+function expireDate(expires?: string) {
+  if (!expires) return undefined;
+  return new Date(expires).toLocaleDateString(undefined, {
     year: "numeric",
     month: "numeric",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 }
 
@@ -960,6 +939,31 @@ async function getStats(addrs: string[]) {
 .generate-btn.v-btn--icon :deep(.v-icon) {
   font-size: 18px;
 }
+/* The badge hangs off the address's right edge without taking layout width,
+   so addresses stay centered whether or not they have one. */
+.address-cell {
+  position: relative;
+  display: inline-block;
+}
+.address-cell > .v-chip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+/* Phones: no room beside it, so the badge goes centered underneath */
+@media (max-width: 600px) {
+  .address-cell {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .address-cell > .v-chip {
+    position: static;
+    transform: none;
+  }
+}
 .status-btn {
   --v-btn-height: 28px;
   padding-inline: 10px 6px !important;
@@ -999,6 +1003,21 @@ async function getStats(addrs: string[]) {
 }
 .expand-figure {
   font: 500 16px var(--font-mono);
+}
+/* Validity on the left at its natural width; the long keys take the rest and
+   truncate. Stacked on narrow screens. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 40px;
+}
+@media (max-width: 600px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.detail-list--valid > div {
+  white-space: nowrap;
 }
 .detail-list {
   display: flex;

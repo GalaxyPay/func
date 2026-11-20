@@ -4,6 +4,9 @@ Remove-Item publish -Force -Recurse -ErrorAction Ignore
 Set-Location FUNC
 dotnet publish -o ..\publish
 
+Set-Location ..\FUNC.Tray
+dotnet publish -o ..\publish
+
 Set-Location ..\NodeService
 dotnet publish -o ..\publish\Services
 

@@ -9,4 +9,11 @@ namespace FUNC.Models
         public required string Name { get; set; }
     }
 
+    // A node release offered for install, and why it can't be, if it can't.
+    public class ReleaseOption
+    {
+        public required string Name { get; set; }
+        public string? Unsupported { get; set; }
+    }
+
 }

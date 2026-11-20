@@ -86,7 +86,7 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible)
-      store.fetchMessages().catch((err) => {
+      store.fetchMessages(true).catch((err) => {
         console.error(err);
         store.setSnackbar(errorMessage(err, "Load messages"), "error");
       });

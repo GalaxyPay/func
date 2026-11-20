@@ -25,6 +25,8 @@ namespace FUNC
         private static async Task<string> Tool(string name, string tool, params string[] args)
         {
             if (Ext(name) is { } ext) return (await External.RunAs(ext.User, Path.Combine(ext.BinDir, tool), args)).Stdout;
+            // A running binary can't be replaced on Windows; don't start one mid-install.
+            if (GoalController.Installing) throw new Exception("The node software is being updated. Try again in a minute.");
             return await Utils.Exec(Path.Combine(Utils.appDataDir, "bin", tool), args);
         }
 
@@ -100,8 +102,11 @@ namespace FUNC
         }
 
         // Raw `diagcfg telemetry status` output. It includes the telemetry GUID.
+        // Empty while FUNC's node software is being replaced.
         internal static Task<string> TelemetryStatus(string name) =>
-            Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "status");
+            Ext(name) == null && GoalController.Installing
+                ? Task.FromResult(string.Empty)
+                : Tool(name, "diagcfg", "-d", DataDir(name), "telemetry", "status");
 
         internal static async Task<DaemonStatus> RetiStatus()
         {
@@ -164,6 +169,7 @@ namespace FUNC
                 Token = token,
                 External = ext,
                 Detected = name == "algorand" && ext == null && serviceStatus == "Not Found" ? await External.Detect() : null,
+                Updating = GoalController.Installing || External.Updating,
             };
 
             if (name == "algorand")
@@ -298,7 +304,8 @@ namespace FUNC
                     await ControlService(name, "start");
                     return;
                 }
-                await Utils.Sc(cmd, WinService(name));
+                if (cmd == "stop") await Utils.StopWindowsService(WinService(name));
+                else await Utils.Sc(cmd, WinService(name));
             }
             else if (IsLinux())
             {

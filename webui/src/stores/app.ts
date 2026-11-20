@@ -1,7 +1,13 @@
 // Utilities
-import { AlgodFunc } from "@/clients";
-import { AuthStatus, GoalVersion, Message, SnackBar } from "@/types";
-import algosdk, { modelsv2 } from "algosdk";
+import {
+  AuthStatus,
+  GoalVersion,
+  Message,
+  NodeUpdateMode,
+  SnackBar,
+} from "@/types";
+import { isNewer } from "@/utils";
+import { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
 const TOKEN_KEY = "session";
@@ -60,9 +66,6 @@ export const useAppStore = defineStore("app", {
     showMachineName: (localStorage.getItem("showMachineName") === "true") as
       | boolean
       | null,
-    showNodeVersions: (localStorage.getItem("showNodeVersions") === "true") as
-      | boolean
-      | null,
     machineName: undefined as string | undefined,
     isWindows: undefined as boolean | undefined,
     resetDates: JSON.parse(localStorage.getItem("resetDates") || "[]") as {
@@ -76,6 +79,24 @@ export const useAppStore = defineStore("app", {
     ) as number[],
   }),
   getters: {
+    // An adopted node's manager installs its binaries, always at the latest version.
+    nodeAdopted(state): boolean {
+      const manager = state.goalVersion?.manager;
+      return !!manager && manager !== "func";
+    },
+    // Manual version selection only applies to binaries FUNC installs itself.
+    manualNodeVersions(): boolean {
+      return !this.nodeAdopted && this.goalVersion?.updates.mode === "manual";
+    },
+    // Something about the node's version needs the user: a release they asked to
+    // hear about (notify mode, or an adopted node), or a version that will stall.
+    nodeVersionAlert(state): boolean {
+      if (state.goalVersion?.unsupported) return true;
+      return (
+        state.nodeUpdateAvailable &&
+        (this.nodeAdopted || state.goalVersion?.updates.mode === "notify")
+      );
+    },
     unreadCount(state): number {
       const read = new Set(state.readMessages);
       return state.messages.filter((m) => !read.has(m.id)).length;
@@ -89,6 +110,28 @@ export const useAppStore = defineStore("app", {
       this.auth = data;
       if (!data.hasPassword || !data.signedIn) this.authRequired = true;
       return data as AuthStatus;
+    },
+    async refreshGoalVersion() {
+      const { data } = await this.api.get<GoalVersion>("goal/version");
+      this.goalVersion = data;
+      this.nodeUpdateAvailable = isNewer(data?.latest, data?.installed);
+      await this.migrateNodeVersionsSetting();
+    },
+    async setNodeUpdateMode(mode: NodeUpdateMode) {
+      const { data } = await this.api.put("goal/updates", { mode });
+      if (this.goalVersion) this.goalVersion.updates = data;
+    },
+    // Manual version selection used to be a per-browser setting; it's now the
+    // service's manual update mode. Carry it over once, unless already changed.
+    async migrateNodeVersionsSetting() {
+      if (localStorage.getItem("showNodeVersions") !== "true") return;
+      try {
+        if (!this.nodeAdopted && this.goalVersion?.updates.mode === "notify")
+          await this.setNodeUpdateMode("manual");
+        localStorage.removeItem("showNodeVersions");
+      } catch (err) {
+        console.error(err);
+      }
     },
     async signOut(everywhere = false) {
       try {
@@ -126,28 +169,16 @@ export const useAppStore = defineStore("app", {
         display: true,
       };
     },
-    async fetchMessages() {
-      const name = "algorand";
-      const { data } = await this.api.get(name);
-      const algodClient = new AlgodFunc(name, data);
-      const resp = await algodClient
-        .getApplicationBoxes(import.meta.env.VITE_MESSAGES_APP_ID)
-        .include("values")
-        .do();
-      const abiType = algosdk.ABIType.from("(string,string)");
-      // Message boxes have 8-byte uint64 keys; allowedSenders boxes have
-      // 32-byte address keys and hold no message data.
-      this.messages = (resp.boxes ?? [])
-        .filter((box) => box.name.length === 8)
-        .map((box) => {
-          const abiData = abiType.decode(box.value!) as string[];
-          return {
-            id: algosdk.decodeUint64(box.name),
-            title: abiData[0],
-            body: abiData[1],
-          };
-        });
-      // Drop read ids that no longer correspond to an existing message.
+    // The service reads them through the Algorand node and caches them; until that
+    // node has synced the list is just empty. refresh skips the cache.
+    async fetchMessages(refresh = false) {
+      const { data } = await this.api.get<Message[]>("func/messages", {
+        params: { refresh },
+      });
+      this.messages = data;
+      // Drop read ids that no longer correspond to an existing message. An empty
+      // list usually means the node isn't synced yet, so leave them alone then.
+      if (!data.length) return;
       const ids = new Set(this.messages.map((m) => m.id));
       this.setReadMessages(this.readMessages.filter((id) => ids.has(id)));
     },

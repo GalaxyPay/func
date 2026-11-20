@@ -173,6 +173,9 @@ $font: (
   $list-item-min-height: 36px,
   $list-item-one-line-min-height: 36px,
   $list-item-padding: 7px 10px,
+  // Multi-line items keep the same inset, so their text lines up with one-line items.
+  $list-item-two-line-padding: 7px 10px,
+  $list-item-three-line-padding: 7px 10px,
   $list-item-title-font-size: 0.8125rem,
   $list-item-title-letter-spacing: normal,
   $list-item-title-line-height: 1.4,

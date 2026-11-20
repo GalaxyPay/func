@@ -30,7 +30,9 @@
               <span class="font-mono">{{ appVersion }}</span>
               <span class="ver-sep">·</span>
               <span v-if="updatingFunc">Updating…</span>
-              <span v-else-if="funcCheckFailed">Couldn't check for updates</span>
+              <span v-else-if="funcCheckFailed"
+                >Couldn't check for updates</span
+              >
               <span v-else-if="!funcLatest">Checking for updates…</span>
               <span v-else-if="store.funcUpdateAvailable" class="text-warning">
                 <span class="font-mono">{{ funcLatest }}</span> available
@@ -78,12 +80,13 @@
                   Up to date
                 </span>
               </template>
+              <div v-if="store.goalVersion?.unsupported" class="text-error">
+                {{ store.goalVersion.unsupported }}. Update the node or it will
+                stall.
+              </div>
             </div>
             <div class="set-actions">
-              <Releases
-                @release="updateNode"
-                v-if="store.showNodeVersions && !externalManager"
-              />
+              <Releases @release="updateNode" v-if="store.manualNodeVersions" />
               <v-btn
                 v-else-if="
                   (store.nodeUpdateAvailable && externalManager !== 'manual') ||
@@ -97,6 +100,39 @@
               >
                 Update
               </v-btn>
+            </div>
+          </div>
+          <div v-if="updates && !store.nodeAdopted" class="set-row">
+            <div class="set-title">Node Updates</div>
+            <div class="set-desc">
+              <span
+                v-if="updates.mode === 'auto' && updates.lastError"
+                class="text-error"
+              >
+                Last update failed: {{ updates.lastError }}
+              </span>
+              <span v-else>{{ updateModes[updates.mode].desc }}</span>
+            </div>
+            <div class="set-actions">
+              <v-btn-toggle
+                :model-value="updates.mode"
+                @update:model-value="setUpdateMode"
+                :disabled="settingMode || store.downloading"
+                mandatory
+                divided
+                density="compact"
+                variant="outlined"
+                class="mode"
+              >
+                <v-btn
+                  v-for="(m, key) in updateModes"
+                  :key="key"
+                  :value="key"
+                  size="x-small"
+                >
+                  {{ m.title }}
+                </v-btn>
+              </v-btn-toggle>
             </div>
           </div>
           <div class="set-row">
@@ -127,13 +163,18 @@
           </div>
         </div>
         <div class="group">
-          <div class="set-row">
-            <div class="set-title">Manual Node Version Selection</div>
-            <div class="set-desc">Also suppresses new version alerts</div>
+          <div v-if="notifications?.tray" class="set-row">
+            <div class="set-title">Notify on Blocks Created</div>
+            <div class="set-desc">
+              Desktop alert when this node creates a block{{
+                store.showNetworks ? " (Voi not included)" : ""
+              }}
+            </div>
             <div class="set-actions">
               <v-switch
-                v-model="store.showNodeVersions"
-                @click.prevent="setShowNodeVersions(!store.showNodeVersions)"
+                :model-value="notifications.blocks"
+                :disabled="settingNotifications"
+                @click.prevent="setBlockNotifications(!notifications.blocks)"
               />
             </div>
           </div>
@@ -174,6 +215,14 @@
         <v-form ref="passwordForm" @submit.prevent="changePassword()">
           <v-card-title>Change Password</v-card-title>
           <v-card-text>
+            <input
+              type="text"
+              name="username"
+              autocomplete="username"
+              :value="username"
+              hidden
+              readonly
+            />
             <v-text-field
               v-model="currentPassword"
               label="Current Password"
@@ -226,6 +275,7 @@
 
 <script lang="ts" setup>
 import { DEFAULT_NETWORK } from "@/data";
+import { NodeUpdateMode, UpdateInfo } from "@/types";
 import { copyToClipboard, errorMessage } from "@/utils";
 import { mdiCheckCircle, mdiClose } from "@mdi/js";
 import { NetworkId, useNetwork } from "@txnlab/use-wallet-vue";
@@ -258,6 +308,7 @@ const newPassword = ref("");
 const confirmPassword = ref("");
 const passwordError = ref("");
 const changingPassword = ref(false);
+const username = `FUNC (${location.hostname})`;
 const required = (v: string) => !!v || "Required";
 const minLength = (v: string) =>
   (v?.length ?? 0) >= 8 || "At least 8 characters";
@@ -330,27 +381,87 @@ let init = false;
 
 // apt, rpm, brew, updater or manual when the node is an adopted existing node;
 // those update only to the latest version, with the node's own installer.
-const externalManager = computed(() => {
-  const manager = store.goalVersion?.manager;
-  return manager && manager !== "func" ? manager : undefined;
-});
+const externalManager = computed(() =>
+  store.nodeAdopted ? store.goalVersion?.manager : undefined
+);
 
 onBeforeMount(async () => {
   if (activeNetwork.value !== DEFAULT_NETWORK) setShowNetworks(true);
   await getVersion();
 });
 
-const githubClient = axios.create({
-  baseURL: "https://api.github.com/repos/GalaxyPay/func/releases",
-});
+// Read each time the dialog opens: it mounts before sign-in.
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) getNotifications();
+  }
+);
+
+// Optional desktop notifications, raised by the tray / menu-bar helper. The
+// service keeps the setting so every user's helper on this machine follows it.
+const notifications = ref<{ blocks: boolean; tray: boolean }>();
+const settingNotifications = ref(false);
+
+async function getNotifications() {
+  try {
+    const { data } = await store.api.get("func/notifications");
+    notifications.value = data;
+  } catch (err: any) {
+    // The row stays hidden; the setting is optional.
+    console.error(err);
+  }
+}
+
+async function setBlockNotifications(blocks: boolean) {
+  settingNotifications.value = true;
+  try {
+    const { data } = await store.api.put("func/notifications", { blocks });
+    notifications.value = data;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(
+      errorMessage(err, "Save block notification setting"),
+      "error"
+    );
+  }
+  settingNotifications.value = false;
+}
+
+const updates = computed(() => store.goalVersion?.updates);
+const updateModes: Record<NodeUpdateMode, { title: string; desc: string }> = {
+  auto: { title: "Auto", desc: "Installs new versions when they're released" },
+  notify: {
+    title: "Notify",
+    desc: "Alerts you when a new version is released",
+  },
+  manual: {
+    title: "Manual",
+    desc: "Stays on the version you select, without update alerts",
+  },
+};
+const settingMode = ref(false);
+
+async function setUpdateMode(mode: NodeUpdateMode) {
+  settingMode.value = true;
+  try {
+    await store.setNodeUpdateMode(mode);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(errorMessage(err, "Set node updates"), "error");
+  }
+  settingMode.value = false;
+}
 
 async function getVersion() {
+  // The service checks GitHub (cached, shared with the tray); null means it
+  // hasn't been able to reach it yet.
   try {
-    const { data } = await githubClient.get("latest");
-    if (data?.name) {
-      funcLatest.value = data.name.slice(1);
-      store.funcUpdateAvailable = funcLatest.value !== appVersion;
-    }
+    const { data } = await store.api.get<UpdateInfo | null>("func/version");
+    if (data?.latest) {
+      funcLatest.value = data.latest;
+      store.funcUpdateAvailable = data.available;
+    } else funcCheckFailed.value = true;
   } catch (err: any) {
     funcCheckFailed.value = true;
     console.error(err);
@@ -358,18 +469,18 @@ async function getVersion() {
   }
 
   try {
-    const goalVersion = await store.api.get("goal/version");
-    store.goalVersion = goalVersion.data;
+    await store.refreshGoalVersion();
     if (store.goalVersion?.installed) store.ready = true;
-    else {
+    else if (store.goalVersion?.installing) {
+      // First-run setup (or another tab) is already installing; check back
+      // rather than starting a second install.
+      setTimeout(getVersion, 3000);
+    } else {
       if (!init) {
         init = true;
         updateNodeLatest(true);
       }
     }
-    store.nodeUpdateAvailable =
-      !!store.goalVersion?.latest &&
-      store.goalVersion?.latest !== store.goalVersion?.installed;
   } catch (err: any) {
     store.ready = true;
     console.error(err);
@@ -458,11 +569,6 @@ async function setShowMachineName(val: boolean) {
   store.showMachineName = val;
   localStorage.setItem("showMachineName", val.toString());
 }
-
-async function setShowNodeVersions(val: boolean) {
-  store.showNodeVersions = val;
-  localStorage.setItem("showNodeVersions", val.toString());
-}
 </script>
 
 <style scoped>
@@ -517,6 +623,15 @@ async function setShowNodeVersions(val: boolean) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+.mode {
+  height: 26px;
+}
+.mode .v-btn {
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 11.5px;
+  letter-spacing: normal;
 }
 .set-actions :deep(.v-switch) {
   flex: none;

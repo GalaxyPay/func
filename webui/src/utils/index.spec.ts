@@ -5,7 +5,37 @@ import {
   errorMessage,
   formatAddr,
   isNetworkError,
+  isNewer,
 } from "./index";
+
+describe("isNewer", () => {
+  it("compares numerically, not as strings", () => {
+    expect(isNewer("5.10.0", "5.9.1")).toBe(true);
+    expect(isNewer("5.9.1", "5.10.0")).toBe(false);
+  });
+
+  it("is false for the same or an older version", () => {
+    expect(isNewer("5.4.1", "5.4.1")).toBe(false);
+    expect(isNewer("5.4.0", "5.4.1")).toBe(false);
+    expect(isNewer("5.0.5", "5.1.0")).toBe(false);
+  });
+
+  it("ignores a v prefix, suffixes and missing parts", () => {
+    expect(isNewer("v5.4.2", "5.4.1")).toBe(true);
+    expect(isNewer("v5.4.1", "5.4.1")).toBe(false);
+    expect(isNewer("5.5.0-beta", "5.4.1")).toBe(true);
+    expect(isNewer("5.4.1-beta", "5.4.1")).toBe(false);
+    expect(isNewer("5.4", "5.4.0")).toBe(false);
+    expect(isNewer("5.4.0.1", "5.4")).toBe(true);
+  });
+
+  it("is false when either version can't be read", () => {
+    expect(isNewer("", "5.4.1")).toBe(false);
+    expect(isNewer("5.4.1", undefined)).toBe(false);
+    expect(isNewer("v5.5.0 – Diagnostics", "5.4.1")).toBe(false);
+    expect(isNewer("latest", "5.4.1")).toBe(false);
+  });
+});
 
 // The test page's origin (see vite.config.mts), which is also the FUNC API's.
 const funcOrigin = "http://localhost:3536";

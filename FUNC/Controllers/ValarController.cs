@@ -174,8 +174,8 @@ namespace FUNC.Controllers
             {
                 // Strip the ACEs inherited from ProgramData (which let all local users read)
                 // and grant only SYSTEM, Administrators and the per-service virtual account.
-                await Utils.Exec("icacls.exe", ValarDir, "/inheritance:r", "/grant", "SYSTEM:(OI)(CI)F", "/grant", "Administrators:(OI)(CI)F", "/grant", $"{WinAccount}:(OI)(CI)M", "/T", "/Q");
-                if (hasConfig) await Utils.Exec("icacls.exe", ConfigPath, "/inheritance:r", "/grant", $"{WinAccount}:R", "/grant", "SYSTEM:F", "/grant", "Administrators:F");
+                await Utils.RestrictWindowsDir(ValarDir, WinAccount, "M");
+                if (hasConfig) await Utils.Exec("icacls.exe", ConfigPath, "/inheritance:r", "/grant:r", $"{WinAccount}:R", "/grant:r", "*S-1-5-18:F", "/grant:r", "*S-1-5-32-544:F", "/Q");
             }
         }
 

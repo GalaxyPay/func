@@ -22,6 +22,9 @@ namespace FUNC
     // - Failed logins are rate limited per source address, plus a network-wide cap
     //   that a rotating attacker cannot dodge. Loopback is exempt from the cap so the
     //   owner can always sign in at the machine itself.
+    // - A forgotten password is reset with `FUNC --reset-password` as admin/root
+    //   (the tray's "Reset Password…" runs it). It deletes both files, and the
+    //   running service picks that up without a restart, back to first-run setup.
     public static class Auth
     {
         public static readonly string AuthPath = Path.Combine(Utils.appDataDir, "auth.json");
@@ -61,18 +64,82 @@ namespace FUNC
         private static readonly Dictionary<string, Failure> _failures = [];
         private static readonly Queue<DateTime> _globalFailures = new();
 
-        public static bool HasPassword { get { lock (_lock) return _password != null; } }
+        // Write times of the files as last read or written, to notice outside changes.
+        private static DateTime _authStamp;
+        private static DateTime _sessionsStamp;
+
+        public static bool HasPassword { get { lock (_lock) { RefreshLocked(); return _password != null; } } }
 
         public static void Load()
         {
             Directory.CreateDirectory(Utils.appDataDir);
             lock (_lock)
             {
-                _password = ReadJson<PasswordRecord>(AuthPath);
-                if (_password != null && (_password.Salt.Length == 0 || _password.Hash.Length == 0)) _password = null;
-                _sessions = ReadJson<Dictionary<string, DateTime>>(SessionsPath) ?? [];
-                PruneSessions();
+                LoadPasswordLocked();
+                LoadSessionsLocked();
             }
+        }
+
+        private static void LoadPasswordLocked()
+        {
+            _authStamp = Stamp(AuthPath);
+            _password = ReadJson<PasswordRecord>(AuthPath);
+            if (_password != null && (_password.Salt.Length == 0 || _password.Hash.Length == 0)) _password = null;
+        }
+
+        private static void LoadSessionsLocked()
+        {
+            _sessionsStamp = Stamp(SessionsPath);
+            _sessions = ReadJson<Dictionary<string, DateTime>>(SessionsPath) ?? [];
+            PruneSessions();
+        }
+
+        // Reload whichever file changed underneath the service, e.g. deleted by
+        // `FUNC --reset-password`.
+        private static void RefreshLocked()
+        {
+            if (Stamp(AuthPath) != _authStamp) LoadPasswordLocked();
+            if (Stamp(SessionsPath) != _sessionsStamp) LoadSessionsLocked();
+        }
+
+        private static DateTime Stamp(string path) => File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
+
+        private static void SavePasswordLocked()
+        {
+            WriteJson(AuthPath, _password);
+            _authStamp = Stamp(AuthPath);
+        }
+
+        private static void SaveSessionsLocked()
+        {
+            WriteJson(SessionsPath, _sessions);
+            _sessionsStamp = Stamp(SessionsPath);
+        }
+
+        // `FUNC --reset-password`: forget the password and every session. Needs
+        // admin/root, as the files are only writable by the service's account.
+        public static int ResetFromCommandLine()
+        {
+            if (!Environment.IsPrivilegedProcess)
+            {
+                Console.Error.WriteLine(OperatingSystem.IsWindows()
+                    ? "Run this from an administrator terminal."
+                    : $"Run with sudo: sudo {Environment.ProcessPath ?? "/opt/func/FUNC"} --reset-password");
+                return 1;
+            }
+            try
+            {
+                File.Delete(AuthPath);
+                File.Delete(SessionsPath);
+            }
+            catch (DirectoryNotFoundException) { }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Password reset failed: {ex.Message}");
+                return 1;
+            }
+            Console.WriteLine("Password reset. Open FUNC to choose a new one.");
+            return 0;
         }
 
         // ---- Password ----
@@ -94,13 +161,14 @@ namespace FUNC
             byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, HashBytes);
             lock (_lock)
             {
+                RefreshLocked();
                 _password = new PasswordRecord
                 {
                     Salt = Convert.ToBase64String(salt),
                     Hash = Convert.ToBase64String(hash),
                     Iterations = Iterations,
                 };
-                WriteJson(AuthPath, _password);
+                SavePasswordLocked();
                 _sessions.Clear();
                 return CreateSessionLocked();
             }
@@ -109,7 +177,11 @@ namespace FUNC
         public static bool VerifyPassword(string? password)
         {
             PasswordRecord? record;
-            lock (_lock) record = _password;
+            lock (_lock)
+            {
+                RefreshLocked();
+                record = _password;
+            }
             if (record == null || password == null) return false;
             byte[] salt = Convert.FromBase64String(record.Salt);
             byte[] expected = Convert.FromBase64String(record.Hash);
@@ -121,7 +193,11 @@ namespace FUNC
 
         public static string CreateSession()
         {
-            lock (_lock) return CreateSessionLocked();
+            lock (_lock)
+            {
+                RefreshLocked();
+                return CreateSessionLocked();
+            }
         }
 
         private static string CreateSessionLocked()
@@ -129,7 +205,7 @@ namespace FUNC
             string token = RandomNumberGenerator.GetHexString(64, lowercase: true);
             PruneSessions();
             _sessions[HashToken(token)] = DateTime.UtcNow + SessionLifetime;
-            WriteJson(SessionsPath, _sessions);
+            SaveSessionsLocked();
             return token;
         }
 
@@ -139,6 +215,7 @@ namespace FUNC
             string key = HashToken(token);
             lock (_lock)
             {
+                RefreshLocked();
                 return _sessions.TryGetValue(key, out DateTime expiry) && expiry > DateTime.UtcNow;
             }
         }
@@ -148,7 +225,8 @@ namespace FUNC
             if (string.IsNullOrEmpty(token)) return;
             lock (_lock)
             {
-                if (_sessions.Remove(HashToken(token))) WriteJson(SessionsPath, _sessions);
+                RefreshLocked();
+                if (_sessions.Remove(HashToken(token))) SaveSessionsLocked();
             }
         }
 
@@ -157,7 +235,7 @@ namespace FUNC
             lock (_lock)
             {
                 _sessions.Clear();
-                WriteJson(SessionsPath, _sessions);
+                SaveSessionsLocked();
             }
         }
 

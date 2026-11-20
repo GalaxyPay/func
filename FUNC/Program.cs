@@ -4,6 +4,9 @@ using FUNC.Health;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms;
 
+// `FUNC --reset-password` (as admin/root) forgets the password; nothing else runs.
+if (args.Contains("--reset-password")) Environment.Exit(Auth.ResetFromCommandLine());
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Developer overrides live in <appDataDir>/func.json so they survive updates:
@@ -17,6 +20,7 @@ builder.Services.AddControllers(options => options.Filters.Add<SessionFilter>())
 builder.Services.AddWindowsService();
 builder.Services.AddSystemd();
 builder.Services.AddHostedService<HealthCollector>();
+builder.Services.AddHostedService<NodeUpdater>();
 
 string[] corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 
@@ -57,6 +61,8 @@ if (corsOrigins.Length > 0)
 
 var app = builder.Build();
 
+GoalController.Log = app.Services.GetRequiredService<ILogger<GoalController>>();
+
 // Configure the HTTP request pipeline.
 app.Use(async (httpContext, next) =>
 {
@@ -83,6 +89,14 @@ app.Lifetime.ApplicationStarted.Register(() =>
         catch (Exception ex)
         {
             Console.WriteLine($"Service migration error: {ex.Message}");
+        }
+        try
+        {
+            await TrayLauncher.EnsureWindowsTask();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Tray task error: {ex.Message}");
         }
     });
 });

@@ -38,8 +38,7 @@
       <v-btn icon size="small" @click="showSettings = true">
         <v-badge
           :model-value="
-            ((store.nodeUpdateAvailable && !store.showNodeVersions) ||
-              store.funcUpdateAvailable) &&
+            (store.nodeVersionAlert || store.funcUpdateAvailable) &&
             !store.downloading
           "
           location="top right"
@@ -209,12 +208,35 @@ function openMessages(e: MouseEvent) {
   else showMessages.value = true;
 }
 
-onBeforeMount(() => {
-  store.refreshPart++;
+// The tray / menu-bar helper links here with ?open=messages or ?open=settings.
+function openFromQuery() {
+  const url = new URL(window.location.href);
+  const open = url.searchParams.get("open");
+  if (!open) return;
+  if (open === "messages") showMessages.value = true;
+  else if (open === "settings") showSettings.value = true;
+  url.searchParams.delete("open");
+  window.history.replaceState(window.history.state, "", url);
+}
+
+function loadMessages() {
   store
     .fetchMessages()
     .catch((err) => console.error(errorMessage(err, "Load messages"), err));
+}
+
+// The service caches messages, so polling is cheap; it also picks them up once a
+// fresh node has synced.
+let messagesTimer: ReturnType<typeof setInterval> | undefined;
+
+onBeforeMount(() => {
+  openFromQuery();
+  store.refreshPart++;
+  loadMessages();
+  messagesTimer = setInterval(loadMessages, 5 * 60 * 1000);
 });
+
+onBeforeUnmount(() => clearInterval(messagesTimer));
 function walletActionLabel(wallet: Wallet) {
   return wallet.isActive
     ? "Disconnect"

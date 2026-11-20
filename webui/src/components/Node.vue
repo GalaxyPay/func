@@ -619,7 +619,10 @@ onBeforeMount(async () => {
   healthTimer = setInterval(refreshHealth, healthMs);
 });
 
+let unmounted = false;
+
 onBeforeUnmount(() => {
+  unmounted = true;
   refreshing = false;
   awaitingStart = false;
   clearInterval(healthTimer);
@@ -693,6 +696,15 @@ async function autoRefresh() {
         await delay(500);
         continue;
       }
+      // algod answers wait-for-block-after with 503 during fast catchup, so
+      // poll status directly until the catchpoint is applied.
+      if (algodStatus.value?.catchpoint) {
+        pendingStatus = null;
+        await delay(1000);
+        algodStatus.value = await algodClient.value.status().do();
+        retry = false;
+        continue;
+      }
       const round = algodStatus.value?.lastRound ?? 0n;
       // Reuse the in-flight statusAfterBlock for the same round so a stalled
       // wait doesn't pile up long-poll connections (browsers cap ~6 per host).
@@ -721,7 +733,16 @@ async function autoRefresh() {
     } catch (err: any) {
       // Drop the cached promise so a rejected statusAfterBlock isn't re-raced.
       pendingStatus = null;
-      if (!retry) {
+      if (err.status === 503) {
+        // Fast catchup began between polls; the next pass sees the catchpoint
+        // in status and stops long-polling.
+        try {
+          algodStatus.value = await algodClient.value?.status().do();
+        } catch {
+          // Handled by the next pass.
+        }
+        await delay(1000);
+      } else if (!retry) {
         retry = true;
         await getAllStatus();
       } else {
@@ -754,6 +775,7 @@ async function getNodeStatus() {
       : undefined;
     const resp = await store.api.get(props.name);
     nodeStatus.value = resp.data;
+    if (nodeStatus.value?.updating && !store.downloading) watchUpdate();
     store.machineName = nodeStatus.value?.machineName;
     store.isWindows = nodeStatus.value?.isWindows;
     if (nodeStatus.value?.serviceStatus !== "Running") {
@@ -770,6 +792,29 @@ async function getNodeStatus() {
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(errorMessage(err, "Get service status"), "error");
+  }
+}
+
+// An update this page didn't start (auto-update, another browser) stops the node for
+// a while, and the status loop stops with it. Show the update screen until it's done.
+async function watchUpdate() {
+  store.downloading = true;
+  try {
+    while (!unmounted) {
+      await delay(2000);
+      try {
+        const { data } = await store.api.get<NodeStatus>(props.name);
+        if (!data.updating) break;
+      } catch {
+        // FUNC may be briefly unreachable; check again.
+      }
+    }
+    await store.refreshGoalVersion();
+  } catch (err: any) {
+    console.error(err);
+  } finally {
+    store.downloading = false;
+    store.refreshStatus++;
   }
 }
 

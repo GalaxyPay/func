@@ -223,7 +223,7 @@ namespace FUNC
             return status;
         }
 
-        private static async Task<JsonObject?> AlgodGet(HttpClient http, int port, string path, string? token)
+        internal static async Task<JsonObject?> AlgodGet(HttpClient http, int port, string path, string? token)
         {
             using HttpRequestMessage request = new(HttpMethod.Get, $"http://127.0.0.1:{port}{path}");
             if (token != null) request.Headers.Add("X-Algo-Api-Token", token);

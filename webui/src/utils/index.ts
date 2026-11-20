@@ -6,6 +6,27 @@ export async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Whether version `latest` is newer than `current`, comparing numbers part by part
+// ("5.10.0" > "5.9.1"). A leading "v" and any "-beta"/"+build" suffix are ignored.
+// Unparseable versions are never newer, so a bad value can't prompt a downgrade.
+export function isNewer(
+  latest: string | null | undefined,
+  current: string | null | undefined
+): boolean {
+  const parse = (v: string | null | undefined) => {
+    const m = v?.trim().match(/^v?(\d+(?:\.\d+)*)(?:[-+].*)?$/);
+    return m ? m[1].split(".").map(Number) : undefined;
+  };
+  const l = parse(latest);
+  const c = parse(current);
+  if (!l || !c) return false;
+  for (let i = 0; i < Math.max(l.length, c.length); i++) {
+    const diff = (l[i] ?? 0) - (c[i] ?? 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return false;
+}
+
 export function formatAddr(addr: string | undefined, length: number = 5) {
   if (!addr) return "";
   return `${addr?.substring(0, length)}...${addr?.substring(58 - length)}`;

@@ -104,6 +104,46 @@ namespace FUNC.Controllers
             return Content(JsonSerializer.Serialize(report, DiagnosticsJson), "application/json");
         }
 
+        // GET: func/tray
+        // Status for the per-user tray / menu-bar helper: running version, available
+        // updates and broadcast message titles. Same access rule as diagnostics, so the
+        // helper on the node machine needs no session.
+        [AllowAnonymous]
+        [HttpGet("tray")]
+        public async Task<ActionResult<Models.TrayStatus>> GetTrayStatus()
+        {
+            if (!Diagnostics.Allowed(Request)) return Unauthorized();
+            return await Tray.Collect();
+        }
+
+        // GET: func/version
+        // The running version against the latest release (cached, shared with the tray).
+        [HttpGet("version")]
+        public async Task<ActionResult<Models.UpdateInfo?>> GetVersion() => await Tray.FuncUpdate();
+
+        // GET: func/messages?refresh=true
+        // Broadcast messages, read through the Algorand node (cached, shared with the tray).
+        [HttpGet("messages")]
+        public async Task<ActionResult<List<Models.TrayMessage>>> GetMessages(bool refresh) => await Tray.Messages(refresh);
+
+        // GET: func/notifications
+        [HttpGet("notifications")]
+        public ActionResult<Models.NotificationSettings> GetNotifications() => Notifications.Get();
+
+        // PUT: func/notifications
+        [HttpPut("notifications")]
+        public ActionResult<Models.NotificationSettings> SetNotifications(Models.NotificationSettings model)
+        {
+            try
+            {
+                return Notifications.Set(model);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         // POST: func/update
         [HttpPost("update")]
         public async Task<ActionResult> FuncUpdate()

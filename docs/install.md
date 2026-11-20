@@ -26,6 +26,8 @@ That's it. Once installed, open [http://localhost:3536](http://localhost:3536) i
 
 ::: info Where does the node software come from?
 The installer doesn't include the node software. FUNC downloads it the first time you open the app: from [GalaxyPay/go-algo-win](https://github.com/GalaxyPay/go-algo-win) on Windows, or from [the official Algorand repo](https://github.com/algorand/go-algorand) on Mac and Linux. Keeping them separate means the node can be updated without updating FUNC.
+
+FUNC checks every node download before installing it. On Mac and Linux, it checks the download against the release's list of file hashes, which Algorand signs with its release key. On Windows, it checks the download's SHA-256 checksum.
 :::
 
 ::: tip Review before you run

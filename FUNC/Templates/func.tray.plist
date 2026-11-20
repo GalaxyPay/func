@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Per-user LaunchAgent for the FUNC menu-bar helper. Installed to /Library/LaunchAgents
+     so it starts at every user's login and is restarted if it crashes. -->
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>func.tray</string>
+        <key>Program</key>
+        <string>/opt/func/FUNC.Tray</string>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <dict>
+            <key>SuccessfulExit</key>
+            <false/>
+        </dict>
+        <key>LimitLoadToSessionType</key>
+        <string>Aqua</string>
+        <key>ProcessType</key>
+        <string>Interactive</string>
+    </dict>
+</plist>

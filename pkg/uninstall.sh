@@ -15,6 +15,11 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 echo "Stopping FUNC app..."
+# The menu-bar helper runs in each signed-in user's session.
+for uid in $(ps -axo uid=,comm= | awk '$2 ~ /FUNC\.Tray$/ {print $1}' | sort -u); do
+    launchctl bootout "gui/$uid/func.tray" 2>/dev/null || true
+done
+rm -f /Library/LaunchAgents/func.tray.plist
 launchctl bootout system/func.api 2>/dev/null || true
 rm -f /Library/LaunchDaemons/func.api.plist
 # Left behind only if an update failed before its postinstall could remove it.

@@ -1,2 +1,7 @@
 #!/bin/sh
+# Stop the signed-in user's menu-bar helper so its binary can be replaced.
+console_uid=$(stat -f %u /dev/console)
+if [ "$console_uid" -gt 0 ]; then
+  launchctl bootout "gui/$console_uid/func.tray" 2>/dev/null
+fi
 launchctl bootout system/func.api || exit 0

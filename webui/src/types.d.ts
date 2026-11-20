@@ -13,6 +13,8 @@ export interface NodeStatus {
   valarStatus?: DaemonStatus;
   external?: ExternalNode;
   detected?: ExternalNode;
+  // Node binaries are being installed or updated, which stops the node for a while.
+  updating?: boolean;
 }
 
 // A node installed by apt/rpm, NodeKit, Homebrew or update.sh.
@@ -53,6 +55,23 @@ export interface GoalVersion {
   installed: string;
   latest: string;
   manager: string;
+  updates: NodeUpdates;
+  // Why the installed version can't follow the network (it will stall at an
+  // approved consensus upgrade), or null.
+  unsupported: string | null;
+  // FUNC is installing node software right now.
+  installing?: boolean;
+}
+
+// auto: FUNC installs new releases. notify: alerts, the user installs.
+// manual: stays on the version the user picked, no alerts.
+export type NodeUpdateMode = "auto" | "notify" | "manual";
+
+export interface NodeUpdates {
+  mode: NodeUpdateMode;
+  lastCheck: string | null;
+  lastError: string | null;
+  lastUpdated: string | null;
 }
 
 export interface PartDetails {
@@ -61,6 +80,37 @@ export interface PartDetails {
   activeKeys: number;
   activeStake: number;
   proposals: number | undefined;
+}
+
+// A block this node created, for the dashboard's toast.
+export interface CreatedBlock {
+  round: bigint;
+  address: string;
+  // The proposer's payout, in micro units; 0 when the account isn't eligible.
+  payout: bigint;
+  unit: string;
+}
+
+// GET func/version: the running FUNC against its latest release.
+export interface UpdateInfo {
+  installed?: string;
+  latest?: string;
+  available: boolean;
+}
+
+// GET {name}/keys: what the service knows about each participation key.
+export interface PartKey {
+  id: string;
+  address: string;
+  lastValid: number;
+  // Estimated from the recent block time.
+  expires?: string;
+  // The account is online with this key.
+  registered: boolean;
+  // The daemon that looks after this account's keys.
+  manager?: "reti" | "valar" | null;
+  // Registered, not managed, and runs out within a week (or already has).
+  expiringSoon: boolean;
 }
 
 export interface Message {

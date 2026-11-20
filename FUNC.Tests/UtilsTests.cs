@@ -188,4 +188,33 @@ public class UtilsTests
         Assert.Equal("Algorand", Utils.Cap("algorand"));
         Assert.Equal("Voi", Utils.Cap("voi"));
     }
+
+    // Regression: the Valar dir was locked with `/inheritance:r ... /T`, which left every
+    // file inside with an empty DACL, so the service account could not start Python.
+    [Fact]
+    public async Task RestrictWindowsDir_LeavesFilesReadableByTheAccount()
+    {
+        if (!IsWindows()) return;
+
+        string dir = Path.Combine(Path.GetTempPath(), "func-acl-" + Guid.NewGuid().ToString("N"));
+        string file = Path.Combine(dir, "venv", "Scripts", "python.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, "x");
+        try
+        {
+            // The current user stands in for the service's virtual account.
+            string account = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+            await Utils.RestrictWindowsDir(dir, account, "M");
+
+            Assert.True(new DirectoryInfo(dir).GetAccessControl().AreAccessRulesProtected);
+            var rules = new FileInfo(file).GetAccessControl()
+                .GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+            Assert.NotEqual(0, rules.Count);
+            Assert.Equal("x", File.ReadAllText(file));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
 }

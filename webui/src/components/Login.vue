@@ -12,6 +12,16 @@
             in from this computer and from other devices on your network.
           </p>
           <p class="mb-4" v-else>Enter your FUNC password to continue.</p>
+          <!-- Lets password managers (iOS, Android, browsers) save and fill the
+               password; most won't without a username field. -->
+          <input
+            type="text"
+            name="username"
+            autocomplete="username"
+            :value="username"
+            hidden
+            readonly
+          />
           <v-text-field
             v-model="password"
             label="Password"
@@ -71,6 +81,7 @@ const loading = ref(false);
 const error = ref("");
 
 const setupMode = computed(() => store.auth?.hasPassword === false);
+const username = `FUNC (${location.hostname})`;
 
 const required = (v: string) => !!v || "Required";
 const minLength = (v: string) =>
