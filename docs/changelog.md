@@ -7,7 +7,9 @@ outline: [2, 2]
 
 The changes you'll notice in each version of FUNC. Releases with only behind-the-scenes changes aren't listed. For every release and its downloads, see [GitHub Releases](https://github.com/GalaxyPay/func/releases).
 
-## Unreleased
+## 5.5.1
+
+_2026-11-22_
 
 - **One port for remote access:** the web page now reaches the nodes through FUNC itself, so opening FUNC from another device needs only port 3537 (or 3536), and FUNC works [behind a reverse proxy](/remote-access#behind-a-reverse-proxy).
 
