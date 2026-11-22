@@ -264,7 +264,6 @@
       ref="partRef"
       v-if="algodClient && (algodStatus?.lastRound || 0) > 100"
       :name="name"
-      :port="nodeStatus.port"
       :token="nodeStatus.token"
       :algod-client="algodClient"
       :status="status"
