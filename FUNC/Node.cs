@@ -142,11 +142,12 @@ namespace FUNC
             };
         }
 
-        public static async Task<NodeStatus> Get(string name)
+        // Point FUNC's algod proxy (AlgodProxy) at the port the node listens on now, and
+        // return that port. An unknown port (0) leaves the proxy where it was. Called at
+        // startup, so the proxy is right before any page has loaded, and on every Get,
+        // which follows a config change.
+        public static int SyncProxyPort(string name)
         {
-            if (name == "algorand") await SyncExternal();
-            string machineName = Environment.MachineName;
-            string token = AlgodToken(name);
             int port = AlgodPort(name);
             if (port != 0)
             {
@@ -155,6 +156,15 @@ namespace FUNC
                 else if (name == "voi")
                     Shared.VoiPort = port;
             }
+            return port;
+        }
+
+        public static async Task<NodeStatus> Get(string name)
+        {
+            if (name == "algorand") await SyncExternal();
+            string machineName = Environment.MachineName;
+            string token = AlgodToken(name);
+            int port = SyncProxyPort(name);
 
             string serviceStatus = await ServiceStatus(name);
             ExternalNode? ext = Ext(name);

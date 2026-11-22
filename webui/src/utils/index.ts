@@ -103,15 +103,17 @@ const funcOrigin = (() => {
   }
 })();
 
-// The machine running the FUNC service, and therefore algod: the host part of
-// the API origin (which is only ever set for development).
-export function nodeHostname(): string {
-  try {
-    return new URL(funcOrigin).hostname;
-  } catch {
-    return location.hostname;
-  }
+// algod is reached through FUNC's own proxy, at the same origin as the API, so
+// the page works on any port, scheme or reverse proxy and needs no node ports
+// open. FUNC maps /algod/<network>/v2/... to that node's /v2/... on localhost.
+export function algodBaseUrl(name: string): string {
+  return `${funcOrigin}/algod/${name.toLowerCase()}`;
 }
+
+// A process reached through FUNC's own proxy, such as algod. FUNC answers on
+// its behalf, so errorMessage() needs to know there are two processes that can
+// fail: FUNC itself, or the one behind it.
+export type ProxiedTarget = { proxied: string };
 
 // Recover the origin an axios request was aimed at. Network failures from
 // fetch/algosdk carry no request info, hence the optional caller-supplied
@@ -148,13 +150,20 @@ function errorDetail(err: any): string {
 export function errorMessage(
   err: any,
   process: string,
-  target?: string
+  target?: string | ProxiedTarget
 ): string {
+  const proxied = typeof target === "object" ? target.proxied : undefined;
   if (isNetworkError(err)) {
-    return `${process} failed: no response from ${describeTarget(
-      err,
-      target
-    )} - check that it is running and not blocked by a firewall or network issue.`;
+    // A proxied call that got no answer never reached FUNC, so name FUNC.
+    const unreachable = proxied
+      ? `the FUNC service (${funcOrigin})`
+      : describeTarget(err, target as string | undefined);
+    return `${process} failed: no response from ${unreachable} - check that it is running and not blocked by a firewall or network issue.`;
+  }
+  // FUNC answered, but the process behind its proxy didn't: 502 when FUNC
+  // can't connect to it, 504 when it doesn't reply in time.
+  if (proxied && [502, 504].includes(err?.response?.status ?? err?.status)) {
+    return `${process} failed: no response from ${proxied} - check that the node is running.`;
   }
   if (err?.response?.status === 401) {
     return `${process} failed: sign in to FUNC first.`;

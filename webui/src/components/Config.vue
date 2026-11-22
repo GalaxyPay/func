@@ -65,7 +65,7 @@
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { copyToClipboard, delay, errorMessage, nodeHostname } from "@/utils";
+import { algodBaseUrl, copyToClipboard, delay, errorMessage } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 
 const props = defineProps({
@@ -217,13 +217,8 @@ watch(show, async (val) => {
     // Effective (default-merged) settings are only available from a running node
     if (!props.running) return;
     try {
-      const debugHostname = nodeHostname();
-      const debugPort =
-        location.protocol === "https:"
-          ? networks.find((n) => n.title === props.name)?.yarpAlgodPort
-          : port.value;
       const debugClient = axios.create({
-        baseURL: `${location.protocol}//${debugHostname}:${debugPort}/debug`,
+        baseURL: `${algodBaseUrl(props.name)}/debug`,
         headers: { "X-Algo-Api-Token": props.token },
       });
       const { data } = await debugClient.get("/settings/config");
