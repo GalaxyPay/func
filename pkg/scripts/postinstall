@@ -33,8 +33,33 @@ rm -f /Library/LaunchDaemons/func.update.plist
 FRESH_INSTALL=1
 [ -f /Library/LaunchDaemons/func.api.plist ] && FRESH_INSTALL=0
 cp /opt/func/Templates/func.api.plist /Library/LaunchDaemons
-launchctl bootstrap system /Library/LaunchDaemons/func.api.plist
-sleep 2
+chown root:wheel /Library/LaunchDaemons/func.api.plist
+chmod 644 /Library/LaunchDaemons/func.api.plist
+# bootstrap fails (e.g. "5: Input/output error") while launchd is still tearing
+# down the job preinstall booted out, so retry until the job is loaded.
+i=0
+until launchctl print system/func.api >/dev/null 2>&1; do
+  launchctl bootstrap system /Library/LaunchDaemons/func.api.plist && break
+  i=$((i + 1))
+  if [ "$i" -ge 10 ]; then
+    echo "func.api: bootstrap failed after $i attempts"
+    break
+  fi
+  sleep 2
+done
+# Starts it if loaded but not running; a no-op if RunAtLoad already started it.
+launchctl kickstart system/func.api || echo "func.api: kickstart failed"
+# Report (in /var/log/install.log) whether FUNC is actually serving.
+i=0
+until lsof -nP -iTCP:3536 -sTCP:LISTEN 2>/dev/null | grep -q '^FUNC '; do
+  i=$((i + 1))
+  if [ "$i" -ge 20 ]; then
+    echo "func.api: not listening on 3536 after 20s"
+    launchctl print system/func.api 2>&1 | grep -E 'state|last exit|pid' || true
+    break
+  fi
+  sleep 1
+done
 # Menu-bar helper: starts at every user's login; start it now for whoever is signed in
 # (preinstall stopped it for the upgrade).
 cp /opt/func/Templates/func.tray.plist /Library/LaunchAgents
