@@ -7,6 +7,13 @@ outline: [2, 2]
 
 The changes you'll notice in each version of FUNC. Releases with only behind-the-scenes changes aren't listed. For every release and its downloads, see [GitHub Releases](https://github.com/GalaxyPay/func/releases).
 
+## 5.5.2
+
+_2026-11-23_
+
+- Fixed FUNC sometimes staying stopped after an update on Mac and Windows. FUNC now also restarts itself if it crashes.
+- Fixed the tray not notifying you about new messages.
+
 ## 5.5.1
 
 _2026-11-22_
