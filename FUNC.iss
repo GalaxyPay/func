@@ -46,6 +46,9 @@ Name: "{commondesktop}\FUNC"; Filename: "http://localhost:3536/"; IconFilename: 
 
 [Run]
 Filename: "sc.exe"; Parameters: "create FUNC binPath= ""{app}\FUNC.exe"" start= auto"
+; Restart FUNC if it crashes or fails to start. Runs on upgrades too (create fails
+; then, since the service exists). A deliberate `sc stop` doesn't trigger these.
+Filename: "sc.exe"; Parameters: "failure FUNC reset= 86400 actions= restart/5000/restart/5000/restart/5000"
 Filename: "sc.exe"; Parameters: "start FUNC"
 Filename: "cmd.exe"; Parameters: "/c md {commonappdata}\FUNC"
 Filename: "http://localhost:3536/"; Flags: shellexec postinstall; Description: "Launch FUNC"
@@ -68,9 +71,11 @@ begin
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM FUNC.Tray.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec(ExpandConstant('{sys}\sc.exe'), 'stop FUNC', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   // 1060 = service does not exist (fresh install); nothing to wait for.
-  // sc stop is asynchronous, so poll until the service reports STOPPED.
+  // sc stop is asynchronous, so poll until the service reports STOPPED. Allow
+  // 30s, matching .NET's default graceful-shutdown timeout; giving up sooner lets
+  // setup hit in-use files and abort with the service left stopped.
   if ResultCode <> 1060 then
-    for I := 1 to 20 do
+    for I := 1 to 60 do
     begin
       Exec(ExpandConstant('{cmd}'), '/C sc query FUNC | find "STOPPED"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       if ResultCode = 0 then Break;

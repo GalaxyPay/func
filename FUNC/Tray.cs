@@ -168,9 +168,21 @@ namespace FUNC
             foreach (JsonNode? box in boxes)
             {
                 string? name = box?["name"]?.GetValue<string>();
+                if (name == null) continue;
+                byte[] nameBytes = Convert.FromBase64String(name);
+                // Only message ids (8 bytes) matter; skip allowedSenders boxes before fetching.
+                if (nameBytes.Length != 8) continue;
+                // algod (5.1.1 at least) ignores values=true and lists names only, so read
+                // each box on its own when the listing doesn't carry its value.
                 string? value = box?["value"]?.GetValue<string>();
-                if (name == null || value == null) continue;
-                TrayMessage? message = DecodeMessage(Convert.FromBase64String(name), Convert.FromBase64String(value));
+                if (value == null)
+                {
+                    JsonObject? single = await Diagnostics.AlgodGet(http, port,
+                        $"/v2/applications/{MessagesAppId}/box?name=b64:{Uri.EscapeDataString(name)}", token);
+                    value = single?["value"]?.GetValue<string>();
+                }
+                if (value == null) continue;
+                TrayMessage? message = DecodeMessage(nameBytes, Convert.FromBase64String(value));
                 if (message != null) result.Add(message);
             }
             return result.OrderBy(m => m.Id).ToList();

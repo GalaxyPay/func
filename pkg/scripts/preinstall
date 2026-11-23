@@ -4,4 +4,24 @@ console_uid=$(stat -f %u /dev/console)
 if [ "$console_uid" -gt 0 ]; then
   launchctl bootout "gui/$console_uid/func.tray" 2>/dev/null
 fi
-launchctl bootout system/func.api || exit 0
+
+# Stop FUNC. bootout can return while the old process is still shutting down
+# (e.g. "Boot-out failed: 36: Operation now in progress"); if postinstall's
+# bootstrap then races it, the bootstrap fails or the new FUNC can't bind its
+# ports, and FUNC stays down after the upgrade. Wait until the job is gone and
+# its port is free before the payload is installed.
+launchctl bootout system/func.api 2>/dev/null
+i=0
+while launchctl print system/func.api >/dev/null 2>&1 \
+  || lsof -nP -iTCP:3536 -sTCP:LISTEN 2>/dev/null | grep -q '^FUNC '; do
+  i=$((i + 1))
+  if [ "$i" -ge 30 ]; then
+    echo "func.api: still running after 30s; killing it"
+    pkill -KILL -f '^/opt/func/FUNC$' 2>/dev/null
+    sleep 1
+    break
+  fi
+  sleep 1
+done
+# Never fail the install from here: a failing preinstall aborts the upgrade.
+exit 0
