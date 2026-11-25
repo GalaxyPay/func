@@ -15,7 +15,7 @@ Use this if the account is in a wallet you control, such as Pera, Defly or Lute.
 3. Click **Generate** and wait. It takes a few minutes for your node to generate the key.
 4. Click **Connect Wallet** at the top right and connect the wallet that holds the account.
 5. Click the key's status button in the Participation Keys section and choose **Register**, then approve the transaction in your wallet.
-6. Your account is now online, and the **Consensus** light on the dashboard turns green.
+6. Your account is now online. The **Consensus** light on the dashboard may show **Keys activating** for about 15 minutes while the network starts counting the new key, then turns green.
 
 ## Escrow account or staking pool
 
@@ -29,7 +29,7 @@ To run staking for other people instead, see [Reti](/reti) and [Valar](/valar).
 2. Click **Generate Key...** and enter the escrow account's address.
 3. Click **Generate** and wait. It takes a few minutes for your node to generate the key.
 4. Expand the key's row and use the copy buttons to paste the key details into the service's site, then follow its instructions.
-5. Once the service registers the key, the account is online and the **Consensus** light turns green.
+5. Once the service registers the key, the account is online. The **Consensus** light may show **Keys activating** for about 15 minutes, then turns green.
 
 ## Managing keys
 
