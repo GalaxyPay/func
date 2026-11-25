@@ -90,6 +90,7 @@ namespace FUNC.Health
             public DateTimeOffset? PeersAt { get; set; }
             public Dictionary<long, List<string>> Proposed { get; set; } = [];
             public List<BlockWin> Wins { get; set; } = [];
+            public bool CatchingUp { get; set; }
         }
 
         // A round whose block was this node's proposal.
@@ -116,6 +117,8 @@ namespace FUNC.Health
         // The latest wins, oldest first, for the tray to announce.
         private readonly List<BlockWin> _wins = [];
         private const int MaxWins = 20;
+        // Between a CatchupStart and its CatchupStop in the log.
+        private bool _catchingUp;
 
         // Not persisted: how the sources are doing right now.
         private bool _logFound;
@@ -157,7 +160,17 @@ namespace FUNC.Health
 
                 switch (ev.Kind)
                 {
+                    case HealthEventKind.CatchupStart:
+                        _catchingUp = true;
+                        break;
+                    case HealthEventKind.CatchupStop:
+                    case HealthEventKind.Startup:
+                        _catchingUp = false;
+                        break;
                     case HealthEventKind.RoundConcluded:
+                        // Agreement only concludes rounds once the node has caught up,
+                        // so this also ends a catchup whose stop the log missed.
+                        _catchingUp = false;
                         // Never count a round twice, e.g. when a log is read again.
                         if (ev.Round <= _lastRound) return;
                         double gap = ev.Round == _lastRound + 1 && _lastRoundAt != null ? (ev.Time - _lastRoundAt.Value).TotalMilliseconds : 0;
@@ -190,6 +203,13 @@ namespace FUNC.Health
                             _wins.Add(new BlockWin(ev.Round, ev.Time));
                             if (_wins.Count > MaxWins) _wins.RemoveRange(0, _wins.Count - MaxWins);
                         }
+                        break;
+                    // While catching up, as after an outage, the node still runs the
+                    // lottery for each round it passes through, dozens a minute, and
+                    // votes and proposes for rounds the network decided long ago.
+                    // Counted, they'd spike the charts and pass for live voting.
+                    case HealthEventKind.VoteSent when _catchingUp:
+                    case HealthEventKind.BlockProposed when _catchingUp:
                         break;
                     case HealthEventKind.VoteSent:
                         Add(t, now, b => b.Votes++);
@@ -459,6 +479,8 @@ namespace FUNC.Health
                     // Saved so a win isn't missed when FUNC restarts mid-round.
                     Proposed = _proposed.ToDictionary(p => p.Key, p => p.Value.ToList()),
                     Wins = _wins,
+                    // Saved with LogOffset, so a restart mid-catchup resumes the log in step.
+                    CatchingUp = _catchingUp,
                 }, Json);
             }
             // Replace the file in one step so a crash can't leave half of it.
@@ -487,6 +509,7 @@ namespace FUNC.Health
             _peersAt = state.PeersAt;
             foreach (var (round, hashes) in state.Proposed) _proposed[round] = [.. hashes];
             _wins.AddRange(state.Wins);
+            _catchingUp = state.CatchingUp;
             Prune();
         }
 

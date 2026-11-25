@@ -48,7 +48,8 @@ const blockMs = 2800;
 // Silence that can't be the result of the lottery: a run with this many votes
 // expected and none sent is a broken node, not bad luck.
 const missingVotes = 20;
-// New keys only start voting about 320 rounds after they go online.
+// New keys only start voting this many rounds after they go online.
+const keyLookback = 320;
 const quietMs = 15 * 60 * 1000;
 export const fewPeers = 4;
 
@@ -126,6 +127,13 @@ export interface ConsensusState {
   // Their stake against all online stake, once known.
   stake?: Stake;
   health?: NodeHealth;
+  // The node's last round, and the latest round an online account's keys start
+  // counting: 320 rounds after it went online.
+  lastRound?: number;
+  activeRound?: number;
+  // When the node last finished catching up, as after an outage. It couldn't
+  // vote before then.
+  syncedAt?: number;
 }
 
 // Consensus: the node has accounts online and is voting for them.
@@ -143,6 +151,24 @@ export function consensusLight(state: ConsensusState, now: Date): Light {
     };
 
   const online: Light = { color: "success", text: `${plural(accounts, "account")} online` };
+  // Keys that just went online: the network takes 320 rounds to count them. A
+  // heartbeat also moves activeRound, so a vote since then means they already count.
+  let activeAt = 0;
+  if (state.activeRound && state.lastRound) {
+    const left = state.activeRound - state.lastRound;
+    const onlineAt = now.getTime() + (left - keyLookback) * blockMs;
+    const lastVote = state.health?.lastVoteAt ? Date.parse(state.health.lastVoteAt) : 0;
+    if (left > 0 && lastVote < onlineAt)
+      return {
+        color: "icon",
+        text: "Keys activating",
+        hint:
+          `The network starts counting new keys ${keyLookback} rounds after they go online. ` +
+          `Voting starts in about ${formatDuration((left * blockMs) / 1000)}.`,
+        busy: true,
+      };
+    if (lastVote < onlineAt) activeAt = now.getTime() + left * blockMs;
+  }
   const health = state.health;
   if (!health) return online;
   if (health.source !== "ok")
@@ -150,14 +176,17 @@ export function consensusLight(state: ConsensusState, now: Date): Light {
 
   const perRound = state.stake ? votesPerRound(state.stake) : 0;
   if (!perRound) return online;
-  // Measured from the last vote, or from when the node started if later. The
-  // start of the latest stretch with votes stands in for a last vote FUNC
-  // didn't record, as after updating from a version that didn't.
+  // Measured from the last vote, or if later from when the node started,
+  // finished catching up or its newest keys became active. The start of the
+  // latest stretch with votes stands in for a last vote FUNC didn't record, as
+  // after updating from a version that didn't.
   const voted = health.points.filter((p) => p.votes).map((p) => p.t * 1000);
-  const since = Math.max(
+  const lastVoteOrStart = Math.max(
     ...[health.lastVoteAt, health.startedAt].map((t) => (t ? Date.parse(t) : 0)),
     ...voted
   );
+  // Without a known start, nothing to measure from.
+  const since = lastVoteOrStart && Math.max(lastVoteOrStart, activeAt, state.syncedAt ?? 0);
   if (!since) return online;
   const silentMs = now.getTime() - since;
   if (silentMs > quietMs && (silentMs / blockMs) * perRound >= missingVotes)

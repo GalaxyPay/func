@@ -382,6 +382,11 @@ const valarUpdate = computed(() => {
 });
 
 const isSyncing = computed(() => !!algodStatus.value?.catchupTime);
+// When the node last finished catching up, as after an internet outage.
+const syncedAt = ref<number>();
+watch(isSyncing, (now, before) => {
+  if (before && !now) syncedAt.value = Date.now();
+});
 
 // What FUNC gathers in the background from the node's log and metrics. Reading
 // it is cheap, so the dashboard checks it every few seconds while the node runs.
@@ -564,6 +569,9 @@ const consensus = computed(() => {
       onlineAccounts: part?.activeKeys,
       stake,
       health: health.value,
+      lastRound: algodStatus.value ? Number(algodStatus.value.lastRound) : undefined,
+      activeRound: part?.activeRound,
+      syncedAt: syncedAt.value,
     },
     healthNow.value
   );

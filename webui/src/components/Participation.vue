@@ -450,9 +450,12 @@ async function refreshPartData() {
     keys.value = tempKeys;
     const activeKeys = tempKeys?.filter((k) => isKeyActive(k)) || [];
     const activeAddrs = activeKeys.map((k) => k.address);
-    const activeStake = acctInfos.value
-      .filter((a) => activeAddrs.includes(a.address))
-      .reduce((a, c) => a + Number(c.amount), 0);
+    const activeAccts = acctInfos.value.filter((a) =>
+      activeAddrs.includes(a.address.toString())
+    );
+    const activeStake = activeAccts.reduce((a, c) => a + Number(c.amount), 0);
+    const heartbeats = activeAccts.map((a) => Number(a.lastHeartbeat ?? 0));
+    const activeRound = heartbeats.length ? Math.max(...heartbeats) : 0;
 
     // Emit what algod alone can tell us right away; the proposal count
     // depends on a (potentially slow) stats fetch and follows separately.
@@ -460,6 +463,7 @@ async function refreshPartData() {
       keys: tempKeys?.length ?? 0,
       activeKeys: activeKeys.length,
       activeStake,
+      activeRound: activeRound || undefined,
       proposals: undefined,
     };
     emittedPart.value = details;

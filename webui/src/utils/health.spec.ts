@@ -160,6 +160,30 @@ describe("consensusLight", () => {
     expect(withHealth({ lastVoteAt: undefined, startedAt: minutesAgo(20) }).text).toBe("Not voting");
   });
 
+  it("waits 320 rounds for keys that just went online", () => {
+    // Registered 100 rounds ago, so active at 10,220, after a long silence such
+    // as an outage.
+    const silent = { lastVoteAt: minutesAgo(600) };
+    const activating = light({ lastRound: 10000, activeRound: 10220, health: { ...health, ...silent } });
+    expect(activating).toMatchObject({ color: "icon", text: "Keys activating", busy: true });
+    expect(activating.hint).toContain("about 10m");
+    // Active 5 minutes ago: silence is counted from then, not from the last vote.
+    const active = light({ lastRound: 10000, activeRound: 9893, health: { ...health, ...silent } });
+    expect(active.color).toBe("success");
+    // And still flagged once the keys have had time to vote.
+    expect(light({ lastRound: 10000, activeRound: 9320, health: { ...health, ...silent } }).text).toBe("Not voting");
+  });
+
+  it("doesn't call a heartbeat on voting keys activating", () => {
+    expect(light({ lastRound: 10000, activeRound: 10220 })).toEqual({ color: "success", text: "2 accounts voting" });
+  });
+
+  it("gives a node that just caught up time to vote", () => {
+    const silent = { ...health, lastVoteAt: minutesAgo(600) };
+    expect(light({ health: silent, syncedAt: Date.parse(minutesAgo(5)) }).color).toBe("success");
+    expect(light({ health: silent, syncedAt: Date.parse(minutesAgo(30)) }).text).toBe("Not voting");
+  });
+
   it("waits longer for a small account picked less often", () => {
     // About 20 votes take 9,000 rounds, or 7 hours.
     expect(consensusLight({ ...state, stake: small, health: { ...health, lastVoteAt: minutesAgo(60) } }, now).color).toBe("success");

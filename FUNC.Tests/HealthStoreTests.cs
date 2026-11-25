@@ -118,6 +118,46 @@ public class HealthStoreTests : IDisposable
         Assert.Equal(_now.AddMinutes(-1), store.Query("1h").LastVoteAt);
     }
 
+    [Fact]
+    public void Apply_IgnoresVotesAndProposalsWhileCatchingUp()
+    {
+        HealthStore store = NewStore(persisted: true);
+        HealthEvent Proposed(DateTimeOffset time, long round) =>
+            new() { Kind = HealthEventKind.BlockProposed, Time = time, Round = round, Hash = $"h{round}" };
+
+        store.Apply(new HealthEvent { Kind = HealthEventKind.CatchupStart, Time = _now.AddMinutes(-20), Round = 100 });
+        store.Apply(Proposed(_now.AddMinutes(-19), 150));
+        store.Apply(Vote(_now.AddMinutes(-19)));
+        store.Save();
+        // A FUNC restart mid-catchup keeps ignoring them.
+        store = NewStore(persisted: true);
+        store.Apply(Proposed(_now.AddMinutes(-18), 400));
+        store.Apply(new HealthEvent { Kind = HealthEventKind.CatchupStop, Time = _now.AddMinutes(-17), Round = 500 });
+        store.Apply(Proposed(_now.AddMinutes(-10), 600));
+        store.Apply(Vote(_now.AddMinutes(-10)));
+
+        NodeHealth health = store.Query("1h");
+        Assert.Equal(1, health.Points.Sum(p => p.Proposals));
+        Assert.Equal(1, health.Points.Sum(p => p.Votes));
+        Assert.Equal(_now.AddMinutes(-10), health.LastVoteAt);
+    }
+
+    [Fact]
+    public void Apply_EndsCatchupWhenRoundsConcludeOrTheNodeRestarts()
+    {
+        HealthStore store = NewStore();
+        HealthEvent start = new() { Kind = HealthEventKind.CatchupStart, Time = _now.AddMinutes(-20), Round = 100 };
+
+        store.Apply(start);
+        store.Apply(Round(500, _now.AddMinutes(-15)));
+        store.Apply(Vote(_now.AddMinutes(-14)));
+        store.Apply(start);
+        store.Apply(new HealthEvent { Kind = HealthEventKind.Startup, Time = _now.AddMinutes(-12) });
+        store.Apply(Vote(_now.AddMinutes(-11)));
+
+        Assert.Equal(2, store.Query("1h").Points.Sum(p => p.Votes));
+    }
+
     [Theory]
     [InlineData("1h", 60, 60)]
     [InlineData("24h", 900, 96)]
