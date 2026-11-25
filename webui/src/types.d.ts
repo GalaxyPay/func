@@ -79,6 +79,10 @@ export interface PartDetails {
   keys: number;
   activeKeys: number;
   activeStake: number;
+  // The latest round an online account's keys start counting: algod's
+  // lastHeartbeat, which going online sets 320 rounds ahead (a heartbeat also
+  // moves it). Only set on networks with payouts enabled.
+  activeRound?: number;
   proposals: number | undefined;
 }
 

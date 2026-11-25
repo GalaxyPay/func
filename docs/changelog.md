@@ -7,6 +7,14 @@ outline: [2, 2]
 
 The changes you'll notice in each version of FUNC. Releases with only behind-the-scenes changes aren't listed. For every release and its downloads, see [GitHub Releases](https://github.com/GalaxyPay/func/releases).
 
+## 5.5.3
+
+_2026-11-25_
+
+- After an account goes online, the **Consensus** light shows **Keys activating** with a countdown until the network starts counting the new key (about 15 minutes), instead of warning that the node isn't voting.
+- Fixed the **Consensus** light warning that the node isn't voting just after it catches up, such as after an internet outage.
+- Votes cast while the node catches up no longer show as a spike in the health charts.
+
 ## 5.5.2
 
 _2026-11-23_

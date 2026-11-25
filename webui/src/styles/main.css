@@ -200,6 +200,14 @@ pre {
 .v-btn--loading.v-btn--variant-flat.bg-primary {
   background: rgba(var(--v-theme-primary-fill), 0.6) !important;
 }
+.v-btn--loading.v-btn--variant-flat.bg-warning {
+  background: rgba(var(--v-theme-warning), 0.6) !important;
+}
+/* A button's spinner takes the button's text color. Without this the global
+   VProgressCircular default (primary) paints it cyan on any button. */
+.v-btn .v-btn__loader > .v-progress-circular {
+  color: inherit !important;
+}
 /* Icon buttons: glyphs in the icon color unless another color is set */
 .v-btn.v-btn--icon.v-btn--variant-plain:not([class*="text-"]),
 .v-btn.v-btn--icon.v-btn--variant-text:not([class*="text-"]),
