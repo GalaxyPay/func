@@ -112,6 +112,7 @@ namespace FUNC
         {
             string exePath = Path.Combine(Utils.appDataDir, "reti", IsWindows() ? "reti.exe" : "reti");
             string retiServiceStatus = await Utils.ServiceStatus("reti", "Reti Validator");
+            RetiController.TrimLog();
 
             string? version = null;
             if (File.Exists(exePath))

@@ -7,6 +7,13 @@ outline: [2, 2]
 
 The changes you'll notice in each version of FUNC. Releases with only behind-the-scenes changes aren't listed. For every release and its downloads, see [GitHub Releases](https://github.com/GalaxyPay/func/releases).
 
+## 5.5.4
+
+_2026-11-26_
+
+- **Reti log:** the Reti daemon's output is now saved on Windows and Mac, and [Diagnostics](/support) include its latest lines. This is where Reti reports why a pool couldn't go online or pay out rewards. See [If a pool doesn't go online](/reti#if-a-pool-doesn-t-go-online).
+- On Windows, the Reti service now restarts if the Reti daemon stops. Before, the service kept running without it and still showed as running.
+
 ## 5.5.3
 
 _2026-11-25_

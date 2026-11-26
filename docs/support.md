@@ -54,6 +54,7 @@ Diagnostics are made to be safe to share. They include:
   - a few settings from `config.json`
   - free disk space
   - Reti and Valar status
+  - the last 100 lines of the Reti daemon's log, if Reti is set up
 - **Recent problems:** distinct errors and warnings from the node log, with how many times each appeared. Errors cover the node's last 24 hours of logging, which for a stopped node is the day before it stopped. Warnings cover as much of that as could be read quickly, which on a busy node may be only the last hour or two.
 
 They leave out or hide anything private:

@@ -42,6 +42,9 @@ namespace FUNC.Models
         public RecentMessages? RecentErrors { get; set; }
         public RecentMessages? RecentWarnings { get; set; }
         public DaemonStatus? Reti { get; set; }
+        // The Reti daemon's latest output, oldest first: why it couldn't register a key or
+        // go online is only ever written here.
+        public List<string>? RetiLog { get; set; }
         public DaemonStatus? Valar { get; set; }
         // A probe that failed, as "<section>: <message>". The rest of the report still fills in.
         public List<string> Errors { get; set; } = [];
