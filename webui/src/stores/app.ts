@@ -53,6 +53,8 @@ export const useAppStore = defineStore("app", {
     refreshStatus: 0,
     connectMenu: false,
     funcUpdateAvailable: false,
+    // FUNC is installing an update and restarting; its API is down meanwhile.
+    funcUpdating: false,
     nodeUpdateAvailable: false,
     downloading: false,
     stoppingReti: false,
@@ -160,7 +162,9 @@ export const useAppStore = defineStore("app", {
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       // While the sign-in dialog is up, every polled call fails with 401; the
       // dialog already says so, so don't stack error toasts behind it.
-      if (color == "error" && this.authRequired) return;
+      // Likewise while FUNC restarts for an update: every poll fails (502 behind
+      // a proxy, no response otherwise) until the page reloads.
+      if (color == "error" && (this.authRequired || this.funcUpdating)) return;
       if (color == "error") timeout = 15000;
       this.snackbar = {
         text: text,

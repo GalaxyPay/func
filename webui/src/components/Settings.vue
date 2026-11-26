@@ -376,7 +376,7 @@ async function downloadDiagnostics() {
   URL.revokeObjectURL(url);
 }
 
-const updatingFunc = ref(false);
+const updatingFunc = computed(() => store.funcUpdating);
 let init = false;
 
 // apt, rpm, brew, updater or manual when the node is an adopted existing node;
@@ -492,9 +492,16 @@ async function updateFunc() {
   if (!confirm("Are you sure you want to update FUNC to the latest version?"))
     return;
   try {
-    updatingFunc.value = true;
+    store.funcUpdating = true;
     const started = (await store.api.get("func/started")).data;
-    await store.api.post("func/update");
+    try {
+      await store.api.post("func/update");
+    } catch (err: any) {
+      // The installer can stop the service before it answers; that's the
+      // update starting, not failing. The poll below tells which.
+      const status = err?.response?.status;
+      if (status && ![502, 503, 504].includes(status)) throw err;
+    }
     store.setSnackbar(
       "Updating FUNC - this page will reload when complete",
       "info",
@@ -506,7 +513,7 @@ async function updateFunc() {
     const interval = setInterval(async () => {
       if (Date.now() - start > 2 * 60 * 1000) {
         clearInterval(interval);
-        updatingFunc.value = false;
+        store.funcUpdating = false;
         store.setSnackbar("FUNC update timed out", "error");
         return;
       }
@@ -521,7 +528,7 @@ async function updateFunc() {
       }
     }, 1000);
   } catch (err: any) {
-    updatingFunc.value = false;
+    store.funcUpdating = false;
     console.error(err);
     store.setSnackbar(errorMessage(err, "Update FUNC"), "error");
   }
