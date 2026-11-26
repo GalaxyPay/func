@@ -17,9 +17,15 @@
                 <string>/usr/local/share/func/reti/.env</string>
                 <string>d</string>
             </array>
+        <key>StandardOutPath</key>
+        <string>/usr/local/share/func/reti/reti.log</string>
+        <key>StandardErrorPath</key>
+        <string>/usr/local/share/func/reti/reti.log</string>
         <key>RunAtLoad</key>
         <true/>
         <key>KeepAlive</key>
         <true/>
+        <key>ThrottleInterval</key>
+        <integer>30</integer>
     </dict>
 </plist>

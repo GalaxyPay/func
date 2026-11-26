@@ -122,6 +122,7 @@ namespace FUNC
                     if (Directory.Exists(dataDir)) node.TelemetryEnabled = TelemetryEnabled(await Node.TelemetryStatus(name));
                 });
                 await Probe(node, "reti", async () => node.Reti = await Node.RetiStatus());
+                await Probe(node, "retiLog", async () => node.RetiLog = (await RetiController.LogTail())?.Select(Redact).ToList());
                 await Probe(node, "valar", async () => node.Valar = await ValarController.GetStatus());
             }
             return node;

@@ -66,9 +66,10 @@ app.MapControllers();
 app.UseFileServer();
 app.MapReverseProxy();
 
-// One-time upgrade migration of legacy LocalSystem Windows services onto the
-// least-privilege virtual accounts. Runs after startup so it neither delays the
-// Windows service-start handshake nor blocks Kestrel; it's a no-op once migrated.
+// Upgrade migration of existing services: legacy LocalSystem Windows services onto the
+// least-privilege virtual accounts, crash-restart recovery actions, and the current Reti
+// plist on macOS. Runs after startup so it neither delays the Windows service-start
+// handshake nor blocks Kestrel; it's a no-op once migrated.
 app.Lifetime.ApplicationStarted.Register(() =>
 {
     _ = Task.Run(async () =>
@@ -76,7 +77,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
         try
         {
             await Node.MigrateWindowsServices();
-            await RetiController.MigrateWindowsService();
+            await RetiController.MigrateService();
         }
         catch (Exception ex)
         {
